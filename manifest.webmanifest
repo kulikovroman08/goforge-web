@@ -1,0 +1,16 @@
+{
+  "name": "GoForge — Deep Go",
+  "short_name": "GoForge",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0d1420",
+  "theme_color": "#101827",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
