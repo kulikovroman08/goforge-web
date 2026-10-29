@@ -4,6 +4,15 @@ const prev=render;
 const escape=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const style=document.createElement('style');style.textContent='.foundation-box{border-left:4px solid #3bafde;background:#1b3348;border-radius:8px;padding:15px;margin:18px 0}.foundation-box h3{margin:8px 0;color:#a4e1fa}.foundation-box p{line-height:1.8}.foundation-box pre{white-space:pre-wrap;background:#0a1625;padding:12px;border-radius:8px;font-size:13px}.foundation-card{margin-top:12px;padding:12px;background:#10243a;border-radius:9px}.foundation-card summary{cursor:pointer;font-weight:600}';document.head.appendChild(style);
 render=function(){prev();if(s.unit!==0||s.tab!=='theory')return;const raw=Number(localStorage.getItem('goforge-types-lesson-v1')||0);const i=Number.isInteger(raw)?Math.min(Math.max(0,raw),GOFORGE_FOUNDATIONS.length-1):0;const d=GOFORGE_FOUNDATIONS[i];const card=document.querySelector('.walk-card');if(!card)return;const h=Array.from(card.querySelectorAll('h3')).find(v=>v.textContent.includes('Представь это в жизни'));if(!h)return;const block=document.createElement('div');block.className='foundation-box';block.innerHTML='<h3>Сначала — с абсолютного нуля</h3><p>'+escape(d[0])+'</p><p>'+escape(d[1])+'</p><h3>Теперь разбираем подробно</h3><p>'+escape(d[2])+'</p><pre>'+escape(d[3])+'</pre><details class="foundation-card"><summary>Новый термин: '+escape(d[4])+'</summary><p>'+escape(d[5])+'</p></details><details class="foundation-card"><summary>Как объяснить на собеседовании?</summary><p>'+escape(d[6])+'</p></details>';h.before(block);
+ // Убираем старое повторение той же аналогии и технического объяснения.
+ // Оставляем исходные проверочный вопрос, пример и поле для практики.
+ for(const heading of Array.from(card.querySelectorAll('h3'))){
+   if(heading.textContent==='Представь это в жизни'||heading.textContent==='Что происходит в Go'){
+     const next=heading.nextElementSibling;
+     if(next && next.tagName==='P')next.remove();
+     heading.remove();
+   }
+ }
 };
 document.addEventListener('click',e=>{if(e.target.closest('#walk-next,#walk-prev,[data-jump]'))requestAnimationFrame(()=>render())});render();
 })();
