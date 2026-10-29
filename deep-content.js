@@ -370,21 +370,26 @@ render=function(){
  $("view").innerHTML='<div class="notice"><b>Как учиться:</b> сначала разберись на простом примере, затем прочитай техническую версию. Закрой объяснение, попробуй самостоятельно пересказать и напиши собственный пример. Три раздела — отправная точка, не полный курс.</div><div class="lesson-wrap">'+entries.map((t,i)=>'<section class="lesson-card"><h3>'+(i+1)+'. '+e(t[0])+'</h3><h4>Зачем это знать? Простыми словами</h4><p>'+e(t[1])+'</p><h4>Как устроено технически</h4><p>'+e(t[2])+'</p><h4>Разбери пример</h4><pre>'+e(t[3])+'</pre><h4>Попробуй объяснить</h4><p class="lesson-task">'+e(t[4])+'</p><h4>Напиши самостоятельно</h4><p>'+e(t[5])+'</p></section>').join("")+'</div><div class="actions"><button class="primary" data-tab="interview">Проверить знания</button><button data-tab="practice">Писать код</button></div>';
  }
  if(s.tab==="interview"){
- const qs=GOFORGE_QUIZ[s.unit],answer=s.quizAnswers[s.unit]||{},checks=s.selfChecks[s.unit]||{};
- const attempted=qs.every((q,i)=>answer[i]!==undefined);
- let out='<div class="notice">Этап 1 — тест с однозначно проверяемыми ответами. Этап 2 — объяснение своими словами с самопроверкой. Автоматической AI-оценки свободного текста пока нет.</div>';
- qs.forEach((q,i)=>{out+='<section class="lesson-card quiz-card"><h3>Тест '+(i+1)+' / '+qs.length+'</h3><p>'+e(q[0])+'</p>'+q[1].map((option,j)=>'<button class="quiz-option'+(answer[i]===j?' active':'')+'" data-q="'+i+'" data-a="'+j+'">'+e(String.fromCharCode(65+j))+'. '+e(option)+'</button>').join('')+'</section>'});
- if(attempted){
- const count=qs.filter((q,i)=>answer[i]===q[2]).length;
- out+='<div class="quiz-result"><b>Тест: '+count+' / '+qs.length+'</b><p>'+qs.map((q,i)=>'<span>'+(answer[i]===q[2]?'✓':'✕')+' '+e(q[3])+'</span>').join('<hr>')+'</p></div>';
- }
- out+='<section class="lesson-card"><h3>Этап 2. Объясни своими словами</h3><p>'+e(units[s.unit][6])+'</p><textarea id="answer" placeholder="Сначала напиши ответ самостоятельно. Можно проговорить его вслух.">'+e(s.answers[s.unit]||"")+'</textarea><div class="actions"><button id="rubric">Открыть критерии оценки</button><button class="primary" id="save-answer">Сохранить ответ</button></div><div id="rubric-box" hidden><p><b>Опорное объяснение:</b> '+e(units[s.unit][7])+'</p><p>Проверь себя:</p>'+["Я ответил на вопрос по существу","Я объяснил причинно-следственную связь, а не повторил термин","Я привёл собственный Go-пример или практический случай","Я могу повторить ответ без подсказок"].map((v,i)=>'<label><input type="checkbox" data-check="'+i+'" '+(checks[i]?"checked":"")+'> '+e(v)+'</label>').join('')+'<p class="muted">Это самостоятельная оценка, не результат AI. Отмеченные критерии сохраняются локально.</p></div></section>';
- $("view").innerHTML=out;
- $("view").querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{s.quizAnswers[s.unit]=s.quizAnswers[s.unit]||{};s.quizAnswers[s.unit][b.dataset.q]=Number(b.dataset.a);store();render()});
- $("answer").oninput=x=>{s.answers[s.unit]=x.target.value;store()};
- $("rubric").onclick=()=>{$("rubric-box").hidden=!$("rubric-box").hidden};
- $("view").querySelectorAll("[data-check]").forEach(c=>c.onchange=()=>{s.selfChecks[s.unit]=s.selfChecks[s.unit]||{};s.selfChecks[s.unit][c.dataset.check]=c.checked;store()});
- $("save-answer").onclick=()=>{if(!$("answer").value.trim())return alert("Сначала напиши ответ");s.recalled.push({unit:s.unit,date:new Date().toISOString(),answer:$("answer").value});store();alert("Ответ сохранён. Качество объяснения ещё не подтверждено автоматически.")};
+ const qs=GOFORGE_QUIZ[s.unit], selected=s.quizAnswers[s.unit]||{};
+ const answered=qs.filter((q,i)=>selected[i]!==undefined).length;
+ const correct=qs.filter((q,i)=>selected[i]===q[2]).length;
+ let html='<div class="notice">Тесты по темам Go: выбери вариант — сразу увидишь, верен ли он и почему. Ошибки можно исправлять. Вопросы по важным для интервью темам находятся ниже.</div>';
+ html+='<p class="quiz-result"><b>Пройдено: '+answered+' / '+qs.length+' · Верно: '+correct+'</b></p>';
+ qs.forEach((q,i)=>{
+   html+='<section class="lesson-card quiz-card"><h3>Вопрос '+(i+1)+' / '+qs.length+'</h3><p>'+e(q[0])+'</p>';
+   html+=q[1].map((option,j)=>'<button class="quiz-option'+(selected[i]===j?' active':'')+'" data-q="'+i+'" data-a="'+j+'">'+e(String.fromCharCode(65+j))+'. '+e(option)+'</button>').join('');
+   if(selected[i]!==undefined) html+='<p class="quiz-result" aria-live="polite">'+(selected[i]===q[2]?'✓ Верно. ':'✕ Неверно. Попробуй другой вариант. ')+e(q[3])+'</p>';
+   html+='</section>';
+ });
+ html+='<div class="actions"><button id="reset-quiz">Пройти тест заново</button></div>';
+ $("view").innerHTML=html;
+ $("view").querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{
+    s.quizAnswers[s.unit]=s.quizAnswers[s.unit]||{};
+    s.quizAnswers[s.unit][Number(b.dataset.q)]=Number(b.dataset.a);
+    store();render();
+ });
+ $("reset-quiz").onclick=()=>{if(confirm("Сбросить ответы этого модуля?")){s.quizAnswers[s.unit]={};store();render()}};
+
  }
 };
 document.addEventListener("click",event=>{if(event.target.closest('[data-tab="theory"]')||event.target.closest('[data-tab="interview"]')){requestAnimationFrame(()=>render())}});
