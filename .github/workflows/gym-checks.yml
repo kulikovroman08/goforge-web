@@ -25,3 +25,24 @@ jobs:
         run: |
           node --check gym/app.js
           node --check gym/catalog.js
+          node --check gym/theory.js
+          node --check gym/quiz-bank.js
+      - name: Verify every kata has 10–15 quiz questions
+        run: |
+          node - <<'JS'
+          const fs=require('fs'),vm=require('vm');
+          const ctx={window:{}};vm.createContext(ctx);
+          for(const file of ['gym/catalog.js','gym/theory.js','gym/quiz-bank.js'])vm.runInContext(fs.readFileSync(file,'utf8'),ctx);
+          const catalog=ctx.window.GOFORGE_GYM_CATALOG;
+          const theory=ctx.window.GOFORGE_GYM_THEORY;
+          const bank=ctx.window.GOFORGE_GYM_QUIZ_BANK;
+          if(catalog.length!==theory.length)throw Error('Theory and kata counts differ');
+          for(const task of catalog){
+            const t=theory.find(x=>x.id===task.id);
+            if(!t||t.theory.length<5)throw Error('Missing detailed theory: '+task.id);
+            const all=task.quiz.concat(bank[task.id]||[]);
+            if(all.length<10||all.length>15)throw Error('Invalid question count for '+task.id+': '+all.length);
+            for(const q of all)if(!Array.isArray(q[1])||q[2]<0||q[2]>=q[1].length||!q[3])throw Error('Invalid answer key: '+task.id);
+            console.log(task.id,all.length,'questions',t.theory.length,'sections');
+          }
+          JS
