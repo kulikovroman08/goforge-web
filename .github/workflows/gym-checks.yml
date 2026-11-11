@@ -1,0 +1,27 @@
+name: GoForge Gym checks
+
+on:
+  push:
+    paths:
+      - 'gym/**'
+      - '.github/workflows/gym-checks.yml'
+  pull_request:
+    paths:
+      - 'gym/**'
+      - '.github/workflows/gym-checks.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: Compile Go kata tests (intentionally failing until solved)
+        working-directory: gym/practice
+        run: go test -run '^$' ./...
+      - name: Validate JavaScript syntax
+        run: |
+          node --check gym/app.js
+          node --check gym/catalog.js
