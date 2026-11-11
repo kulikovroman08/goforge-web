@@ -43,6 +43,8 @@ go test -race -run '^TestCounter$' -v
 - [MedUnes/go-kata](https://github.com/MedUnes/go-kata) — регулярные backend-kata, concurrency, ошибки, тесты, HTTP
 - [exercism/go](https://github.com/exercism/go) — прогрессивные задачи и проверка тестами
 - [golings](https://golings.madhan.app/catalog/) — исправление Go-кода, браузерные упражнения
+- [justxor/sobesrazborgoogle](https://github.com/justxor/sobesrazborgoogle) — русскоязычная подборка 2026: Go, конкурентность, runtime, live coding и backend
+- [goavengers/go-interview](https://github.com/goavengers/go-interview) — фундаментальные вопросы Go и backend, включая типичные задачи с каналами и worker pool
 - [Devinterview-io/golang-interview-questions](https://github.com/Devinterview-io/golang-interview-questions) — публичные вопросы, репозиторий позиционируется как подборка 2026 года
 - [golang-design/go-questions](https://github.com/golang-design/go-questions) — большая коллекция вопросов по устройству Go
 
