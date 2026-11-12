@@ -157,3 +157,26 @@ func HandleAndCommit(ctx context.Context, msg StreamMessage, handle func(context
 }
 // BuildLogLine joins fields with '|'.
 func BuildLogLine(parts []string) string { _=parts;return "" }
+
+
+// UniqueValues returns stable unique values for any comparable type.
+func UniqueValues[T comparable](values []T) []T { _=values;return nil }
+
+// CacheEntry is retained by the cache until explicitly evicted.
+type CacheEntry struct { Value []byte; ExpiresAt time.Time }
+func EvictExpired(entries map[string]CacheEntry, now time.Time) int { _=entries;_=now;return 0 }
+
+// RunLimited bounds concurrent callbacks and supports cancellation.
+func RunLimited(ctx context.Context, limit int, jobs []func(context.Context) error) error {
+ _=ctx;_=limit;_=jobs;return nil
+}
+
+// SquarePipeline must close its own output on cancellation or input closure.
+func SquarePipeline(ctx context.Context, in <-chan int) <-chan int { _=ctx;_=in;return nil }
+
+// Tx and TxBeginner model the transaction lifecycle without a real database.
+type Tx interface { Commit() error; Rollback() error }
+type TxBeginner interface { BeginTx(context.Context) (Tx,error) }
+func WithinTx(ctx context.Context, db TxBeginner, work func(context.Context,Tx)error) error {
+ _=ctx;_=db;_=work;return nil
+}
