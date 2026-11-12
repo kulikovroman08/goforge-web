@@ -8,7 +8,7 @@
   if (root) root.GoForgeRunner = api;
 })(typeof window !== 'undefined' ? window : null, function () {
   'use strict';
-  const endpoint = 'https://go.dev/_/compile';
+  const endpoint = 'https://play.golang.org/compile';
   const maximumBytes = 230000;
 
   // This is a targeted top-level declaration scanner for GoForge kata stubs,
