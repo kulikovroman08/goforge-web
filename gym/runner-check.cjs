@@ -24,10 +24,11 @@ try {
     const testName = testNames[task.id];
     if (!testName) throw new Error('Missing test name: ' + task.id);
     const archive = runner.buildSource(task, task.starter, testName, source, tests);
-    const parts = archive.split(/^-- (solution(?:_test)?\.go) --\n/gm);
-    if (parts.length !== 5) throw new Error('Invalid txtar sections for ' + task.id);
-    fs.writeFileSync(path.join(temp, parts[1]), parts[2]);
-    fs.writeFileSync(path.join(temp, parts[3]), parts[4]);
+    const delimiter = '\n-- solution.go --\n';
+    const idx = archive.indexOf(delimiter);
+    if (idx < 0) throw new Error('Invalid txtar sections for ' + task.id);
+    fs.writeFileSync(path.join(temp, 'prog_test.go'), archive.slice(0, idx));
+    fs.writeFileSync(path.join(temp, 'solution.go'), archive.slice(idx + delimiter.length));
     // All 30 starter programs must compile. The tests intentionally fail
     // until the developer solves the exercise.
     try {
