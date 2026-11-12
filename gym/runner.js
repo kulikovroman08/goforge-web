@@ -186,7 +186,7 @@
     if (!goResponse.ok || !testResponse.ok) throw new Error('Не удалось загрузить тестовые файлы GoForge.');
     const archive = buildSource(task, draft, testName, await goResponse.text(), await testResponse.text());
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25000);
+    const timeout = setTimeout(() => controller.abort(), 45000);
     try {
       const resp = await request(endpoint, {
         method: 'POST', mode: 'cors',
