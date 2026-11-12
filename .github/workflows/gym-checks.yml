@@ -24,10 +24,14 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --check gym/app.js
+          node --check gym/runner.js
+          node --check gym/runner-check.cjs
           node --check gym/catalog.js
           node --check gym/theory.js
           node --check gym/quiz-bank.js
           node --check gym/golings-links.js
+      - name: Compile every isolated online kata fixture
+        run: node gym/runner-check.cjs
       - name: Verify every kata has 10–15 quiz questions
         run: |
           node - <<'JS'
