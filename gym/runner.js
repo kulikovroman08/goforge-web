@@ -163,8 +163,10 @@
     try {
       const resp = await request(endpoint, {
         method: 'POST', mode: 'cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ Body: archive, WithVet: true }),
+        // Form encoding is a CORS-simple request and avoids OPTIONS preflight
+        // (the upstream service supports this official Playground protocol).
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: new URLSearchParams({ body: archive, version: '2', withVet: 'true' }),
         signal: controller.signal,
       });
       if (!resp.ok) throw new Error('Go Playground вернул HTTP ' + resp.status + '.');
