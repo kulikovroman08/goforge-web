@@ -12,7 +12,7 @@ try {state=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{state={}}
 state.selected=state.selected||catalog[0]?.id;
 state.tab=state.tab||'learn';
 state.progress=state.progress||{};
-const testNames={"dedupe":"TestUniqueUsers","filter":"TestActive","errors":"TestWithContext","json":"TestDecodeEvent","pagination":"TestPage","retry":"TestRetry","race":"TestCounter","typednil":"TestMaybeError","map-count":"TestCountStatuses","utf8-truncate":"TestTruncateRunes","channel-merge":"TestMergeInts","http-health":"TestHealthHandler"};
+const testNames={"dedupe":"TestUniqueUsers","filter":"TestActive","errors":"TestWithContext","json":"TestDecodeEvent","pagination":"TestPage","retry":"TestRetry","race":"TestCounter","typednil":"TestMaybeError","map-count":"TestCountStatuses","utf8-truncate":"TestTruncateRunes","channel-merge":"TestMergeInts","http-health":"TestHealthHandler","event-pointer":"TestUpdateEventStatus","activity-methods":"TestChatActivityApplyMessage","defer-cleanup":"TestCloseWithError","worker-pool":"TestProcessJobs","http-middleware":"TestRequestIDMiddleware"};
 const getTheory=id=>theory.find(t=>t.id===id);
 const getQuestions=task=>task.quiz.concat(extraQuestions[task.id]||[]);
 const orderFor=(q,i)=>{const a=q[1].map((_,j)=>j);let seed=(i+1)*7919+q[0].length*131;for(let j=a.length-1;j>0;j--){seed=(seed*1664525+1013904223)>>>0;const k=seed%(j+1);[a[j],a[k]]=[a[k],a[j]]}return a};

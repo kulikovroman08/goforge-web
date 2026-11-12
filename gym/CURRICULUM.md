@@ -15,6 +15,9 @@
 | Go Core | Срезы, copy/append/aliasing | Active |
 | Go Core | error, %w, Is/As | WithContext |
 | Go Core | Интерфейсы, typed nil и method sets | MaybeError |
+| Go Core | Указатели, передача аргументов и безопасная мутация | UpdateEventStatus |
+| Go Core | Структуры, методы и pointer receiver | ChatActivity.ApplyMessage |
+| Go Core | defer, errors.Join и закрытие ресурсов | CloseWithError |
 | Go Core | Maps: подсчёт и правила обращения | CountStatuses |
 | Go Core | Строки: Unicode, UTF-8, rune и byte | TruncateRunes |
 | Backend | JSON, io.Reader и валидация HTTP | DecodeEvent |
@@ -22,9 +25,11 @@
 | Backend | context, retry и идемпотентность | Retry |
 | Concurrency | goroutines, mutex, data race | Counter |
 | Concurrency | Channels: fan-in и отмена через context | MergeInts |
+| Concurrency | Ограниченный worker pool и fail-fast | ProcessJobs |
 | Backend | HTTP handler и тестирование httptest | HealthHandler |
+| Backend | HTTP middleware, Request ID и валидация | RequestIDMiddleware |
 
-У каждой из 12 готовых подтем есть 6 развёрнутых разделов собственной теории, 12 вопросов с объяснением, рабочая Go-заготовка и локальные Go-тесты. Исходный каталог сохраняет ранее созданные задачи, а новая теория содержит ссылки на источники.
+У каждой из 17 готовых подтем есть 6 развёрнутых разделов собственной теории, 12 вопросов с объяснением, рабочая Go-заготовка и локальные Go-тесты. Исходный каталог сохраняет ранее созданные задачи, а новая теория содержит ссылки на источники.
 
 ## Полная карта дальнейшего наполнения
 
@@ -73,3 +78,12 @@
 ## Сопоставление с упражнениями golings
 
 Ссылка «Практика Go в браузере» у каждой kata теперь открывает конкретное упражнение через `https://golings.madhan.app/catalog/?exercise=<slug>`. Эта возможность подтверждена кодом оригинального сайта golings (`web/src/pages/catalog.astro`). Упражнения тематически совпадают с задачами GoForge, но **не являются их копиями** и могут проверять другой контракт. Из браузерной карточки golings можно перейти в Go Playground через кнопку Play.
+
+## Проверенные в этой итерации источники практики
+
+- [go-kata: Worker Pool with Backpressure](https://github.com/MedUnes/go-kata/tree/master/01-context-cancellation-concurrency/10-worker-pool-errors-join)
+- [go-kata: Cleanup Chain](https://github.com/MedUnes/go-kata/tree/master/04-errors-semantics/19-defer-cleanup-chain)
+- [go-kata: Middleware Chain](https://github.com/MedUnes/go-kata/tree/master/03-http-middleware/06-interface-based-middleware-chain)
+- [goavengers: популярные live coding задачи](https://github.com/goavengers/go-interview/tree/master/docs/popular_tasks)
+
+Тексты и Go-тесты GoForge авторские, а не копии исходных задач. Остальные темы карты пока не реализованы.
