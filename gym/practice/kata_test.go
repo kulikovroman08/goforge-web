@@ -12,6 +12,7 @@ import (
  "encoding/json"
  "time"
  "sync/atomic"
+ "fmt"
 )
 
 func TestUniqueUsers(t *testing.T) {
@@ -290,3 +291,71 @@ func TestEventProcessor(t *testing.T) {
  wg.Wait()
  if count.Load()!=1||p.Count()!=3{t.Fatalf("applied=%d count=%d",count.Load(),p.Count())}
 }
+
+func TestMapServiceError(t *testing.T) {
+ cases:=[]struct{name string;err error;want RPCCode}{
+  {"ok",nil,RPCOK},
+  {"not found",fmt.Errorf("load: %w",ErrEventNotFound),RPCNotFound},
+  {"invalid",ErrInvalidRequest,RPCInvalidArgument},
+  {"cancel",context.Canceled,RPCCanceled},
+  {"deadline",context.DeadlineExceeded,RPCDeadlineExceeded},
+  {"internal",errors.New("password=secret: db unavailable"),RPCInternal},
+ }
+ for _,tc:=range cases {t.Run(tc.name,func(t *testing.T){
+  got:=MapServiceError(tc.err)
+  if got.Code!=tc.want{t.Fatalf("code=%q want %q",got.Code,tc.want)}
+  if tc.err!=nil&&got.Message==""{t.Fatal("missing safe status message")}
+  if strings.Contains(got.Message,"password")||strings.Contains(got.Message,"secret"){t.Fatal("leaked internal details")}
+ })}
+}
+func TestBuildEventsPageQuery(t *testing.T){
+ ts:=time.Date(2026,11,12,10,0,0,0,time.UTC)
+ sql,args,err:=BuildEventsPageQuery("tenant-1",time.Time{},"",20)
+ if err!=nil{t.Fatal(err)}
+ if !strings.Contains(sql,"WHERE tenant_id = $1")||!strings.Contains(sql,"ORDER BY created_at DESC, id DESC")||!strings.Contains(sql,"LIMIT $2"){t.Fatalf("unexpected SQL: %s",sql)}
+ if len(args)!=2||args[0]!="tenant-1"||args[1]!=20{t.Fatalf("unexpected args: %v",args)}
+ sql,args,err=BuildEventsPageQuery("tenant-1",ts,"event-7",50)
+ if err!=nil{t.Fatal(err)}
+ if !strings.Contains(sql,"(created_at, id) < ($2, $3)")||!strings.Contains(sql,"LIMIT $4") {t.Fatalf("cursor SQL: %s",sql)}
+ if len(args)!=4||args[0]!="tenant-1"||args[1]!=ts||args[2]!="event-7"||args[3]!=50{t.Fatalf("cursor args: %v",args)}
+ for _,c:=range []struct{tenant string;at time.Time;id string;limit int}{
+  {"",time.Time{},"",10},{"t",time.Time{},"",0},{"t",time.Time{},"",101},
+  {"t",ts,"",10},{"t",time.Time{},"id",10},
+ } {
+  if _,_,err:=BuildEventsPageQuery(c.tenant,c.at,c.id,c.limit);err==nil{t.Fatalf("accepted invalid request %#v",c)}
+ }
+ evil:="tenant' OR 1=1 --"
+ sql,args,err=BuildEventsPageQuery(evil,time.Time{},"",10)
+ if err!=nil||strings.Contains(sql,evil)||len(args)!=2||args[0]!=evil{t.Fatalf("possible interpolated SQL: %s %v %v",sql,args,err)}
+}
+func TestHandleAndCommit(t *testing.T){
+ msg:=StreamMessage{ID:"event-1"}
+ var order []string
+ handle:=func(context.Context,StreamMessage)error{order=append(order,"handle");return nil}
+ commit:=func(context.Context)error{order=append(order,"commit");return nil}
+ if err:=HandleAndCommit(context.Background(),msg,handle,commit);err!=nil{t.Fatal(err)}
+ if !reflect.DeepEqual(order,[]string{"handle","commit"}){t.Fatalf("wrong order %v",order)}
+ order=nil;bad:=errors.New("failed to process")
+ if err:=HandleAndCommit(context.Background(),msg,func(context.Context,StreamMessage)error{order=append(order,"handle");return bad},commit);!errors.Is(err,bad){t.Fatalf("lost handle error %v",err)}
+ if len(order)!=1||order[0]!="handle"{t.Fatalf("committed failed message: %v",order)}
+ order=nil;commitErr:=errors.New("commit failed")
+ if err:=HandleAndCommit(context.Background(),msg,handle,func(context.Context)error{order=append(order,"commit");return commitErr});!errors.Is(err,commitErr){t.Fatalf("commit err=%v",err)}
+ if !reflect.DeepEqual(order,[]string{"handle","commit"}){t.Fatalf("bad order %v",order)}
+ ctx,cancel:=context.WithCancel(context.Background());cancel();order=nil
+ if err:=HandleAndCommit(ctx,msg,handle,commit);!errors.Is(err,context.Canceled){t.Fatalf("cancel err=%v",err)}
+ if len(order)!=0{t.Fatalf("callbacks called after cancel %v",order)}
+ if err:=HandleAndCommit(context.Background(),msg,nil,commit);err==nil{t.Fatal("nil handler accepted")}
+}
+func TestBuildLogLine(t *testing.T){
+ cases:=[]struct{parts []string;want string}{
+  {nil,""},{[]string{""},""},{[]string{"a","b","c"},"a|b|c"},
+  {[]string{"a","","b"},"a||b"},{[]string{"Я","🙂"},"Я|🙂"},
+ }
+ for _,tc:=range cases{if got:=BuildLogLine(tc.parts);got!=tc.want{t.Errorf("got %q, want %q",got,tc.want)}}
+}
+func BenchmarkBuildLogLine(b *testing.B){
+ parts:=[]string{"event-service","tenant-123","event-created","trace-abc","success"}
+ b.ReportAllocs()
+ for i:=0;i<b.N;i++{benchmarkLogSink=BuildLogLine(parts)}
+}
+var benchmarkLogSink string
