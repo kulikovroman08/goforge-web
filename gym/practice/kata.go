@@ -9,6 +9,7 @@ import (
  "strings"
  "sync"
  "net/http"
+ "time"
 )
 
 func UniqueUsers(ids []string) []string { return nil }
@@ -125,3 +126,34 @@ func DetachedPrefix(data []byte, n int) []byte {
 type EventProcessor struct { mu sync.Mutex; seen map[string]struct{}; count int }
 func (p *EventProcessor) Apply(id string) bool { _=id;return false }
 func (p *EventProcessor) Count() int { return 0 }
+
+
+// RPCStatus mirrors only the *categories* of gRPC status codes for this exercise.
+// It is not the grpc-go wire protocol.
+type RPCCode string
+const (
+ RPCOK RPCCode="OK"
+ RPCNotFound RPCCode="NotFound"
+ RPCInvalidArgument RPCCode="InvalidArgument"
+ RPCCanceled RPCCode="Canceled"
+ RPCDeadlineExceeded RPCCode="DeadlineExceeded"
+ RPCInternal RPCCode="Internal"
+)
+type RPCStatus struct { Code RPCCode; Message string }
+var ErrEventNotFound=errors.New("event not found")
+var ErrInvalidRequest=errors.New("invalid request")
+func MapServiceError(err error) RPCStatus { _=err;return RPCStatus{} }
+
+// BuildEventsPageQuery returns a parameterized PostgreSQL query and values.
+func BuildEventsPageQuery(tenantID string, before time.Time, beforeID string, limit int) (string,[]any,error) {
+ _=tenantID;_=before;_=beforeID;_=limit
+ return "",nil,nil
+}
+type StreamMessage struct { ID string; Data []byte }
+// HandleAndCommit exercises ordering, not a real Kafka client.
+func HandleAndCommit(ctx context.Context, msg StreamMessage, handle func(context.Context,StreamMessage)error, commit func(context.Context)error)error{
+ _=ctx;_=msg;_=handle;_=commit
+ return nil
+}
+// BuildLogLine joins fields with '|'.
+func BuildLogLine(parts []string) string { _=parts;return "" }
