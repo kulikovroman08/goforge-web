@@ -16,8 +16,8 @@ const tests=fs.readFileSync(path.join(__dirname,'practice/kata_test.go'),'utf8')
   const archive=runner.buildSource(task,draft,'TestUniqueUsers',source,tests);
   const response=await fetch(runner.endpoint,{
    method:'POST',
-   headers:{'Content-Type':'application/json',Origin:'https://kulikovroman08.github.io'},
-   body:JSON.stringify({Body:archive,WithVet:true}),
+   headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8',Origin:'https://kulikovroman08.github.io'},
+   body:new URLSearchParams({body:archive,version:'2',withVet:'true'}),
    signal:AbortSignal.timeout(25000),
   });
   const payload=await response.json();
