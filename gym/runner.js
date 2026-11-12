@@ -123,8 +123,10 @@
     // but disable TestX entrypoints for all other tasks.
     const renamedTests = packageMain(kataTestGo).replace(/^func\s+(Test[A-Za-z_]\w*)\s*\(/gm, (all, name) =>
       name === testName ? all : 'func Disabled' + name + '(');
-    const archive = '-- solution.go --\n' + source +
-      '\n-- solution_test.go --\n' + renamedTests + '\n';
+    // The Go Playground detects TestX functions in its implicit prog.go,
+    // not in arbitrary *_test.go txtar members. Place the tests FIRST and
+    // keep the user's implementation in a second Go file.
+    const archive = renamedTests + '\n-- solution.go --\n' + source + '\n';
     if (new TextEncoder().encode(archive).length > maximumBytes) throw new Error('Слишком большой код для онлайн-запуска.');
     return archive;
   }
