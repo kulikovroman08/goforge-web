@@ -14,7 +14,7 @@
   // This is a targeted top-level declaration scanner for GoForge kata stubs,
   // not a general-purpose Go parser.
   function declarationHeaders(code) {
-    const re = /^(func\s+(?:\(\s*[A-Za-z_]\w*\s+(\*?[A-Za-z_]\w*)\s*\)\s*)?([A-Za-z_]\w*)|type\s+([A-Za-z_]\w*))/gm;
+    const re = /^(func\s+(?:\(\s*(?:[A-Za-z_]\w*\s+)?(\*?[A-Za-z_]\w*)\s*\)\s*)?([A-Za-z_]\w*)|type\s+([A-Za-z_]\w*))/gm;
     const found = [];
     let m;
     while ((m = re.exec(code))) {
@@ -114,7 +114,10 @@
       const pos = match.index + match[0].length;
       base = base.slice(0, pos) + declaration + base.slice(pos);
     }
-    const source = packageMain(base) + '\n\n// User solution\n' + user + '\n';
+    const keepImports = '\n// Keep standard imports available when the selected kata stub\n' +
+      '// was the only remaining reference to one of them.\n' +
+      'var (\n _ = json.NewDecoder\n _ = strings.TrimSpace\n _ = errors.New\n _ = fmt.Sprintf\n _ = io.EOF\n _ = sync.Mutex{}\n _ = http.MethodGet\n _ = time.Time{}\n _ = context.Background\n)\n';
+    const source = packageMain(base) + keepImports + '\n// User solution\n' + user + '\n';
 
     // Keep helper declarations and imports from the original test file,
     // but disable TestX entrypoints for all other tasks.
