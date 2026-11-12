@@ -8,6 +8,7 @@ import (
  "encoding/json"
  "strings"
  "sync"
+ "net/http"
 )
 
 func UniqueUsers(ids []string) []string { return nil }
@@ -48,3 +49,18 @@ func MaybeError(fail bool) error {
 }
 
 var _ = fmt.Sprintf
+
+// CountStatuses counts calendar events by status.
+func CountStatuses(events []Event) map[string]int { return nil }
+
+// TruncateRunes limits the number of Unicode code points without splitting UTF-8.
+func TruncateRunes(s string, max int) string { return s }
+
+// MergeInts merges two input streams and respects cancellation.
+func MergeInts(ctx context.Context, a, b <-chan int) <-chan int {
+ _ = ctx; _ = a; _ = b
+ return nil
+}
+
+// HealthHandler returns the service liveness response.
+func HealthHandler(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("not implemented")) }
