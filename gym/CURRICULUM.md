@@ -20,8 +20,11 @@
 | Go Core | defer, errors.Join и закрытие ресурсов | CloseWithError |
 | Go Core | Maps: подсчёт и правила обращения | CountStatuses |
 | Go Core | Строки: Unicode, UTF-8, rune и byte | TruncateRunes |
+| Go Core | Generics и comparable: общий алгоритм дедупликации | UniqueValues |
 | Runtime | Удержание backing array и независимое копирование | DetachedPrefix |
 | Runtime | Аллокации, строки, strings.Builder и benchmark | BuildLogLine |
+| Runtime | GC и управление достижимостью TTL-кеша | EvictExpired |
+| Runtime | GMP и ограниченный fan-out | RunLimited |
 | Backend | JSON, io.Reader и валидация HTTP | DecodeEvent |
 | Backend | offset/cursor pagination | Page |
 | Backend | context, retry и идемпотентность | Retry |
@@ -30,14 +33,16 @@
 | Backend | gRPC-коды и отображение доменных ошибок | MapServiceError |
 | Backend | PostgreSQL cursor pagination | BuildEventsPageQuery |
 | Backend | Kafka: порядок обработки и commit offset | HandleAndCommit |
+| Backend | PostgreSQL BeginTx/Commit/Rollback с fake | WithinTx |
 | Concurrency | goroutines, mutex, data race | Counter |
 | Concurrency | Channels: fan-in и отмена через context | MergeInts |
 | Concurrency | Ограниченный worker pool и fail-fast | ProcessJobs |
 | Concurrency | select, context cancellation и закрытые каналы | WaitMessage |
+| Concurrency | Конвейер каналов с контекстом | SquarePipeline |
 | Backend | HTTP handler и тестирование httptest | HealthHandler |
 | Backend | HTTP middleware, Request ID и валидация | RequestIDMiddleware |
 
-У каждой из 25 готовых подтем есть 6 развёрнутых разделов собственной теории, 12 вопросов с объяснением, рабочая Go-заготовка и локальные Go-тесты. Исходный каталог сохраняет ранее созданные задачи, а новая теория содержит ссылки на источники.
+У каждой из 30 готовых подтем есть 6 развёрнутых разделов собственной теории, 12 вопросов с объяснением, рабочая Go-заготовка и локальные Go-тесты. Исходный каталог сохраняет ранее созданные задачи, а новая теория содержит ссылки на источники.
 
 ## Полная карта дальнейшего наполнения
 
@@ -103,3 +108,7 @@
 ## Backend и Runtime: новые тренировки
 
 Выполнимые задачи `MapServiceError`, `BuildEventsPageQuery`, `HandleAndCommit`, `BuildLogLine` дополняют теорию и 12 проверяемых вопросов на каждую подтему. Первое и третье упражнения **моделируют** правила gRPC и Kafka на уровне чистого Go без интеграционного сервера; они не заменяют тесты с реальными grpc-go, PostgreSQL и Kafka. Для продуктивной системы нужно отдельно реализовать инфраструктурную интеграцию, обработку ребаланса, транзакции и корректную работу с page token.
+
+## Дополнения по runtime и БД
+
+Подтема `EvictExpired` показывает, что GC удаляет недостижимое, а не истёкшие по TTL значения. `RunLimited` тренирует application-level concurrency limit — не имитирует детали внутреннего GMP-планировщика. `WithinTx` учит управлению границей транзакции с fake Tx, а не утверждает, что это интеграционный тест PostgreSQL или MVCC. Более глубокие задачи потребуют бенчмарков, профилей и реальной тестовой БД.
