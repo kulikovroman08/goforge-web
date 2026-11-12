@@ -1,25 +1,15 @@
-// Temporary integration diagnostic: HTTP response format and browser CORS.
-// This probes the official Go Playground only, not a third-party proxy.
+// Test official Go Playground execution response, not just HTTP status.
 (async () => {
-  const source='-- main_test.go --\npackage main\nimport "testing"\nfunc TestExample(t *testing.T) { if 2+2 != 4 { t.Fatal("fail") } }\n';
-  const paths=[
-    ['https://play.golang.org/compile','form'],
-    ['https://play.golang.org/compile','json'],
-    ['https://go.dev/_/compile','form'],
-    ['https://go.dev/compile','form'],
-  ];
-  for(const [url,kind] of paths){
-    try {
-      const response=await fetch(url,{
-        method:'POST',
-        headers:{
-          Origin:'https://kulikovroman08.github.io',
-          'Content-Type':kind==='form'?'application/x-www-form-urlencoded':'application/json',
-        },
-        body:kind==='form'?new URLSearchParams({body:source,version:'2',withVet:'true'}):JSON.stringify({Body:source,WithVet:true}),
-        signal:AbortSignal.timeout(13000),
-      });
-      console.log(url,kind,'HTTP',response.status,'CORS',response.headers.get('access-control-allow-origin'),'BODY',(await response.text()).slice(0,1400));
-    }catch(error){console.log(url,kind,'ERROR',String(error))}
+  for (const shouldFail of [false, true]) {
+    const source = '-- exercise.go --\npackage main\nconst answer = 4\n-- exercise_test.go --\npackage main\nimport "testing"\nfunc TestExample(t *testing.T) { if answer != ' + (shouldFail ? '5' : '4') + ' { t.Fatal("unexpected result") } }\n';
+    const response = await fetch('https://play.golang.org/compile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'https://kulikovroman08.github.io' },
+      body: JSON.stringify({ Body: source, WithVet: true }),
+      signal: AbortSignal.timeout(25000),
+    });
+    const payload = await response.json();
+    console.log(shouldFail ? 'FAIL_CASE' : 'PASS_CASE', 'HTTP', response.status, 'CORS', response.headers.get('access-control-allow-origin'), 'BODY', JSON.stringify(payload).slice(0,2000));
+    if (!response.ok || payload.IsTest !== true) throw Error('No real tests were executed');
   }
-})();
+})().catch(err => { console.error(err); process.exitCode = 1; });
