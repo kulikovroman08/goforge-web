@@ -10,7 +10,7 @@ const source=fs.readFileSync(path.join(__dirname,'practice/kata.go'),'utf8');
 const tests=fs.readFileSync(path.join(__dirname,'practice/kata_test.go'),'utf8');
 (async()=>{
  for(const [name,draft,expected] of [
-  ['correct solution','package practice\n\n'+task.solution,true],
+  ['correct solution',task.solution,true],
   ['unfinished starter',task.starter,false],
  ]){
   const archive=runner.buildSource(task,draft,'TestUniqueUsers',source,tests);
