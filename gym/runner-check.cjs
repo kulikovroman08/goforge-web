@@ -19,6 +19,10 @@ if (!namesMatch) throw new Error('Cannot discover per-task Go test names');
 const testNames = JSON.parse(namesMatch[1]);
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'goforge-browser-'));
 const failures = [];
+// Never count a failed test or a successful HTTP response as solved.
+const pass=runner.summarize({IsTest:true,Status:0,TestsFailed:0,Errors:'',Events:[{Message:'--- PASS: TestFoo (0.00s)\nPASS\n'}]});
+const fail=runner.summarize({IsTest:true,Status:1,TestsFailed:1,Errors:'',Events:[{Message:'--- FAIL: TestFoo (0.00s)\nFAIL\n'}]});
+if(!pass.passed||fail.passed)throw new Error('Incorrect PASS/FAIL classification');
 try {
   for (const task of catalog) {
     const testName = testNames[task.id];
