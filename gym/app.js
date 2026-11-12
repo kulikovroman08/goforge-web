@@ -4,6 +4,8 @@ const catalog=window.GOFORGE_GYM_CATALOG||[];
 const theory=window.GOFORGE_GYM_THEORY||[];
 const extraQuestions=window.GOFORGE_GYM_QUIZ_BANK||{};
 const golings=window.GOFORGE_GOLINGS_LINKS||{};
+let runnerConsent=false;
+let runnerBusy=false;
 const $=id=>document.getElementById(id);
 const escape=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const storageKey='goforge-gym-v2';
@@ -32,7 +34,7 @@ $('view').innerHTML='<div class="notice">Полный учебный разбо�
 }else if(state.tab==='quiz'){
 $('view').innerHTML='<div class="notice">Выбери ответ. После выбора сразу увидишь результат и объяснение. Можно пройти тест повторно.</div><section class="card"><h2>Проверка понимания · '+correct+'/'+questions.length+'</h2>'+questions.map((q,i)=>'<div class="question"><b>'+(i+1)+'. '+escape(q[0])+'</b>'+orderFor(q,i).map((j,pos)=>'<button class="choice '+(p.answers[i]===j?'active':'')+'" data-question="'+i+'" data-choice="'+j+'">'+escape(String.fromCharCode(65+pos))+'. '+escape(q[1][j])+'</button>').join('')+(p.answers[i]===undefined?'':'<div class="feedback"><span class="'+(p.answers[i]===q[2]?'good':'bad')+'">'+(p.answers[i]===q[2]?'✓ Правильно':'✕ Неверно')+'</span> · '+escape(q[3])+'</div>')+'</div>').join('')+'<div class="toolbar"><button id="quiz-reset">Повторить тест</button><button class="primary" data-goto="code">Перейти к написанию кода</button></div></section>';
 }else if(state.tab==='code'){
-$('view').innerHTML='<section class="card"><h2>Рабочая задача</h2><p>'+escape(task.role)+'</p><div class="notice">Сначала сформулируй алгоритм своими словами: какие входные данные, какой результат, что хранить, как пройти элементы и какие есть крайние случаи.</div><h3>1. План решения</h3><ol class="steps"><li>Выдели входные данные и ожидаемый выход.</li><li>Выбери структуру данных.</li><li>Напиши алгоритм из 3–5 шагов на бумаге или в голове.</li><li>Пиши Go самостоятельно, запускай тесты и исправляй ошибки.</li></ol><h3>2. Напиши код руками</h3><textarea id="editor" class="code" spellcheck="false" aria-label="Редактор Go"></textarea><div class="toolbar"><button id="hint">Подсказка '+p.hint+'/'+task.hints.length+'</button><button id="scratch">С нуля</button><button id="copy">Копировать код</button><button id="download">Скачать .go</button></div><div id="hints">'+task.hints.slice(0,p.hint).map((x,i)=>'<div class="feedback" style="margin:8px 0">Шаг '+(i+1)+': '+escape(x)+'</div>').join('')+'</div><h3>3. Проверочные случаи</h3><ul>'+task.cases.map(x=>'<li>'+escape(x)+'</li>').join('')+'</ul><div class="notice"><b>Запуск:</b> на ноутбуке используй Go и <code>go test ./...</code>; в онлайн GoForge безопасный запуск пока не подключён. Открой <a href="https://github.com/kulikovroman08/goforge-web/tree/main/gym/practice" target="_blank" rel="noopener noreferrer">файлы практики</a> и замени реализацию нужной функции в <code>gym/practice/kata.go</code>. Команда из каталога: <code>cd gym/practice && go test -run ^'+testNames[task.id]+'$ -v</code>'+(task.id==='race'?' или <code>go test -race -run ^TestCounter$</code>':'')+'. На Android открой подходящее упражнение golings по ссылке ниже. Сохранение черновика не означает, что тесты пройдены.</div><div class="toolbar" style="margin-top:12px"><button id="mark-run">Я проверил решение локально</button><a href="https://golings.madhan.app/catalog/?exercise='+encodeURIComponent(golings[task.id]?.exercise||"slices1")+'" target="_blank" rel="noopener noreferrer">▶ golings: '+escape(golings[task.id]?.label||"Упражнение по теме")+'</a></div><details><summary>Показать пример решения (только после своих попыток)</summary><pre>'+escape(task.solution)+'</pre></details></section>';
+$('view').innerHTML='<section class="card"><h2>Рабочая задача</h2><p>'+escape(task.role)+'</p><div class="notice">Сначала сформулируй алгоритм своими словами: какие входные данные, какой результат, что хранить, как пройти элементы и какие есть крайние случаи.</div><h3>1. План решения</h3><ol class="steps"><li>Выдели входные данные и ожидаемый выход.</li><li>Выбери структуру данных.</li><li>Напиши алгоритм из 3–5 шагов на бумаге или в голове.</li><li>Пиши Go самостоятельно, запускай тесты и исправляй ошибки.</li></ol><h3>2. Напиши код руками</h3><textarea id="editor" class="code" spellcheck="false" aria-label="Редактор Go"></textarea><div class="toolbar"><button id="run-online" class="primary">▶ Запустить Go-тесты</button><button id="hint">'+p.hint+'/'+task.hints.length+'</button><button id="scratch">С нуля</button><button id="copy">Копировать код</button><button id="download">Скачать .go</button></div><div id="hints">'+task.hints.slice(0,p.hint).map((x,i)=>'<div class="feedback" style="margin:8px 0">Шаг '+(i+1)+': '+escape(x)+'</div>').join('')+'</div><div class="notice tiny">Онлайн-запуск: исходный код выбранной задачи отправляется на сервер <a href="https://go.dev/play/" target="_blank" rel="noopener noreferrer">Go Playground</a> для компиляции и исполнения тестов. Не вставляй рабочие секреты, токены или конфиденциальный код. Нужен интернет. Для race detector и интеграционных тестов используй локальный Go.</div><div id="runner-results" class="runner-results" role="status" aria-live="polite" hidden></div><h3>3. Проверочные случаи</h3><ul>'+task.cases.map(x=>'<li>'+escape(x)+'</li>').join('')+'</ul><div class="notice"><b>Запуск:</b> на ноутбуке используй Go и <code>go test ./...</code>; или нажми «Запустить Go-тесты» прямо здесь — запрос выполнится в изолированной среде Go Playground. Открой <a href="https://github.com/kulikovroman08/goforge-web/tree/main/gym/practice" target="_blank" rel="noopener noreferrer">файлы практики</a> и замени реализацию нужной функции в <code>gym/practice/kata.go</code>. Команда из каталога: <code>cd gym/practice && go test -run ^'+testNames[task.id]+'$ -v</code>'+(task.id==='race'?' или <code>go test -race -run ^TestCounter$</code>':'')+'. На Android открой подходящее упражнение golings по ссылке ниже. Сохранение черновика не означает, что тесты пройдены.</div><div class="toolbar" style="margin-top:12px"><button id="mark-run">Я проверил решение локально</button><a href="https://golings.madhan.app/catalog/?exercise='+encodeURIComponent(golings[task.id]?.exercise||"slices1")+'" target="_blank" rel="noopener noreferrer">▶ golings: '+escape(golings[task.id]?.label||"Упражнение по теме")+'</a></div><details><summary>Показать пример решения (только после своих попыток)</summary><pre>'+escape(task.solution)+'</pre></details></section>';
 $('editor').value=p.draft===null?task.starter:p.draft;
 }else{
 $('view').innerHTML='<section class="card"><h2>Повторяй, пока решение не получается без подсказок</h2><p>Следующее повторение — та же задача, но без подсказок и без стартового тела функции. Не оцениваем скорость чтения: закрепляем навык самостоятельного решения.</p><p>Ранее открыто подсказок: <b>'+p.hint+'</b>. Отмечено локальных проверок: <b>'+p.runs+'</b>. Повторений с нуля: <b>'+p.repeat+'</b>.</p><button class="primary" id="repeat-code">Начать повторение с нуля</button><details><summary>Что спрашивают на собеседовании?</summary><p>'+escape(task.interview.q)+'</p><p>'+escape(task.interview.a)+'</p></details></section>';
@@ -49,6 +51,37 @@ if(e.target.closest('#hint')){p.hint=Math.min(task.hints.length,p.hint+1);render
 if(e.target.closest('#scratch')){if(confirm('Очистить код и скрыть подсказки?')){p.draft='package practice\n\n// '+task.signature+'\n';p.hint=0;render()}return}
 if(e.target.closest('#copy')){const text=$('editor').value;try{await navigator.clipboard.writeText(text);alert('Код скопирован')}catch{alert('Не удалось скопировать. Выдели текст вручную.')}return}
 if(e.target.closest('#download')){const blob=new Blob([$('editor').value],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=task.id+'.go';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return}
+if(e.target.closest('#run-online')){
+ if(runnerBusy)return;
+ const editor=$('editor');
+ const snapshot=editor.value;
+ if(!window.GoForgeRunner){alert('Модуль запуска не загружен. Обнови страницу.');return}
+ if(!runnerConsent){
+  if(!confirm('Код решения будет отправлен на официальный сервис Go Playground для компиляции и тестов. Не отправляй рабочие секреты и закрытый корпоративный код. Продолжить?'))return;
+  runnerConsent=true;
+ }
+ const selected=task.id,results=$('runner-results'),button=$('run-online');
+ runnerBusy=true;button.disabled=true;button.textContent='Запускаю Go-тесты…';
+ results.hidden=false;results.className='runner-results';results.textContent='Компиляция и выполнение тестов в Go Playground…';
+ try{
+  const result=await window.GoForgeRunner.run(task,snapshot,testNames[task.id]);
+  if(state.selected!==selected||state.tab!=='code')return;
+  results.className='runner-results '+(result.passed?'runner-pass':'runner-fail');
+  results.textContent=(result.passed?'✓ Тесты прошли\n':'✕ Тесты не прошли\n')+result.output+
+    (task.id==='race'?'\n\nВнимание: онлайн-режим не включает go test -race. Проверь гонки локально.':'');
+  if(result.passed && $('editor').value===snapshot){p.runs++;save()}
+ }catch(error){
+  if(state.selected!==selected||state.tab!=='code')return;
+  results.className='runner-results runner-fail';
+  results.textContent='Не удалось запустить Go-тесты: '+(error?.message||String(error))+
+   '\nПроверь интернет или запусти локально: go test -run ^'+testNames[task.id]+'$ -v';
+ }finally{
+  runnerBusy=false;
+  const current=$('run-online');
+  if(current){current.disabled=false;current.textContent='▶ Запустить Go-тесты'}
+ }
+ return;
+}
 if(e.target.closest('#mark-run')){p.runs++;save();alert('Отметка сохранена. GoForge не может независимо подтвердить, что тесты прошли.');render();return}
 if(e.target.closest('#repeat-code')){p.repeat++;p.hint=0;p.draft='package practice\n\n// '+task.signature+'\n';state.tab='code';render();return}
 if(e.target.closest('#reset-all')){if(confirm('Удалить весь локальный прогресс GoForge Gym на этом устройстве?')){localStorage.removeItem(storageKey);location.reload()}return}
