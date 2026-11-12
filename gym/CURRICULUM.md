@@ -15,12 +15,16 @@
 | Go Core | Срезы, copy/append/aliasing | Active |
 | Go Core | error, %w, Is/As | WithContext |
 | Go Core | Интерфейсы, typed nil и method sets | MaybeError |
+| Go Core | Maps: подсчёт и правила обращения | CountStatuses |
+| Go Core | Строки: Unicode, UTF-8, rune и byte | TruncateRunes |
 | Backend | JSON, io.Reader и валидация HTTP | DecodeEvent |
 | Backend | offset/cursor pagination | Page |
 | Backend | context, retry и идемпотентность | Retry |
 | Concurrency | goroutines, mutex, data race | Counter |
+| Concurrency | Channels: fan-in и отмена через context | MergeInts |
+| Backend | HTTP handler и тестирование httptest | HealthHandler |
 
-У каждой из этих подтем есть 6 развёрнутых разделов собственной теории, 12 вопросов с объяснением, рабочая Go-заготовка и локальные Go-тесты. Исходный каталог сохраняет ранее созданные задачи, а новая теория содержит ссылки на источники.
+У каждой из 12 готовых подтем есть 6 развёрнутых разделов собственной теории, 12 вопросов с объяснением, рабочая Go-заготовка и локальные Go-тесты. Исходный каталог сохраняет ранее созданные задачи, а новая теория содержит ссылки на источники.
 
 ## Полная карта дальнейшего наполнения
 
@@ -65,3 +69,7 @@
 Каждая готовая подтема должна иметь 10–15 **самостоятельных** вопросов, проверяющих механизм, предсказание поведения кода, граничные случаи и применение в production. Порядок вариантов ответа перемешивается. Показатели собеседований не выдумываем: публичная подборка вопросов не является репрезентативной статистикой реальных наймов.
 
 <!-- Documentation-only commit to request a fresh CI and GitHub Pages deployment after the November 2026 Actions queue incident. -->
+
+## Сопоставление с упражнениями golings
+
+Ссылка «Практика Go в браузере» у каждой kata теперь открывает конкретное упражнение через `https://golings.madhan.app/catalog/?exercise=<slug>`. Эта возможность подтверждена кодом оригинального сайта golings (`web/src/pages/catalog.astro`). Упражнения тематически совпадают с задачами GoForge, но **не являются их копиями** и могут проверять другой контракт. Из браузерной карточки golings можно перейти в Go Playground через кнопку Play.
