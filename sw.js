@@ -1,4 +1,4 @@
-const CACHE="goforge-gym-v2-4";
+const CACHE="goforge-gym-v2-5";
 const ASSETS=["./","./index.html","./manifest.webmanifest","./icon.svg","./gym/","./gym/index.html","./gym/app.js","./gym/catalog.js","./gym/theory.js","./gym/quiz-bank.js","./gym/golings-links.js"];
 self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",event=>event.waitUntil((async()=>{for(const k of await caches.keys())if(k!==CACHE)await caches.delete(k);await self.clients.claim()})()));
