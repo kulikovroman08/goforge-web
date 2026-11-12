@@ -32,8 +32,6 @@ jobs:
           node --check gym/golings-links.js
       - name: Compile every isolated online kata fixture
         run: node gym/runner-check.cjs
-      - name: Inspect official playground test response (one-time probe)
-        run: node gym/playground-probe.cjs
       - name: Verify every kata has 10–15 quiz questions
         run: |
           node - <<'JS'
