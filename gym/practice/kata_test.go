@@ -359,3 +359,104 @@ func BenchmarkBuildLogLine(b *testing.B){
  for i:=0;i<b.N;i++{benchmarkLogSink=BuildLogLine(parts)}
 }
 var benchmarkLogSink string
+
+func TestUniqueValues(t *testing.T) {
+ ints:=UniqueValues([]int{2,1,2,3,1});if !reflect.DeepEqual(ints,[]int{2,1,3}){t.Fatalf("ints=%v",ints)}
+ words:=UniqueValues([]string{"a","b","a"});if !reflect.DeepEqual(words,[]string{"a","b"}){t.Fatalf("strings=%v",words)}
+ if got:=UniqueValues([]int(nil));len(got)!=0{t.Fatalf("empty=%v",got)}
+}
+func TestEvictExpired(t *testing.T) {
+ now:=time.Date(2026,11,12,12,0,0,0,time.UTC)
+ cache:=map[string]CacheEntry{
+  "old":{Value:[]byte("old"),ExpiresAt:now.Add(-time.Second)},
+  "exact":{Value:[]byte("exact"),ExpiresAt:now},
+  "future":{Value:[]byte("future"),ExpiresAt:now.Add(time.Second)},
+ }
+ got:=EvictExpired(cache,now)
+ if got!=2||len(cache)!=1 {t.Fatalf("removed=%d cache=%v",got,cache)}
+ if string(cache["future"].Value)!="future" {t.Fatalf("remaining cache=%v",cache)}
+ if EvictExpired(nil,now)!=0{t.Fatal("nil cache")}
+}
+func TestRunLimited(t *testing.T) {
+ var active,maxActive,completed atomic.Int32
+ var jobs []func(context.Context)error
+ for i:=0;i<20;i++ {jobs=append(jobs,func(context.Context)error {
+  n:=active.Add(1);for {old:=maxActive.Load();if n<=old||maxActive.CompareAndSwap(old,n){break}}
+  time.Sleep(time.Millisecond)
+  active.Add(-1);completed.Add(1);return nil
+ })}
+ if err:=RunLimited(context.Background(),2,jobs);err!=nil{t.Fatal(err)}
+ if completed.Load()!=20||maxActive.Load()>2{t.Fatalf("completed=%d max=%d",completed.Load(),maxActive.Load())}
+ bad:=errors.New("dependency failure")
+ if err:=RunLimited(context.Background(),2,[]func(context.Context)error{func(context.Context)error{return bad}});!errors.Is(err,bad){t.Fatalf("lost err=%v",err)}
+ canceled,cancel:=context.WithCancel(context.Background());cancel()
+ var called atomic.Int32
+ if err:=RunLimited(canceled,1,[]func(context.Context)error{func(context.Context)error{called.Add(1);return nil}});!errors.Is(err,context.Canceled){t.Fatalf("cancel=%v",err)}
+ if called.Load()!=0{t.Fatalf("callback called %d times",called.Load())}
+ if err:=RunLimited(context.Background(),0,nil);err==nil{t.Fatal("limit=0 accepted")}
+}
+func TestSquarePipeline(t *testing.T) {
+ ctx,cancel:=context.WithTimeout(context.Background(),time.Second)
+ defer cancel()
+ input:=make(chan int,3);input<-1;input<-2;input<-3;close(input)
+ out:=SquarePipeline(ctx,input)
+ var got []int
+ for {
+  select {
+   case v,ok:=<-out:
+    if !ok {goto done}
+    got=append(got,v)
+   case <-ctx.Done():t.Fatal("pipeline blocked")
+  }
+ }
+ done:
+ if !reflect.DeepEqual(got,[]int{1,4,9}){t.Fatalf("got=%v",got)}
+ doneInput:=make(chan int);close(doneInput)
+ closedOut:=SquarePipeline(context.Background(),doneInput)
+ select {
+ case _,ok:=<-closedOut:if ok{t.Fatal("unexpected element after closure")}
+ case <-time.After(time.Second):t.Fatal("did not close output")
+ }
+ blocked:=make(chan int,1);blocked<-8
+ cctx,stop:=context.WithCancel(context.Background())
+ output:=SquarePipeline(cctx,blocked)
+ time.Sleep(time.Millisecond*10)
+ stop()
+ select {
+ case _,ok:=<-output:if ok{t.Fatal("unexpected value after cancellation")}
+ case <-time.After(time.Second):t.Fatal("blocked sender failed to exit")
+ }
+}
+type fakeGymTx struct { log *[]string; commitErr error; rollbackErr error }
+func (t *fakeGymTx) Commit() error { *t.log=append(*t.log,"commit");return t.commitErr }
+func (t *fakeGymTx) Rollback() error { *t.log=append(*t.log,"rollback");return t.rollbackErr }
+type fakeGymDB struct { log *[]string; tx *fakeGymTx; beginErr error }
+func (d *fakeGymDB) BeginTx(ctx context.Context)(Tx,error){
+ *d.log=append(*d.log,"begin")
+ if d.beginErr!=nil{return nil,d.beginErr}
+ return d.tx,nil
+}
+func TestWithinTx(t *testing.T) {
+ t.Run("success",func(t *testing.T){
+  var log []string;tx:=&fakeGymTx{log:&log};db:=&fakeGymDB{log:&log,tx:tx}
+  err:=WithinTx(context.Background(),db,func(context.Context,Tx)error{log=append(log,"work");return nil})
+  if err!=nil{t.Fatal(err)}
+  if !reflect.DeepEqual(log[:3],[]string{"begin","work","commit"}){t.Fatalf("order=%v",log)}
+ })
+ t.Run("work fails",func(t *testing.T){
+  var log []string;bad:=errors.New("sql error");db:=&fakeGymDB{log:&log,tx:&fakeGymTx{log:&log}}
+  err:=WithinTx(context.Background(),db,func(context.Context,Tx)error{log=append(log,"work");return bad})
+  if !errors.Is(err,bad){t.Fatalf("lost error %v",err)}
+  if !reflect.DeepEqual(log,[]string{"begin","work","rollback"}){t.Fatalf("calls=%v",log)}
+ })
+ t.Run("commit fails",func(t *testing.T){
+  var log []string;bad:=errors.New("commit failed");db:=&fakeGymDB{log:&log,tx:&fakeGymTx{log:&log,commitErr:bad}}
+  if err:=WithinTx(context.Background(),db,func(context.Context,Tx)error{return nil});!errors.Is(err,bad){t.Fatalf("commit=%v",err)}
+ })
+ t.Run("cancel before begin",func(t *testing.T){
+  var log []string;ctx,stop:=context.WithCancel(context.Background());stop()
+  db:=&fakeGymDB{log:&log,tx:&fakeGymTx{log:&log}}
+  if err:=WithinTx(ctx,db,func(context.Context,Tx)error{return nil});!errors.Is(err,context.Canceled){t.Fatalf("cancel=%v",err)}
+  if len(log)!=0{t.Fatalf("began after cancel: %v",log)}
+ })
+}
