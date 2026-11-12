@@ -20,16 +20,20 @@
 | Go Core | defer, errors.Join и закрытие ресурсов | CloseWithError |
 | Go Core | Maps: подсчёт и правила обращения | CountStatuses |
 | Go Core | Строки: Unicode, UTF-8, rune и byte | TruncateRunes |
+| Runtime | Удержание backing array и независимое копирование | DetachedPrefix |
 | Backend | JSON, io.Reader и валидация HTTP | DecodeEvent |
 | Backend | offset/cursor pagination | Page |
 | Backend | context, retry и идемпотентность | Retry |
+| Backend | Table-driven tests и валидация CreateEventRequest | ValidateCreateEvent |
+| Backend | Повторная доставка Kafka и идемпотентность | EventProcessor.Apply |
 | Concurrency | goroutines, mutex, data race | Counter |
 | Concurrency | Channels: fan-in и отмена через context | MergeInts |
 | Concurrency | Ограниченный worker pool и fail-fast | ProcessJobs |
+| Concurrency | select, context cancellation и закрытые каналы | WaitMessage |
 | Backend | HTTP handler и тестирование httptest | HealthHandler |
 | Backend | HTTP middleware, Request ID и валидация | RequestIDMiddleware |
 
-У каждой из 17 готовых подтем есть 6 развёрнутых разделов собственной теории, 12 вопросов с объяснением, рабочая Go-заготовка и локальные Go-тесты. Исходный каталог сохраняет ранее созданные задачи, а новая теория содержит ссылки на источники.
+У каждой из 21 готовой подтемы есть 6 развёрнутых разделов собственной теории, 12 вопросов с объяснением, рабочая Go-заготовка и локальные Go-тесты. Исходный каталог сохраняет ранее созданные задачи, а новая теория содержит ссылки на источники.
 
 ## Полная карта дальнейшего наполнения
 
@@ -87,3 +91,7 @@
 - [goavengers: популярные live coding задачи](https://github.com/goavengers/go-interview/tree/master/docs/popular_tasks)
 
 Тексты и Go-тесты GoForge авторские, а не копии исходных задач. Остальные темы карты пока не реализованы.
+
+## Важные ограничения
+
+`EventProcessor` использует in-memory карту и mutex только как учебную модель повторной доставки. Для защиты после перезапуска сервиса нужна устойчивая транзакционная запись о обработанном ID. В `DetachedPrefix` мы тренируем самостоятельное владение байтами; это не универсальная оптимизация, потому что копирование тоже расходует память и CPU.

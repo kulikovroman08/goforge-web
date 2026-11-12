@@ -101,3 +101,27 @@ func ProcessJobs(ctx context.Context, jobs []int, workers int, fn func(context.C
 func RequestIDMiddleware(next http.Handler) http.Handler {
  return next
 }
+
+
+// WaitMessage waits for a channel message or context cancellation.
+func WaitMessage(ctx context.Context, ch <-chan string) (string,error) {
+ _ = ctx; _ = ch
+ return "",nil
+}
+
+// ValidateCreateEvent checks mandatory fields.
+func ValidateCreateEvent(req CreateEventRequest) error {
+ _ = req
+ return nil
+}
+
+// DetachedPrefix must not alias the source slice.
+func DetachedPrefix(data []byte, n int) []byte {
+ _ = n
+ return data
+}
+
+// EventProcessor deduplicates events concurrently.
+type EventProcessor struct { mu sync.Mutex; seen map[string]struct{}; count int }
+func (p *EventProcessor) Apply(id string) bool { _=id;return false }
+func (p *EventProcessor) Count() int { return 0 }

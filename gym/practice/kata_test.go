@@ -230,3 +230,63 @@ func TestRequestIDMiddleware(t *testing.T) {
   t.Fatalf("next not forwarded: calls=%d status=%d body=%q",calls,w.Code,w.Body.String())
  }
 }
+
+
+func TestWaitMessage(t *testing.T) {
+ ctx,cancel:=context.WithCancel(context.Background())
+ defer cancel()
+ ch:=make(chan string,1);ch<-"msg-42"
+ got,err:=WaitMessage(ctx,ch)
+ if err!=nil||got!="msg-42"{t.Fatalf("message=%q err=%v",got,err)}
+ closed:=make(chan string);close(closed)
+ if _,err:=WaitMessage(context.Background(),closed);err==nil{t.Fatal("closed channel should return error")}
+ canceled,stop:=context.WithCancel(context.Background());stop()
+ if _,err:=WaitMessage(canceled,make(chan string));!errors.Is(err,context.Canceled){t.Fatalf("cancel: %v",err)}
+ expired,finish:=context.WithTimeout(context.Background(),time.Millisecond);defer finish()
+ <-expired.Done()
+ if _,err:=WaitMessage(expired,nil);!errors.Is(err,context.DeadlineExceeded){t.Fatalf("deadline: %v",err)}
+}
+func TestValidateCreateEvent(t *testing.T) {
+ tests:=[]struct{name string;req CreateEventRequest;wantErr bool}{
+  {"valid",CreateEventRequest{Title:"Planning",OwnerID:"42"},false},
+  {"empty title",CreateEventRequest{Title:"",OwnerID:"42"},true},
+  {"spaces title",CreateEventRequest{Title:" \t ",OwnerID:"42"},true},
+  {"empty owner",CreateEventRequest{Title:"Planning",OwnerID:""},true},
+  {"spaces owner",CreateEventRequest{Title:"Planning",OwnerID:"  "},true},
+ }
+ for _,tc:=range tests {
+  t.Run(tc.name,func(t *testing.T){
+   orig:=tc.req
+   err:=ValidateCreateEvent(tc.req)
+   if (err!=nil)!=tc.wantErr {t.Fatalf("error=%v expected error=%v",err,tc.wantErr)}
+   if tc.req!=orig {t.Fatal("mutated request")}
+  })
+ }
+}
+func TestDetachedPrefix(t *testing.T) {
+ source:=[]byte{1,2,3,4}
+ result:=DetachedPrefix(source,2)
+ if !reflect.DeepEqual(result,[]byte{1,2}) {t.Fatalf("prefix=%v",result)}
+ source[0]=9
+ if result[0]!=1 {t.Fatal("result aliases source")}
+ result[1]=8
+ if source[1]!=2 {t.Fatal("source aliases result")}
+ full:=DetachedPrefix([]byte{1,2},99)
+ if !reflect.DeepEqual(full,[]byte{1,2}){t.Fatalf("full=%v",full)}
+ if got:=DetachedPrefix(source,-1);len(got)!=0{t.Fatalf("negative n=%v",got)}
+}
+func TestEventProcessor(t *testing.T) {
+ var p EventProcessor
+ if !p.Apply("evt-a") {t.Fatal("first event rejected")}
+ if p.Apply("evt-a") {t.Fatal("duplicate applied")}
+ if p.Apply("") {t.Fatal("empty ID applied")}
+ if !p.Apply("evt-b") || p.Count()!=2 {t.Fatalf("count=%d",p.Count())}
+ var count atomic.Int32
+ var wg sync.WaitGroup
+ for i:=0;i<100;i++ {
+  wg.Add(1)
+  go func(){defer wg.Done();if p.Apply("evt-race"){count.Add(1)}}()
+ }
+ wg.Wait()
+ if count.Load()!=1||p.Count()!=3{t.Fatalf("applied=%d count=%d",count.Load(),p.Count())}
+}
