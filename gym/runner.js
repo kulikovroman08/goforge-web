@@ -92,6 +92,37 @@
     return { code: src, paths: found };
   }
 
+  function selectedTestProgram(source, testName) {
+    const headers = declarationHeaders(source);
+    const map = new Map(headers.map(h => [h.key, h]));
+    // Extra test-only types are declared in kata_test.go, not kata.go.
+    const dependencies = {
+      TestCloseWithError: ['type:gymCloser', 'func:*gymCloser:Close'],
+      TestWithinTx: [
+        'type:fakeGymTx', 'type:fakeGymDB',
+        'func:*fakeGymTx:Commit', 'func:*fakeGymTx:Rollback',
+        'func:*fakeGymDB:BeginTx',
+      ],
+    };
+    const keys = ['func::' + testName, ...(dependencies[testName] || [])];
+    const declarations = [];
+    for (const key of keys) {
+      const item = map.get(key);
+      if (!item) throw new Error('Не найдена тестовая зависимость: ' + key);
+      declarations.push(source.slice(item.start, topLevelEnd(source, item.start)));
+    }
+    const body = declarations.join('\n\n');
+    const imports = [...source.matchAll(/^\s*"([^"]+)"\s*$/gm)].map(x => x[1]);
+    const used = imports.filter(path => {
+      const alias = path.split('/').pop();
+      return new RegExp('\\b' + alias + '\\.').test(body);
+    });
+    if (!used.includes('testing')) used.unshift('testing');
+    return 'package main\n\nimport (\n' +
+      [...new Set(used)].map(x => '\t"' + x + '"').join('\n') +
+      '\n)\n\n' + body + '\n';
+  }
+
   function buildSource(task, draft, testName, kataGo, kataTestGo) {
     if (!task || typeof task.starter !== 'string' || !/^[A-Za-z_]\w*$/.test(testName || '')) throw new Error('Некорректная задача.');
     if (typeof draft !== 'string' || !draft.trim()) throw new Error('Напиши решение перед запуском.');
@@ -119,14 +150,10 @@
       'var (\n _ = json.NewDecoder\n _ = strings.TrimSpace\n _ = errors.New\n _ = fmt.Sprintf\n _ = io.EOF\n _ = sync.Mutex{}\n _ = http.MethodGet\n _ = time.Time{}\n _ = context.Background\n)\n';
     const source = packageMain(base) + keepImports + '\n// User solution\n' + user + '\n';
 
-    // Keep helper declarations and imports from the original test file,
-    // but disable TestX entrypoints for all other tasks.
-    const renamedTests = packageMain(kataTestGo).replace(/^func\s+(Test[A-Za-z_]\w*)\s*\(/gm, (all, name) =>
-      name === testName ? all : 'func Disabled' + name + '(');
-    // The Go Playground detects TestX functions in its implicit prog.go,
-    // not in arbitrary *_test.go txtar members. Place the tests FIRST and
-    // keep the user's implementation in a second Go file.
-    const archive = renamedTests + '\n-- solution.go --\n' + source + '\n';
+    // The Playground discovers TestX only in implicit prog.go. Select one
+    // test plus its minimal helper declarations to avoid build timeouts.
+    const tests = selectedTestProgram(kataTestGo, testName);
+    const archive = tests + '\n-- solution.go --\n' + source + '\n';
     if (new TextEncoder().encode(archive).length > maximumBytes) throw new Error('Слишком большой код для онлайн-запуска.');
     return archive;
   }
@@ -179,5 +206,5 @@
     }
   }
 
-  return { run, buildSource, summarize, stripTargetDeclarations, declarationHeaders, endpoint };
+  return { run, buildSource, summarize, stripTargetDeclarations, declarationHeaders, selectedTestProgram, endpoint };
 });
