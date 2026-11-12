@@ -21,11 +21,15 @@
 | Go Core | Maps: подсчёт и правила обращения | CountStatuses |
 | Go Core | Строки: Unicode, UTF-8, rune и byte | TruncateRunes |
 | Runtime | Удержание backing array и независимое копирование | DetachedPrefix |
+| Runtime | Аллокации, строки, strings.Builder и benchmark | BuildLogLine |
 | Backend | JSON, io.Reader и валидация HTTP | DecodeEvent |
 | Backend | offset/cursor pagination | Page |
 | Backend | context, retry и идемпотентность | Retry |
 | Backend | Table-driven tests и валидация CreateEventRequest | ValidateCreateEvent |
 | Backend | Повторная доставка Kafka и идемпотентность | EventProcessor.Apply |
+| Backend | gRPC-коды и отображение доменных ошибок | MapServiceError |
+| Backend | PostgreSQL cursor pagination | BuildEventsPageQuery |
+| Backend | Kafka: порядок обработки и commit offset | HandleAndCommit |
 | Concurrency | goroutines, mutex, data race | Counter |
 | Concurrency | Channels: fan-in и отмена через context | MergeInts |
 | Concurrency | Ограниченный worker pool и fail-fast | ProcessJobs |
@@ -33,7 +37,7 @@
 | Backend | HTTP handler и тестирование httptest | HealthHandler |
 | Backend | HTTP middleware, Request ID и валидация | RequestIDMiddleware |
 
-У каждой из 21 готовой подтемы есть 6 развёрнутых разделов собственной теории, 12 вопросов с объяснением, рабочая Go-заготовка и локальные Go-тесты. Исходный каталог сохраняет ранее созданные задачи, а новая теория содержит ссылки на источники.
+У каждой из 25 готовых подтем есть 6 развёрнутых разделов собственной теории, 12 вопросов с объяснением, рабочая Go-заготовка и локальные Go-тесты. Исходный каталог сохраняет ранее созданные задачи, а новая теория содержит ссылки на источники.
 
 ## Полная карта дальнейшего наполнения
 
@@ -95,3 +99,7 @@
 ## Важные ограничения
 
 `EventProcessor` использует in-memory карту и mutex только как учебную модель повторной доставки. Для защиты после перезапуска сервиса нужна устойчивая транзакционная запись о обработанном ID. В `DetachedPrefix` мы тренируем самостоятельное владение байтами; это не универсальная оптимизация, потому что копирование тоже расходует память и CPU.
+
+## Backend и Runtime: новые тренировки
+
+Выполнимые задачи `MapServiceError`, `BuildEventsPageQuery`, `HandleAndCommit`, `BuildLogLine` дополняют теорию и 12 проверяемых вопросов на каждую подтему. Первое и третье упражнения **моделируют** правила gRPC и Kafka на уровне чистого Go без интеграционного сервера; они не заменяют тесты с реальными grpc-go, PostgreSQL и Kafka. Для продуктивной системы нужно отдельно реализовать инфраструктурную интеграцию, обработку ребаланса, транзакции и корректную работу с page token.
