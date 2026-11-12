@@ -64,3 +64,40 @@ func MergeInts(ctx context.Context, a, b <-chan int) <-chan int {
 
 // HealthHandler returns the service liveness response.
 func HealthHandler(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("not implemented")) }
+
+
+// UpdateEventStatus validates and updates the original event.
+func UpdateEventStatus(event *Event, status string) error {
+ _ = event
+ _ = status
+ return nil
+}
+
+// ChatActivity stores the latest accepted activity and a counter.
+type ChatActivity struct { LastMessageAt int64; Unread int }
+
+// ApplyMessage only accepts a newer, positive timestamp.
+func (a *ChatActivity) ApplyMessage(at int64) bool {
+ _ = at
+ return false
+}
+
+// CloseWithError must preserve both work and Close errors.
+func CloseWithError(workErr error, closer io.Closer) (err error) {
+ _ = closer
+ return workErr
+}
+
+// ProcessJobs must bound concurrency and respect context cancellation.
+func ProcessJobs(ctx context.Context, jobs []int, workers int, fn func(context.Context, int) error) error {
+ _ = ctx
+ _ = jobs
+ _ = workers
+ _ = fn
+ return nil
+}
+
+// RequestIDMiddleware validates the request before invoking next.
+func RequestIDMiddleware(next http.Handler) http.Handler {
+ return next
+}
