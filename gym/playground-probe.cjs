@@ -1,15 +1,28 @@
-// Test official Go Playground execution response, not just HTTP status.
-(async () => {
-  for (const shouldFail of [false, true]) {
-    const source = 'package main\nimport "testing"\nfunc TestExample(t *testing.T) { if answer != ' + (shouldFail ? '5' : '4') + ' { t.Fatal("unexpected result") } }\n-- exercise.go --\npackage main\nconst answer = 4\n';
-    const response = await fetch('https://play.golang.org/compile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Origin: 'https://kulikovroman08.github.io' },
-      body: JSON.stringify({ Body: source, WithVet: true }),
-      signal: AbortSignal.timeout(25000),
-    });
-    const payload = await response.json();
-    console.log(shouldFail ? 'FAIL_CASE' : 'PASS_CASE', 'HTTP', response.status, 'CORS', response.headers.get('access-control-allow-origin'), 'BODY', JSON.stringify(payload).slice(0,2000));
-    if (!response.ok || payload.IsTest !== true) throw Error('No real tests were executed');
-  }
-})().catch(err => { console.error(err); process.exitCode = 1; });
+// Manual end-to-end probe: execute one real GoForge task in official Go Playground.
+// Run manually: node gym/playground-probe.cjs
+'use strict';
+const fs=require('fs'),path=require('path'),vm=require('vm');
+const runner=require('./runner.js');
+const ctx={window:{}};
+vm.runInNewContext(fs.readFileSync(path.join(__dirname,'catalog.js'),'utf8'),ctx);
+const task=ctx.window.GOFORGE_GYM_CATALOG.find(t=>t.id==='dedupe');
+const source=fs.readFileSync(path.join(__dirname,'practice/kata.go'),'utf8');
+const tests=fs.readFileSync(path.join(__dirname,'practice/kata_test.go'),'utf8');
+(async()=>{
+ for(const [name,draft,expected] of [
+  ['correct solution','package practice\n\n'+task.solution,true],
+  ['unfinished starter',task.starter,false],
+ ]){
+  const archive=runner.buildSource(task,draft,'TestUniqueUsers',source,tests);
+  const response=await fetch(runner.endpoint,{
+   method:'POST',
+   headers:{'Content-Type':'application/json',Origin:'https://kulikovroman08.github.io'},
+   body:JSON.stringify({Body:archive,WithVet:true}),
+   signal:AbortSignal.timeout(25000),
+  });
+  const payload=await response.json();
+  const result=runner.summarize(payload);
+  console.log(name,'HTTP',response.status,'CORS',response.headers.get('access-control-allow-origin'),'passed',result.passed,'output',result.output.slice(0,1500));
+  if(!response.ok || result.passed!==expected)throw Error('Unexpected GoForge execution result in '+name);
+ }
+})().catch(error=>{console.error(error);process.exitCode=1});
