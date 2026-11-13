@@ -1,5 +1,5 @@
-const CACHE="goforge-gym-v2-8";
-const ASSETS=["./","./index.html","./manifest.webmanifest","./icon.svg","./gym/","./gym/index.html","./gym/app.js","./gym/catalog.js","./gym/theory.js","./gym/quiz-bank.js","./gym/golings-links.js","./gym/runner.js"];
+const CACHE="goforge-gym-v2-10";
+const ASSETS=["./","./index.html","./manifest.webmanifest","./icon.svg","./gym/","./gym/index.html","./gym/app.js","./gym/catalog.js","./gym/theory.js","./gym/quiz-bank.js","./gym/golings-links.js","./gym/runner.js","./gym/media/dedupe-complexity-still.png","./gym/media/dedupe-complexity.gif","./gym/media/dedupe-map-still.png","./gym/media/dedupe-map.gif","./gym/media/dedupe-recipients-still.png","./gym/media/dedupe-recipients.gif","./gym/media/dedupe-slice-still.png","./gym/media/dedupe-slice.gif","./gym/media/dedupe-still.png","./gym/media/dedupe-tests-still.png","./gym/media/dedupe-tests.gif","./gym/media/dedupe.gif"];
 self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",event=>event.waitUntil((async()=>{for(const k of await caches.keys())if(k!==CACHE)await caches.delete(k);await self.clients.claim()})()));
 self.addEventListener("fetch",event=>{if(event.request.method!=="GET"||new URL(event.request.url).origin!==self.location.origin)return;
