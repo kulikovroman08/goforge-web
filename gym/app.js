@@ -21,6 +21,28 @@ const orderFor=(q,i)=>{const a=q[1].map((_,j)=>j);let seed=(i+1)*7919+q[0].lengt
 const getTask=()=>catalog.find(x=>x.id===state.selected)||catalog[0];
 const itemState=()=>state.progress[state.selected]??(state.progress[state.selected]={answers:{},draft:null,hint:0,runs:0,repeat:0});
 const save=()=>localStorage.setItem(storageKey,JSON.stringify(state));
+
+function renderTheoryExample(example){
+ return `<figure class="theory-demo">
+  <picture>
+   <source media="(prefers-reduced-motion: reduce)" srcset="${escape(example.still)}">
+   <img src="${escape(example.animation)}" width="600" height="${escape(example.height)}" loading="lazy" alt="${escape(example.alt)}">
+  </picture>
+ </figure>
+ <p><b>В задаче.</b> ${escape(example.practice)}</p>
+ <pre><code>${escape(example.code)}</code></pre>
+ <p><b>В проде.</b> ${escape(example.production)}</p>`;
+}
+
+function renderTheoryPractice(task, practice){
+ return `<section class="theory-section">
+  <h3>Закрепление в песочнице</h3>
+  ${practice ? `<pre><code>${escape(practice.code)}</code></pre>` : ""}
+  <div class="toolbar"><button class="primary" data-goto="code">${escape(practice?.button || "Перейти к задаче")}</button></div>
+  <details><summary>Показать решение</summary><pre><code>${escape(task.solution)}</code></pre></details>
+ </section>`;
+}
+
 function render(){
 const task=getTask();if(!task){$('view').textContent='Каталог пока пуст';return}
 const p=itemState(),questions=getQuestions(task),topic=getTheory(task.id);
@@ -30,7 +52,10 @@ $('heading').innerHTML='<div class="chips"><span class="chip">'+escape(task.topi
 $('tabs').querySelectorAll('[data-tab]').forEach(btn=>btn.classList.toggle('active',btn.dataset.tab===state.tab));
 if(state.tab==='learn'){
 const sections=topic?.theory||task.theory.map((x,i)=>['Разбор '+(i+1),x]);
-$('view').innerHTML='<div class="notice">Полный учебный разбор для выбранной подтемы. Сначала понятный пример, затем устройство Go, продакшен и собеседование. Текст GoForge написан заново на основе тем из открытых подборок.</div><section class="card"><h2>'+escape(topic?.section||task.title)+'</h2>'+sections.map((section,i)=>'<article class="theory-section"><h3>'+(i+1)+'. '+escape(section[0])+'</h3><p>'+escape(section[1])+'</p></article>').join('')+'<h3>Источники и дополнительные разборы</h3>'+(topic?.sources||[]).map(link=>'<p><a href="'+escape(link)+'" target="_blank" rel="noopener noreferrer">'+escape(link)+'</a></p>').join('')+'<details><summary>Образцовый ответ для собеседования</summary><p><b>'+escape(task.interview.q)+'</b></p><p>'+escape(task.interview.a)+'</p></details><div class="toolbar"><button class="primary" data-goto="quiz">Пройти '+questions.length+' тестов по теме</button></div></section>';
+$('view').innerHTML='<div class="notice">Полный учебный разбор для выбранной подтемы. Сначала понятный пример, затем устройство Go, продакшен и собеседование. Текст GoForge написан заново на основе тем из открытых подборок.</div><section class="card"><h2>'+escape(topic?.section||task.title)+'</h2>'+sections.map(([title, explanation, example],i)=>
+ '<article class="theory-section"><h3>'+(i+1)+'. '+escape(title)+'</h3><p>'+escape(explanation)+'</p>'+
+ (example?renderTheoryExample(example):'')+'</article>').join('')+
+ (sections.some(section=>section[2])?renderTheoryPractice(task,topic?.practice):'')+'<h3>Источники и дополнительные разборы</h3>'+(topic?.sources||[]).map(link=>'<p><a href="'+escape(link)+'" target="_blank" rel="noopener noreferrer">'+escape(link)+'</a></p>').join('')+'<details><summary>Образцовый ответ для собеседования</summary><p><b>'+escape(task.interview.q)+'</b></p><p>'+escape(task.interview.a)+'</p></details><div class="toolbar"><button class="primary" data-goto="quiz">Пройти '+questions.length+' тестов по теме</button></div></section>';
 }else if(state.tab==='quiz'){
 $('view').innerHTML='<div class="notice">Выбери ответ. После выбора сразу увидишь результат и объяснение. Можно пройти тест повторно.</div><section class="card"><h2>Проверка понимания · '+correct+'/'+questions.length+'</h2>'+questions.map((q,i)=>'<div class="question"><b>'+(i+1)+'. '+escape(q[0])+'</b>'+orderFor(q,i).map((j,pos)=>'<button class="choice '+(p.answers[i]===j?'active':'')+'" data-question="'+i+'" data-choice="'+j+'">'+escape(String.fromCharCode(65+pos))+'. '+escape(q[1][j])+'</button>').join('')+(p.answers[i]===undefined?'':'<div class="feedback"><span class="'+(p.answers[i]===q[2]?'good':'bad')+'">'+(p.answers[i]===q[2]?'✓ Правильно':'✕ Неверно')+'</span> · '+escape(q[3])+'</div>')+'</div>').join('')+'<div class="toolbar"><button id="quiz-reset">Повторить тест</button><button class="primary" data-goto="code">Перейти к написанию кода</button></div></section>';
 }else if(state.tab==='code'){
