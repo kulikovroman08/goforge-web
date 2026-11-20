@@ -1,0 +1,1117 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1322">
+<title>Go-собеседование · GoForge Gym</title>
+<link rel="icon" href="../icon.svg">
+<style>
+:root{color-scheme:dark;--bg:#0b1322;--panel:#17263b;--line:#354d69;--text:#eef5ff;--muted:#a9bdd7;--link:#9ddaff;--good:#76dbb9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui,sans-serif}
+main,header{max-width:920px;margin:auto;padding:1rem clamp(1rem,4vw,2rem)}
+a{color:var(--link)}
+h1{font-size:clamp(1.65rem,5vw,2.3rem);line-height:1.2;margin:.25rem 0 1rem}
+h2{font-size:1.2rem;line-height:1.35;margin:0 0 .5rem}
+p{margin:.5rem 0}
+article{background:var(--panel);border:1px solid var(--line);border-radius:.8rem;margin:1rem 0;padding:clamp(.85rem,3vw,1.4rem)}
+nav ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%, 16rem),1fr));gap:.3rem 1.5rem;padding-left:1.2rem}
+.flow{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;margin:.7rem 0;padding:0;list-style:none}
+.flow li{display:flex;align-items:center;gap:.4rem}
+.flow span{border:1px solid var(--line);border-radius:.5rem;background:#111e31;padding:.35rem .55rem}
+.flow .arrow{color:var(--good);font-style:normal}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#081220;border:1px solid var(--line);border-radius:.55rem;padding:.65rem .85rem;font:0.9rem/1.55 ui-monospace,monospace}
+details{border-top:1px solid var(--line);padding-top:.65rem}
+summary{cursor:pointer;color:var(--link);font-weight:600}
+details p:last-child{margin-bottom:0}
+small,.muted{color:var(--muted)}
+.memory{width:100%;border-collapse:collapse;margin:.75rem 0;font-size:.9rem}
+.memory caption{text-align:left;font-weight:600;margin-bottom:.3rem}
+.memory td,.memory th{text-align:left;border-bottom:1px solid var(--line);padding:.3rem}
+.memory td strong{color:var(--good)}
+.theory h3{font-size:1rem;margin:1rem 0 .25rem}
+.source-code{counter-reset:line;white-space:normal}
+.source-code .line{display:block;position:relative;min-height:1.55em;padding-left:2.5em;white-space:pre-wrap;counter-increment:line}
+.source-code .line::before{content:counter(line);position:absolute;left:0;color:var(--muted)}
+.trace{margin-top:1rem}
+.trace img{display:block;width:100%;height:auto;max-width:760px;margin-top:.75rem;border:1px solid var(--line);border-radius:.65rem}
+.trace li{margin:.5rem 0}
+.trace samp{color:var(--good)}
+</style>
+</head>
+<body>
+<header><a href="./">← GoForge Gym</a></header>
+<main>
+<h1>Go-собеседование · разбор 28 вопросов</h1>
+<p>По статье Даниэля Подольского об интервью на Senior Go Backend. Каждому вопросу соответствует отдельная карточка с примером, объяснением и пограничным случаем.</p>
+<p><strong>Режим тренировки.</strong> Выбери одну карточку. За минуту предскажи результат и объясни его вслух. Затем открой разбор и приведи случай из своей работы. Если не удалось объяснить механизм или крайний случай, повтори карточку на следующий день.</p>
+<nav aria-label="Упражнения">
+<ul>
+<li><a href="#exercise-1">1. Императивный и декларативный код</a></li>
+<li><a href="#exercise-2">2. Type switch</a></li>
+<li><a href="#exercise-3">3. Проверка реализации интерфейса</a></li>
+<li><a href="#exercise-4">4. Как работает append</a></li>
+<li><a href="#exercise-5">5. Нулевое значение среза</a></li>
+<li><a href="#exercise-6">6. Как устроена map</a></li>
+<li><a href="#exercise-7">7. Порядок обхода map</a></li>
+<li><a href="#exercise-8">8. Чтение из закрытого канала</a></li>
+<li><a href="#exercise-9">9. Отправка в закрытый канал</a></li>
+<li><a href="#exercise-10">10. Сортировка структур по имени</a></li>
+<li><a href="#exercise-11">11. Сериализация и представление в памяти</a></li>
+<li><a href="#exercise-12">12. Разворот односвязного списка</a></li>
+<li><a href="#exercise-13">13. Где объявить интерфейс</a></li>
+<li><a href="#exercise-14">14. Как различать ошибки</a></li>
+<li><a href="#exercise-15">15. Стандартное логирование</a></li>
+<li><a href="#exercise-16">16. ORM, генератор SQL или ручной запрос</a></li>
+<li><a href="#exercise-17">17. Линтеры и CI</a></li>
+<li><a href="#exercise-18">18. Один буфер в нескольких горутинах</a></li>
+<li><a href="#exercise-19">19. Mutex и RWMutex</a></li>
+<li><a href="#exercise-20">20. Атомики и lock-free</a></li>
+<li><a href="#exercise-21">21. Диагностика задержек в проде</a></li>
+<li><a href="#exercise-22">22. Метрики Go и Prometheus</a></li>
+<li><a href="#exercise-23">23. Подключение pprof</a></li>
+<li><a href="#exercise-24">24. Накладные расходы профайлера</a></li>
+<li><a href="#exercise-25">25. Embedding и наследование</a></li>
+<li><a href="#exercise-26">26. Обобщённое программирование</a></li>
+<li><a href="#exercise-27">27. Технологические преимущества Go</a></li>
+<li><a href="#exercise-28">28. Границы Go и преобразование срезов</a></li>
+</ul>
+</nav>
+<article id="exercise-1" aria-labelledby="title-1">
+<h2 id="title-1">1. Императивный и декларативный код</h2>
+<p>Чем цикл Go отличается от запроса SQL с тем же результатом?</p>
+<pre class="source-code"><code><span class="line">for _, e := range events {</span>
+<span class="line">    if e.Active { active = append(active, e) }</span>
+<span class="line">}</span>
+<span class="line">SELECT id FROM events WHERE active;</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> Активные события.</p>
+<section class="theory" aria-labelledby="theory-1">
+<h3 id="theory-1">Почему так происходит</h3>
+<p>Императивный код описывает шаги: обойти, проверить и добавить. Декларативный запрос описывает условие результата. PostgreSQL может поменять физический план, например применить индекс вместо полного сканирования, сохранив смысл запроса.</p>
+<p><strong>Если изменить условие.</strong> Без ORDER BY SQL не гарантирует порядок выдачи. Цикл по срезу сохраняет порядок входа, если добавляет события сразу. При переносе фильтра в БД отдельно задай порядок, если он входит в контракт.</p>
+</section>
+<p><strong>В бэкенде.</strong> Фильтруй события в SQL, когда это уменьшает объём передачи. Go-цикл удобен для правил, использующих уже загруженные данные или внешний контекст.</p>
+<details class="trace" data-animation="./media/interview/exercise-1.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-1.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Цикл выбирает конкретный способ обхода входа.</li>
+<li><strong>Строка 2.</strong> Ветвление решает, какие элементы дописать.</li>
+<li><strong>Строка 4.</strong> SQL задаёт требуемые строки. План выбирает СУБД. <samp>Активные события</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-2" aria-labelledby="title-2">
+<h2 id="title-2">2. Type switch</h2>
+<p>Что выведут inspect(&amp;Writer{}) и inspect(Writer{})? Как компилятор проверяет контракт? Что произойдёт при замене *Writer на Writer в проверке?</p>
+<pre class="source-code"><code><span class="line">type Writer struct{}</span>
+<span class="line">func (*Writer) Write(p []byte) (int, error) { return len(p), nil }</span>
+<span class="line"></span>
+<span class="line">var _ io.Writer = (*Writer)(nil)</span>
+<span class="line"></span>
+<span class="line">func inspect(v any) {</span>
+<span class="line">    switch x := v.(type) {</span>
+<span class="line">    case io.Writer:</span>
+<span class="line">        n, _ := x.Write([]byte(&quot;Go&quot;))</span>
+<span class="line">        fmt.Println(n)</span>
+<span class="line">    default:</span>
+<span class="line">        fmt.Println(&quot;unknown&quot;)</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<ol class="flow" aria-label="Шаги">
+<li><span>Конкретный тип</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>интерфейс</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>проверка динамического типа</span></li>
+</ol>
+<p><strong>Ответ.</strong> inspect(&amp;Writer{}) → 2; inspect(Writer{}) → unknown.</p>
+<p><strong>Почему.</strong> У метода pointer receiver, поэтому проверка с Writer{} не скомпилируется. Type switch работает с динамическим типом значения интерфейса. Встраивание продвигает методы, но не превращает внешний тип в подтип вложенного.</p>
+<p><strong>В бэкенде.</strong> Определи маленький интерфейс рядом с сервисом-потребителем, например EventReader. Адаптер PostgreSQL удовлетворит ему своим набором методов.</p>
+<section class="theory" aria-labelledby="theory-2">
+<h3 id="theory-2">Почему Go так работает</h3>
+<p><code>any</code> позволяет передать оба значения. Внутри интерфейса Go сохраняет конкретный тип и значение. В первом вызове конкретный тип <code>*Writer</code> имеет нужный метод <code>Write</code>, поэтому подходит ветка <code>io.Writer</code>. Во втором вызове конкретный тип <code>Writer</code> имеет другой набор методов, поэтому выполняется <code>default</code>.</p>
+<p><strong>Если изменить условие.</strong> Для адресуемой переменной <code>w</code> компилятор может преобразовать <code>w.Write(p)</code> в <code>(&amp;w).Write(p)</code>. При присваивании интерфейсу эта подстановка не выполняется. Чтобы оба типа прошли проверку, в этом примере можно объявить метод с получателем <code>Writer</code>, если ему достаточно работать с копией.</p>
+</section>
+<details class="trace" data-animation="./media/interview/exercise-2.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-2.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 2.</strong> Write объявлен на *Writer. Метод входит в набор методов указателя.</li>
+<li><strong>Строка 4.</strong> Компилятор проверяет, что *Writer реализует io.Writer.</li>
+<li><strong>Строка 7.</strong> inspect(&amp;Writer{}) получает динамический тип *Writer.</li>
+<li><strong>Строка 8.</strong> Подходит case io.Writer. x имеет тип io.Writer.</li>
+<li><strong>Строка 9.</strong> Write получает два байта и возвращает 2, nil.</li>
+<li><strong>Строка 10.</strong> Печатаем результат первой ветки. <samp>2</samp></li>
+<li><strong>Строка 12.</strong> Для inspect(Writer{}) ветка io.Writer не подходит. <samp>2 · unknown</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-3" aria-labelledby="title-3">
+<h2 id="title-3">3. Проверка реализации интерфейса</h2>
+<p>Зачем эта строка, если Go и так проверяет интерфейсы?</p>
+<pre class="source-code"><code><span class="line">type EventReader interface { ReadID() string }</span>
+<span class="line">type Repo struct { ID string }</span>
+<span class="line">func (r *Repo) ReadID() string { return r.ID }</span>
+<span class="line">var _ EventReader = (*Repo)(nil)</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> Сборка проходит.</p>
+<section class="theory" aria-labelledby="theory-3">
+<h3 id="theory-3">Почему так происходит</h3>
+<p>Компилятор проверяет набор методов типа и их сигнатуры. Присваивание пустому идентификатору делает проверку явной рядом с адаптером. Значение (*Repo)(nil) нужно здесь только для указания типа. Метод на нём не вызывается.</p>
+<p><strong>Если изменить условие.</strong> При замене выражения на Repo{} сборка упадёт: метод объявлен на *Repo. Возможность вызвать метод на адресуемой переменной Repo через автоматическое взятие адреса не добавляет метод в набор методов Repo.</p>
+</section>
+<p><strong>В бэкенде.</strong> Проверяй соответствие реализации контракту репозитория при сборке, даже если конкретный адаптер в этом тесте ещё не используется.</p>
+<details class="trace" data-animation="./media/interview/exercise-3.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-3.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Потребитель требует один метод ReadID.</li>
+<li><strong>Строка 3.</strong> Метод входит в набор методов указателя *Repo.</li>
+<li><strong>Строка 4.</strong> Компилятор проверяет присваивание к EventReader. <samp>Сборка проходит</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-4" aria-labelledby="title-4">
+<h2 id="title-4">4. Как работает append</h2>
+<p>Что напечатает код? Что изменится, если ограничить ёмкость первого среза через a[:1:1]?</p>
+<pre class="source-code"><code><span class="line">a := []int{10, 20, 30}</span>
+<span class="line">b := append(a[:1], 99)</span>
+<span class="line">var empty []int</span>
+<span class="line">fmt.Println(a, b, empty == nil, len(empty), cap(empty))</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<ol class="flow" aria-label="Шаги">
+<li><span>Исходный массив</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>два среза</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>запись в общий массив</span></li>
+</ol>
+<p><strong>Ответ.</strong> [10 99 30] [10 99] true 0 0</p>
+<p><strong>Почему.</strong> В a[:1] есть место до конца backing array. append записывает 99 по индексу 1. При a[:1:1] ёмкости не хватает и append возвращает срез с новым массивом. Nil-срез можно обходить, срезать до [:0] и передавать в append. Индексация [0] вызовет panic.</p>
+<p><strong>В бэкенде.</strong> Фильтрация событий. Если исходный список ещё нужен, собирай выход в отдельном срезе.</p>
+<section class="theory" aria-labelledby="theory-4">
+<h3 id="theory-4">Почему Go так работает</h3>
+<p><code>a</code> и <code>b</code> держат каждый своё описание среза, но описания могут указывать на один и тот же массив. В описании есть адрес первого элемента, длина <code>len</code> и ёмкость <code>cap</code>. Индекс <code>1</code> у обоих срезов означает вторую ячейку того же массива, потому что начальный адрес у них общий.</p>
+<table class="memory">
+<caption>Что находится в памяти</caption>
+<thead><tr><th scope="col">Момент</th><th scope="col">Ячейка 0</th><th scope="col">Ячейка 1</th><th scope="col">Ячейка 2</th></tr></thead>
+<tbody>
+<tr><th scope="row">До append</th><td>10</td><td>20</td><td>30</td></tr>
+<tr><th scope="row">После append</th><td>10</td><td><strong>99</strong></td><td>30</td></tr>
+</tbody>
+</table>
+<ol>
+<li><code>a[:1]</code> смотрит на ячейку 0. Длина равна 1, ёмкость равна 3. Это значит, что срез пока видит один элемент, но может вырасти ещё на два.</li>
+<li><code>append</code> добавляет элемент по индексу, равному старой длине. Здесь индекс <code>1</code> укладывается в ёмкость, поэтому <code>99</code> записывается поверх <code>20</code> в существующем массиве.</li>
+<li><code>b</code> получает описание длиной 2. Длина <code>a</code> остаётся 3. Когда читаем <code>a[1]</code> и <code>b[1]</code>, оба обращения идут в ячейку 1 и возвращают <code>99</code>.</li>
+</ol>
+<p><strong>Если изменить условие.</strong> У <code>a[:1:1]</code> ёмкость равна 1, поэтому второй элемент туда не помещается. <code>append</code> создаст новый массив, перенесёт <code>10</code> и добавит <code>99</code>. Тогда <code>a</code> останется <code>[10 20 30]</code>, а <code>b</code> будет <code>[10 99]</code>. Само выражение <code>a[:1:1]</code> всё ещё делит память с <code>a</code>. Например, запись <code>a[:1:1][0] = 7</code> изменит <code>a[0]</code>.</p>
+</section>
+<details class="trace" data-animation="./media/interview/exercise-4.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5–10 секунд на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-4.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Срез a видит три ячейки массива.</li>
+<li><strong>Строка 2.</strong> Берём только ячейку 0, но ёмкость всё ещё 3.</li>
+<li><strong>Строка 2.</strong> Старая длина равна 1. Пишем 99 в ячейку 1.</li>
+<li><strong>Строка 2.</strong> b получает длину 2. Длина a остаётся 3.</li>
+<li><strong>Строка 3.</strong> У nil-среза нет массива, len = 0 и cap = 0.</li>
+<li><strong>Строка 4.</strong> a[1] и b[1] читают одну и ту же ячейку. <samp>[10 99 30] [10 99] true 0 0</samp></li>
+<li><strong>Строка 2.</strong> Другой вариант. cap = 1, поэтому b нужен новый массив. <samp>a = [10 20 30] · b = [10 99]</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-5" aria-labelledby="title-5">
+<h2 id="title-5">5. Нулевое значение среза</h2>
+<p>Какие операции с nil-срезом безопасны и чем два вызова append отличаются?</p>
+<pre class="source-code"><code><span class="line">var s []string</span>
+<span class="line">a := append(s, []string(nil)...)</span>
+<span class="line">b := append(s, &quot;&quot;)</span>
+<span class="line">fmt.Println(s == nil, a == nil, len(b))</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> true true 1.</p>
+<section class="theory" aria-labelledby="theory-5">
+<h3 id="theory-5">Почему так происходит</h3>
+<p>Nil-срез уже описывает пустую последовательность. len и cap дают 0, range делает ноль итераций, s[:0] допустим, copy из него копирует ноль элементов. append с нулём элементов возвращает исходный срез. Добавление пустой строки выделяет место под элемент.</p>
+<p><strong>Если изменить условие.</strong> Чтение s[0] вызовет panic. Пустой ненулевой []string{} тоже имеет длину 0, но encoding/json обычно кодирует его как [], а nil-срез — как null.</p>
+</section>
+<p><strong>В бэкенде.</strong> Если поле списка в API должно быть массивом, проверь результат сериализации пустой выдачи.</p>
+<details class="trace" data-animation="./media/interview/exercise-5.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-5.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> У nil-среза длина и ёмкость 0.</li>
+<li><strong>Строка 2.</strong> Добавляем ноль элементов. a остаётся nil.</li>
+<li><strong>Строка 3.</strong> Пустая строка всё равно один элемент.</li>
+<li><strong>Строка 4.</strong> a остался nil, у b длина 1. <samp>true true 1</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-6" aria-labelledby="title-6">
+<h2 id="title-6">6. Как устроена map</h2>
+<p>Зачем после вычисления хеша Go всё равно проверяет исходный ключ?</p>
+<pre class="source-code"><code><span class="line">m := map[string]int{&quot;a&quot;: 0}</span>
+<span class="line">m[&quot;b&quot;] = 2</span>
+<span class="line">x, ok := m[&quot;a&quot;]</span>
+<span class="line">fmt.Println(x, ok)</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> 0 true.</p>
+<section class="theory" aria-labelledby="theory-6">
+<h3 id="theory-6">Почему так происходит</h3>
+<p>Хеш сужает поиск. Разные ключи могут давать одинаковый хеш или одно место для поиска, поэтому принадлежность проверяют сравнением самих ключей. Начиная с Go 1.24 реализация map основана на Swiss Tables: метаданные группы помогают быстро отсеять неподходящие позиции.</p>
+<p><strong>Если изменить условие.</strong> Равенство хешей не означает равенство строк. Для map общего доступа синхронизируй записи и чтение при наличии писателей. Паника runtime в некоторых случаях конкурентного доступа не заменяет детектор гонок.</p>
+</section>
+<p><strong>В бэкенде.</strong> Map подходит для дедупликации ID и подсчёта статусов. При объяснении разделяй контракт языка и детали конкретной версии runtime.</p>
+<details class="trace" data-animation="./media/interview/exercise-6.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-6.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Вставляем ключ a со значением 0.</li>
+<li><strong>Строка 2.</strong> Хеш помогает выбрать, где искать b.</li>
+<li><strong>Строка 3.</strong> Go ищет кандидатов и сверяет ключ a.</li>
+<li><strong>Строка 4.</strong> Ноль хранится в map, ключ найден. <samp>0 true</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-7" aria-labelledby="title-7">
+<h2 id="title-7">7. Порядок обхода map</h2>
+<p>Можно ли опираться на порядок вставки? Что гарантирует пример ниже?</p>
+<pre class="source-code"><code><span class="line">m := map[string]int{&quot;b&quot;: 2, &quot;a&quot;: 1}</span>
+<span class="line">keys := make([]string, 0, len(m))</span>
+<span class="line">for k := range m {</span>
+<span class="line">    keys = append(keys, k)</span>
+<span class="line">}</span>
+<span class="line">slices.Sort(keys)</span>
+<span class="line">fmt.Println(keys, m[&quot;missing&quot;])</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<ol class="flow" aria-label="Шаги">
+<li><span>Ключ</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>поиск записи · ключи</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>сортировка</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>выдача</span></li>
+</ol>
+<p><strong>Ответ.</strong> [a b] 0</p>
+<p><strong>Почему.</strong> Порядок range по map не определён. Сортировка отдельного среза делает выдачу стабильной. Отсутствующий ключ даёт zero value, а второй результат чтения сообщает, был ли ключ. В Go 1.24 появилась реализация map на Swiss Tables. Детали внутреннего устройства привязывай к версии.</p>
+<p><strong>В бэкенде.</strong> Сортируй ключи перед формированием стабильного отчёта или последовательным обходом узлов.</p>
+<section class="theory" aria-labelledby="theory-7">
+<h3 id="theory-7">Почему Go так работает</h3>
+<p>Поиск и обход решают разные задачи. Для <code>m["a"]</code> Go вычисляет хеш ключа, находит возможное место в таблице и проверяет сам ключ. При <code>range</code> он перечисляет существующие записи. Внутреннее размещение не хранит для тебя порядок вставки, а спецификация позволяет менять порядок обхода даже между двумя проходами.</p>
+<p><strong>Если изменить условие.</strong> И <code>map[string]int{"x": 0}</code>, и пустая map дают <code>0</code> при чтении <code>m["x"]</code>. Разницу покажет <code>v, ok := m["x"]</code>: <code>(0, true)</code> и <code>(0, false)</code>. Сортировка гарантирует порядок только для среза <code>keys</code>. Для упорядоченной выдачи обходи этот срез и читай <code>m[k]</code>.</p>
+</section>
+<details class="trace" data-animation="./media/interview/exercise-7.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-7.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> В map два ключа: &quot;a&quot; и &quot;b&quot;.</li>
+<li><strong>Строка 2.</strong> Создан пустой срез с запасом на два ключа.</li>
+<li><strong>Строка 3.</strong> range выбирает очередной ключ. Здесь показан один возможный порядок.</li>
+<li><strong>Строка 4.</strong> Сохраняем ключи. В этом прогоне keys = [&quot;b&quot;, &quot;a&quot;].</li>
+<li><strong>Строка 6.</strong> Теперь keys = [&quot;a&quot;, &quot;b&quot;] независимо от порядка обхода.</li>
+<li><strong>Строка 7.</strong> Ключ missing отсутствует. Для int читаем ноль. <samp>[a b] 0</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-8" aria-labelledby="title-8">
+<h2 id="title-8">8. Чтение из закрытого канала</h2>
+<p>Какие пары вернут два чтения? Что случится при отправке после close?</p>
+<pre class="source-code"><code><span class="line">ch := make(chan int, 1)</span>
+<span class="line">ch &lt;- 7</span>
+<span class="line">close(ch)</span>
+<span class="line">a, okA := &lt;-ch</span>
+<span class="line">b, okB := &lt;-ch</span>
+<span class="line">fmt.Println(a, okA, b, okB)</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<ol class="flow" aria-label="Шаги">
+<li><span>close</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>дочитать буфер</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>zero value и ok=false</span></li>
+</ol>
+<p><strong>Ответ.</strong> 7 true 0 false</p>
+<p><strong>Почему.</strong> Закрытие сохраняет уже отправленные значения. После опустошения буфера чтение возвращает нулевое значение и false. Отправка в закрытый канал вызывает panic. В fan-in выход закрывает координатор после завершения всех отправителей.</p>
+<p><strong>В бэкенде.</strong> При отмене подписки останавливай отправителей через context, чтобы исключить запись после закрытия выхода.</p>
+<section class="theory" aria-labelledby="theory-8">
+<h3 id="theory-8">Почему Go так работает</h3>
+<p>У буферизованного канала есть очередь значений и признак закрытия. <code>ch &lt;- 7</code> кладёт число в очередь. <code>close(ch)</code> меняет признак закрытия. Первое чтение находит число в очереди и возвращает <code>(7, true)</code>. Второе видит пустую очередь и закрытие, поэтому ждать отправителя бессмысленно: оно сразу выдаёт <code>(0, false)</code>.</p>
+<p><strong>Если изменить условие.</strong> При отправке <code>0</code> первое чтение вернуло бы <code>(0, true)</code>. Смотри на <code>ok</code>, чтобы отличить значение от конца потока. Из <em>открытого</em> пустого канала чтение, наоборот, ждёт отправителя.</p>
+</section>
+<details class="trace" data-animation="./media/interview/exercise-8.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-8.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Буфер вмещает одно число. Сейчас он пуст.</li>
+<li><strong>Строка 2.</strong> 7 записано в буфер. Читатель пока не нужен.</li>
+<li><strong>Строка 3.</strong> Канал закрыт для отправки. 7 остаётся в буфере.</li>
+<li><strong>Строка 4.</strong> Первое чтение забирает 7. okA = true.</li>
+<li><strong>Строка 5.</strong> Буфер пуст, канал закрыт. b = 0, okB = false.</li>
+<li><strong>Строка 6.</strong> Печатаем обе пары. <samp>7 true 0 false</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-9" aria-labelledby="title-9">
+<h2 id="title-9">9. Отправка в закрытый канал</h2>
+<p>Почему после close отправитель получает panic, а не ошибку?</p>
+<pre class="source-code"><code><span class="line">ch := make(chan int, 1)</span>
+<span class="line">close(ch)</span>
+<span class="line">ch &lt;- 7</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> panic: send on closed channel.</p>
+<section class="theory" aria-labelledby="theory-9">
+<h3 id="theory-9">Почему так происходит</h3>
+<p>close объявляет завершение отправки. У операции ch &lt;- v нет возвращаемого error. После закрытия отправка считается ошибкой программы и вызывает panic. То же относится к повторному close.</p>
+<p><strong>Если изменить условие.</strong> Нельзя безопасно проверить открытость канала, а потом отдельно отправить: между проверкой и отправкой другая горутина может закрыть его. default в select не спасает от выбранной отправки в закрытый канал.</p>
+</section>
+<p><strong>В бэкенде.</strong> При нескольких отправителях координатор ждёт их завершения и только потом закрывает выход. Читатель сообщает об отмене через context.</p>
+<details class="trace" data-animation="./media/interview/exercise-9.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-9.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Буфер свободен.</li>
+<li><strong>Строка 2.</strong> Канал больше не принимает отправки.</li>
+<li><strong>Строка 3.</strong> Свободное место в буфере не меняет контракт. <samp>panic: send on closed channel</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-10" aria-labelledby="title-10">
+<h2 id="title-10">10. Сортировка структур по имени</h2>
+<p>Что изменится в исходном массиве после сортировки a[:]?</p>
+<pre class="source-code"><code><span class="line">a := [2]User{{Name: &quot;Zoe&quot;}, {Name: &quot;Ann&quot;}}</span>
+<span class="line">slices.SortFunc(a[:], func(x, y User) int {</span>
+<span class="line">    return strings.Compare(x.Name, y.Name)</span>
+<span class="line">})</span>
+<span class="line">fmt.Println(a[0].Name)</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> Ann.</p>
+<section class="theory" aria-labelledby="theory-10">
+<h3 id="theory-10">Почему так происходит</h3>
+<p>slices.SortFunc переставляет элементы переданного среза. a[:] не копирует данные массива, поэтому запись через срез меняет a. Компаратор возвращает отрицательное число, ноль или положительное число по тому, как соотносятся имена.</p>
+<p><strong>Если изменить условие.</strong> При одинаковом Name SortFunc не обещает сохранить исходный порядок. Используй SortStableFunc, если нужно сохранить его, или добавь ID в компаратор для полного порядка.</p>
+</section>
+<p><strong>В бэкенде.</strong> Проверь сравнение имён по контракту продукта. strings.Compare сравнивает байты строки и сам по себе не учитывает локальные правила алфавита.</p>
+<details class="trace" data-animation="./media/interview/exercise-10.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-10.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> В массиве Zoe стоит перед Ann.</li>
+<li><strong>Строка 2.</strong> Срез a[:] смотрит на массив a.</li>
+<li><strong>Строка 3.</strong> Компаратор сравнивает имена.</li>
+<li><strong>Строка 5.</strong> Сортировка переставила исходные элементы. <samp>Ann</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-11" aria-labelledby="title-11">
+<h2 id="title-11">11. Сериализация и представление в памяти</h2>
+<p>Почему данные запроса можно передать в JSON, а дамп Go-структуры для этого не подходит?</p>
+<pre class="source-code"><code><span class="line">type Event struct { Title string `json:&quot;title&quot;` }</span>
+<span class="line">data, err := json.Marshal(Event{Title: &quot;Sync&quot;})</span>
+<span class="line">fmt.Println(string(data), err)</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> {&quot;title&quot;:&quot;Sync&quot;} &lt;nil&gt;.</p>
+<section class="theory" aria-labelledby="theory-11">
+<h3 id="theory-11">Почему так происходит</h3>
+<p>Дамп памяти отражает представление конкретного процесса. Строка или указатель могут ссылаться на области памяти вне структуры. Адреса этих областей для другого процесса бессмысленны. Сериализатор читает значения и кодирует их по правилам переносимого формата.</p>
+<p><strong>Если изменить условие.</strong> Формат не обязан быть текстовым: Protobuf тоже сериализует структуру. Если добавить внутреннее поле в модель, у публичного DTO формат можно сохранить прежним.</p>
+</section>
+<p><strong>В бэкенде.</strong> Для API и очередей договаривайся о формате данных и совместимости схем при изменении полей.</p>
+<details class="trace" data-animation="./media/interview/exercise-11.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-11.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Тег задаёт имя поля в формате JSON.</li>
+<li><strong>Строка 2.</strong> Marshal кодирует логическое значение Title.</li>
+<li><strong>Строка 3.</strong> Получаем байты согласованного формата. <samp>{&quot;title&quot;:&quot;Sync&quot;} &lt;nil&gt;</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-12" aria-labelledby="title-12">
+<h2 id="title-12">12. Разворот односвязного списка</h2>
+<p>Разверни 1 → 2 → 3. Почему нужно сохранить cur.Next до записи?</p>
+<pre class="source-code"><code><span class="line">func reverse(head *Node) *Node {</span>
+<span class="line">    var prev *Node</span>
+<span class="line">    for cur := head; cur != nil; {</span>
+<span class="line">        next := cur.Next</span>
+<span class="line">        cur.Next = prev</span>
+<span class="line">        prev, cur = cur, next</span>
+<span class="line">    }</span>
+<span class="line">    return prev</span>
+<span class="line">}</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<ol class="flow" aria-label="Шаги">
+<li><span>next сохраняем</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>ссылку разворачиваем</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>двигаемся дальше</span></li>
+</ol>
+<p><strong>Ответ.</strong> 3 → 2 → 1. Время O(n), дополнительная память O(1).</p>
+<p><strong>Почему.</strong> Сохраняем ссылку на хвост до изменения Next. Проверь nil, один узел и несколько узлов. </p>
+<p><strong>В бэкенде.</strong> Когда обработчик разворачивает цепочку на месте, её прежний порядок изменится и для других владельцев тех же узлов.</p>
+<section class="theory" aria-labelledby="theory-12">
+<h3 id="theory-12">Почему Go так работает</h3>
+<p><code>cur</code> указывает на сам узел, поэтому <code>cur.Next = prev</code> меняет связь в списке. На первом шаге <code>prev == nil</code>. Если сразу записать это значение в <code>1.Next</code>, связь <code>1 → 2</code> исчезнет. Сохранённый <code>next</code> остаётся адресом узла 2, так что обход можно продолжить.</p>
+<p><strong>Если изменить условие.</strong> Если сохранить <code>next</code> после изменения <code>cur.Next</code>, на первом шаге он уже будет <code>nil</code>, и цикл вернёт только узел 1. У пустого списка тело цикла вообще не выполняется, а один узел остаётся головой.</p>
+</section>
+<details class="trace" data-animation="./media/interview/exercise-12.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-12.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 2.</strong> На входе 1 → 2 → 3. prev = nil, cur указывает на 1.</li>
+<li><strong>Строка 4.</strong> Сохраняем next = 2. Хвост останется доступным после записи.</li>
+<li><strong>Строка 5.</strong> Разворачиваем ссылку первого узла: 1 → nil.</li>
+<li><strong>Строка 6.</strong> prev = 1, cur = 2. Повторяем шаг для 2 и 3.</li>
+<li><strong>Строка 5.</strong> После последней записи цепочка: 3 → 2 → 1.</li>
+<li><strong>Строка 8.</strong> cur = nil. Возвращаем новую голову prev. <samp>3 → 2 → 1</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-13" aria-labelledby="title-13">
+<h2 id="title-13">13. Где объявить интерфейс</h2>
+<p>Почему EventReader удобно определить в пакете сервиса?</p>
+<pre class="source-code"><code><span class="line">// Пакет service</span>
+<span class="line">type EventReader interface { Read(id string) (Event, error) }</span>
+<span class="line">type Service struct { repo EventReader }</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> Маленькая зависимость.</p>
+<section class="theory" aria-labelledby="theory-13">
+<h3 id="theory-13">Почему так происходит</h3>
+<p>Потребитель знает, какие операции ему нужны. Если интерфейс объявлен рядом с сервисом, его можно ограничить одним методом. Адаптер с таким методом удовлетворяет интерфейсу автоматически, и сервису достаточно своего контракта.</p>
+<p><strong>Если изменить условие.</strong> Если несколько клиентов намеренно используют общий публичный протокол, интерфейс может жить в общем пакете. Место определяется владельцем контракта и направлением зависимости.</p>
+</section>
+<p><strong>В бэкенде.</strong> Сервис календаря может принимать EventReader, а конкретный PostgreSQL-адаптер и тестовую заглушку выбирать при сборке приложения.</p>
+<details class="trace" data-animation="./media/interview/exercise-13.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-13.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Сервис формулирует свой контракт чтения.</li>
+<li><strong>Строка 2.</strong> В интерфейсе только нужная операция.</li>
+<li><strong>Строка 3.</strong> В сервис можно передать совместимый адаптер. <samp>Маленькая зависимость</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-14" aria-labelledby="title-14">
+<h2 id="title-14">14. Как различать ошибки</h2>
+<p>Какая проверка распознает причину после добавления контекста?</p>
+<pre class="source-code"><code><span class="line">temporary := errors.New(&quot;temporary&quot;)</span>
+<span class="line">err := fmt.Errorf(&quot;load events: %w&quot;, temporary)</span>
+<span class="line">fmt.Println(err == temporary, errors.Is(err, temporary))</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<ol class="flow" aria-label="Шаги">
+<li><span>Причина</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>обёртка с контекстом</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>решение вызывающего кода</span></li>
+</ol>
+<p><strong>Ответ.</strong> false true</p>
+<p><strong>Почему.</strong> Прямое сравнение видит обёртку. errors.Is ищет причину в цепочке. errors.As извлекает ошибку заданного типа. Возможность повтора зависит от операции, лимита попыток, дедлайна и идемпотентности. У net.Error проверяй Timeout, Temporary помечен deprecated.</p>
+<p><strong>В бэкенде.</strong> Если чтение профилей завершилось по таймауту, повтор может быть допустим. Для операции записи сначала проверь её контракт идемпотентности.</p>
+<section class="theory" aria-labelledby="theory-14">
+<h3 id="theory-14">Почему Go так работает</h3>
+<p>После <code>fmt.Errorf</code> переменная <code>err</code> хранит новое значение ошибки. Его сообщение содержит контекст операции, а <code>Unwrap</code> возвращает исходную <code>temporary</code>. Прямое сравнение проверяет верхнее значение. <code>errors.Is</code> проверяет его и затем идёт по цепочке, пока не найдёт причину.</p>
+<p><strong>Если изменить условие.</strong> При замене <code>%w</code> на <code>%v</code> текст ошибки останется тем же, но вложенная причина потеряется. Тогда оба сравнения дадут <code>false</code>. Это заметно, например, когда handler через <code>errors.Is</code> отличает известную ошибку от внутреннего сбоя.</p>
+</section>
+<details class="trace" data-animation="./media/interview/exercise-14.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-14.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> temporary — отдельная ошибка и исходная причина.</li>
+<li><strong>Строка 2.</strong> %w создаёт ошибку с контекстом и сохраняет ссылку на причину.</li>
+<li><strong>Строка 3.</strong> Прямое сравнение видит обёртку. errors.Is проверяет цепочку. <samp>false true</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-15" aria-labelledby="title-15">
+<h2 id="title-15">15. Стандартное логирование</h2>
+<p>Что даст структурированный лог по сравнению с текстовой строкой?</p>
+<pre class="source-code"><code><span class="line">handler := slog.NewJSONHandler(os.Stdout, nil)</span>
+<span class="line">log := slog.New(handler)</span>
+<span class="line">log.Info(&quot;event loaded&quot;, &quot;request_id&quot;, &quot;abc&quot;, &quot;ms&quot;, 24)</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> Поиск по request_id.</p>
+<section class="theory" aria-labelledby="theory-15">
+<h3 id="theory-15">Почему так происходит</h3>
+<p>В пакете log удобно печатать строки. Для фильтрации и агрегации удобнее отдельные типизированные атрибуты. log/slog в стандартной библиотеке с Go 1.21 поддерживает уровни, обработчики и структурированные поля.</p>
+<p><strong>Если изменить условие.</strong> Если просто встроить request_id в сообщение, систему поиска придётся отдельно учить разбирать этот текст. С отдельным полем запросы и агрегации сохранятся при изменении формулировки сообщения.</p>
+</section>
+<p><strong>В бэкенде.</strong> Для диагностики ListEvents добавляй идентификатор запроса и длительность, а агрегируемые числовые поля сохраняй числами.</p>
+<details class="trace" data-animation="./media/interview/exercise-15.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-15.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Обработчик выбирает JSON-формат.</li>
+<li><strong>Строка 2.</strong> Логгер использует этот обработчик.</li>
+<li><strong>Строка 3.</strong> request_id и ms идут отдельными полями. <samp>Поиск по request_id</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-16" aria-labelledby="title-16">
+<h2 id="title-16">16. ORM, генератор SQL или ручной запрос</h2>
+<p>Для ListEvents нужны tenant-фильтр, устойчивый порядок и cursor pagination. Как обоснуешь выбор ORM, генератора SQL или ручного запроса?</p>
+<pre class="source-code"><code><span class="line">SELECT id, created_at</span>
+<span class="line">FROM events</span>
+<span class="line">WHERE tenant_id = $1 AND (created_at, id) &lt; ($2, $3)</span>
+<span class="line">ORDER BY created_at DESC, id DESC</span>
+<span class="line">LIMIT $4</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<ol class="flow" aria-label="Шаги">
+<li><span>Требования запроса</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>выбор инструмента</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>воспроизводимая проверка в CI</span></li>
+</ol>
+<p><strong>Ответ.</strong> Сравни контроль над SQL и планом, типизацию, сложность сопровождения и проверяемость.</p>
+<p><strong>Почему.</strong> ORM связывает строки БД и объекты приложения. Например, в GORM связь задают структуры и их поля, теги и соглашения. DAL предоставляет приложению операции с данными и может использовать ORM, SQL-генератор или драйвер. Оцени, где удобнее видеть итоговый SQL и сколько кода придётся поддерживать.</p>
+<p><strong>В бэкенде.</strong> Проверь запрос на данных с одинаковыми timestamps и сверь план. Для простого CRUD удобство ORM может перевесить ручной контроль. Для keyset-запроса полезен точный контроль SQL и параметров.</p>
+<section class="theory" aria-labelledby="theory-16">
+<h3 id="theory-16">Как читается запрос</h3>
+<p>Курсор из одного времени не различает события с одинаковым timestamp. Пара <code>(created_at, id)</code> сравнивается по порядку: сначала время, при равенстве — ID. Это тот же порядок полей, что и в <code>ORDER BY</code>. При <code>DESC</code> условие <code>&lt;</code> оставляет строки строго после последней записи предыдущей страницы.</p>
+<p><strong>Если изменить условие.</strong> Если страница закончилась на <code>(12:00, 20)</code>, запись <code>(12:00, 19)</code> попадёт на следующую страницу. Условие только <code>created_at &lt; 12:00</code> пропустило бы её. Условие <code>&lt;=</code> для пары повторило бы <code>(12:00, 20)</code>. В Go значения курсора передавай отдельными аргументами SQL-запроса.</p>
+</section>
+<details class="trace" data-animation="./media/interview/exercise-16.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-16.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Ответ содержит id и created_at. Вместе они образуют курсор.</li>
+<li><strong>Строка 2.</strong> Строки берём из таблицы events.</li>
+<li><strong>Строка 3.</strong> WHERE оставляет записи tenant и строки строго после курсора.</li>
+<li><strong>Строка 4.</strong> При одинаковом времени порядок даёт id.</li>
+<li><strong>Строка 5.</strong> LIMIT ограничивает число возвращаемых записей. <samp>Курсор (12:00, 20) → (12:00, 19)</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-17" aria-labelledby="title-17">
+<h2 id="title-17">17. Линтеры и CI</h2>
+<p>Если go test проходит, что ещё может поймать статическая проверка?</p>
+<pre class="source-code"><code><span class="line">func report(id string) {</span>
+<span class="line">    fmt.Printf(&quot;id=%d&quot;, id)</span>
+<span class="line">}</span>
+<span class="line">go vet ./...</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> Несовпадение формата.</p>
+<section class="theory" aria-labelledby="theory-17">
+<h3 id="theory-17">Почему так происходит</h3>
+<p>Компилятор принимает аргументы Printf через variadic any. Ошибку формата выявляет анализатор, который связывает строку формата с типами аргументов. go test сам запускает часть анализаторов vet по умолчанию, а Staticcheck и другие проверки расширяют набор правил.</p>
+<p><strong>Если изменить условие.</strong> Если формат строится динамически, часть проверок теряет информацию. Тесты нужны для поведения, а статический анализ работает с тем, что можно вывести из кода заранее.</p>
+</section>
+<p><strong>В бэкенде.</strong> В CI закрепляй конкретные проверки и их версии, чтобы результат совпадал у всей команды.</p>
+<details class="trace" data-animation="./media/interview/exercise-17.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-17.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Параметр id имеет тип string.</li>
+<li><strong>Строка 2.</strong> Формат %d ожидает целое число.</li>
+<li><strong>Строка 4.</strong> go vet проверяет вызов без исполнения report. <samp>Несовпадение формата</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-18" aria-labelledby="title-18">
+<h2 id="title-18">18. Один буфер в нескольких горутинах</h2>
+<p>Два среза разделяют массив. Каким будет результат после записи? Где нужна синхронизация?</p>
+<pre class="source-code"><code><span class="line">buf := []byte{1, 2}</span>
+<span class="line">view := buf[:1]</span>
+<span class="line">copyOfView := bytes.Clone(view)</span>
+<span class="line">buf[0] = 9</span>
+<span class="line">fmt.Println(view, copyOfView)</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<ol class="flow" aria-label="Шаги">
+<li><span>Владелец буфера</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>независимая копия</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>обработчик</span></li>
+</ol>
+<p><strong>Ответ.</strong> [9] [1]</p>
+<p><strong>Почему.</strong> Если одна горутина пишет, а другая читает те же байты без синхронизации, возможна гонка. После безопасной публикации неизменяемый буфер можно читать совместно. Для общего изменяемого инварианта выбирай Mutex или RWMutex с учётом измерений. atomic полезен для простых операций, а sync.Map нельзя автоматически считать lock-free.</p>
+<p><strong>В бэкенде.</strong> Если парсер переиспользует буфер, передавай в асинхронную очередь копию, сделанную до переиспользования.</p>
+<section class="theory" aria-labelledby="theory-18">
+<h3 id="theory-18">Почему Go так работает</h3>
+<p><code>buf</code> и <code>view</code> начинаются с одной ячейки. Запись через <code>buf[0]</code> заменяет байт в этой ячейке, поэтому <code>view[0]</code> читает новое значение. <code>bytes.Clone(view)</code> выделяет независимое место и записывает туда текущий байт. Поздняя запись в <code>buf</code> эту копию не затрагивает.</p>
+<p><strong>Если изменить условие.</strong> При <code>copyOfView := view</code> оба среза напечатают <code>[9]</code>. Если другая горутина уже пишет в <code>buf</code>, копирование само по себе может гоняться с этой записью. Делай копию до передачи буфера либо читай и копируй под той же синхронизацией, что защищает запись.</p>
+</section>
+<details class="trace" data-animation="./media/interview/exercise-18.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-18.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> buf указывает на два байта: [1 2].</li>
+<li><strong>Строка 2.</strong> view видит первый байт того же массива.</li>
+<li><strong>Строка 3.</strong> bytes.Clone копирует первый байт в отдельное хранилище.</li>
+<li><strong>Строка 4.</strong> Запись через buf меняет view. Копия сохраняет 1.</li>
+<li><strong>Строка 5.</strong> Печатаем общий и независимый срезы. <samp>[9] [1]</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-19" aria-labelledby="title-19">
+<h2 id="title-19">19. Mutex и RWMutex</h2>
+<p>Когда читатели могут работать одновременно, а когда нужно ждать?</p>
+<pre class="source-code"><code><span class="line">mu.RLock()</span>
+<span class="line">value := state.Count</span>
+<span class="line">mu.RUnlock()</span>
+<span class="line">mu.Lock()</span>
+<span class="line">state.Count++</span>
+<span class="line">mu.Unlock()</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> Чтения совместимы.</p>
+<section class="theory" aria-labelledby="theory-19">
+<h3 id="theory-19">Почему так происходит</h3>
+<p>Mutex даёт один эксклюзивный доступ. RWMutex допускает несколько читателей либо одного писателя. Оба защищают данные по соглашению: все обращения к общему состоянию должны использовать подходящую блокировку.</p>
+<p><strong>Если изменить условие.</strong> При ожидающем писателе новые RLock блокируются, чтобы писатель смог продолжить. Нельзя повысить RLock до Lock, удерживая первую блокировку. RWMutex не гарантирует выигрыш на коротких операциях или частых записях.</p>
+</section>
+<p><strong>В бэкенде.</strong> Для общего состояния начни с простого Mutex и сравни с RWMutex под реальной нагрузкой, если видишь конкуренцию за блокировку.</p>
+<details class="trace" data-animation="./media/interview/exercise-19.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-19.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Запрашиваем блокировку на чтение.</li>
+<li><strong>Строка 2.</strong> Другой читатель тоже может читать.</li>
+<li><strong>Строка 4.</strong> Писатель ждёт освобождения читателей.</li>
+<li><strong>Строка 5.</strong> Изменение выполняется эксклюзивно. <samp>Чтения совместимы</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-20" aria-labelledby="title-20">
+<h2 id="title-20">20. Атомики и lock-free</h2>
+<p>Что означает обновление через CAS и гарантирует ли оно прогресс каждому?</p>
+<pre class="source-code"><code><span class="line">old := count.Load()</span>
+<span class="line">updated := count.CompareAndSwap(old, old + 1)</span>
+<span class="line">if !updated { /* прочитать и повторить */ }</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> Возможен повтор.</p>
+<section class="theory" aria-labelledby="theory-20">
+<h3 id="theory-20">Почему так происходит</h3>
+<p>CAS атомарно объединяет проверку и запись одного значения. В lock-free алгоритме при конкуренции система в целом продолжает делать операции, а конкретная горутина может ждать или повторяться. Wait-free требует ограниченного числа шагов для каждой операции.</p>
+<p><strong>Если изменить условие.</strong> Атомарность отдельных операций не делает всю структуру lock-free. Например, загрузить значение и потом отдельно записать old+1 — две операции, между которыми может вклиниться конкурент. sync.Map оценивай по контракту, а не по предположению о реализации.</p>
+</section>
+<p><strong>В бэкенде.</strong> Для простого счётчика подойдёт atomic.Add. Для инварианта между несколькими полями обычно понятнее блокировка.</p>
+<details class="trace" data-animation="./media/interview/exercise-20.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-20.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Читаем прежнее значение.</li>
+<li><strong>Строка 2.</strong> CAS пишет только при совпадении с old.</li>
+<li><strong>Строка 3.</strong> Если другая горутина опередила нас, повторяем. <samp>Возможен повтор</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-21" aria-labelledby="title-21">
+<h2 id="title-21">21. Диагностика задержек в проде</h2>
+<p>p99 вырос вдвое, средний CPU низкий. Что посмотришь первым и какой профиль выберешь?</p>
+<pre class="source-code"><code><span class="line">HTTP duration p50: 35 ms → 36 ms</span>
+<span class="line">HTTP duration p99: 250 ms → 510 ms</span>
+<span class="line">DB pool wait p99: растёт</span>
+<span class="line">CPU: примерно без изменений</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<ol class="flow" aria-label="Шаги">
+<li><span>p99 вырос</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>найти медленный участок</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>выбрать профиль</span></li>
+</ol>
+<p><strong>Ответ.</strong> Начни с метрик ожидания пула и трассировки медленных запросов.</p>
+<p><strong>Почему.</strong> Сначала локализуй путь по метрикам запроса и traces. Для нагрузки на CPU бери CPU-профиль, для памяти — heap или allocs, для ожиданий — block/mutex profiles либо execution trace по симптомам. У профилирования есть накладные расходы. Их величина зависит от типа профиля, настроек и нагрузки.</p>
+<p><strong>В бэкенде.</strong> На ListEvents проверь длительность запроса, ожидание соединения и захват блокировок. Сопоставь p99 с изменением после релиза.</p>
+<section class="theory" aria-labelledby="theory-21">
+<h3 id="theory-21">Как разбирать метрики</h3>
+<p>Запрос может ждать свободного соединения и в это время почти не расходовать CPU. При чтении <code>p50</code> виден типичный запрос. <code>p99</code> показывает, как долго ждут запросы у верхней границы распределения. Поэтому обе метрики могут двигаться по-разному.</p>
+<p><strong>Как отличить причины.</strong> Если в trace растёт интервал до получения соединения, смотри ожидания пула. Если соединение выдали сразу, а растёт интервал выполнения SQL, смотри запрос и блокировки БД. Если задержка выросла внутри вычислительного участка и этот участок грузит процессор, CPU-профиль покажет, где тратится время.</p>
+</section>
+<details class="trace" data-animation="./media/interview/exercise-21.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-21.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> p50 почти прежний. Типичный запрос не стал заметно медленнее.</li>
+<li><strong>Строка 2.</strong> p99 удвоился. Ищем, где ждут самые медленные запросы.</li>
+<li><strong>Строка 3.</strong> Растёт ожидание соединений. Сверяем его с traces запросов.</li>
+<li><strong>Строка 4.</strong> Низкий CPU совместим с ожиданием сети, пула или блокировки. <samp>Первый шаг: traces и метрики пула</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-22" aria-labelledby="title-22">
+<h2 id="title-22">22. Метрики Go и Prometheus</h2>
+<p>Чем метрики runtime отличаются от метрик приложения?</p>
+<pre class="source-code"><code><span class="line">go_goroutines   240</span>
+<span class="line">go_memstats_heap_alloc_bytes   12582912</span>
+<span class="line">http_request_duration_seconds_bucket{...}   570</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> Связываем два уровня.</p>
+<section class="theory" aria-labelledby="theory-22">
+<h3 id="theory-22">Почему так происходит</h3>
+<p>Go runtime собирает данные о памяти, сборке мусора и планировании. Go-коллектор Prometheus экспортирует часть таких данных, а процессный коллектор может давать CPU и RSS. HTTP-гистограмму обычно добавляет само приложение или middleware.</p>
+<p><strong>Если изменить условие.</strong> Число горутин может расти из-за нагрузки, а может из-за утечки. Сравни рост с трафиком и посмотри, где горутины ждут. Отдельная метрика редко даёт причину без контекста.</p>
+</section>
+<p><strong>В бэкенде.</strong> Начни с частоты запросов, ошибок и длительности. Затем сопоставь их с runtime и ресурсами процесса.</p>
+<details class="trace" data-animation="./media/interview/exercise-22.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-22.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Число горутин описывает состояние runtime.</li>
+<li><strong>Строка 2.</strong> Размер heap описывает память Go.</li>
+<li><strong>Строка 3.</strong> Гистограмма HTTP показывает задержки запросов. <samp>Связываем два уровня</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-23" aria-labelledby="title-23">
+<h2 id="title-23">23. Подключение pprof</h2>
+<p>Почему pprof можно подключить к уже работающему сервису?</p>
+<pre class="source-code"><code><span class="line">import _ &quot;net/http/pprof&quot;</span>
+<span class="line">// Зарегистрировано на http.DefaultServeMux</span>
+<span class="line">http.ListenAndServe(&quot;127.0.0.1:6060&quot;, nil)</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> /debug/pprof/.</p>
+<section class="theory" aria-labelledby="theory-23">
+<h3 id="theory-23">Почему так происходит</h3>
+<p>Пакет net/http/pprof экспортирует профили, которые умеет собирать Go runtime. Вызов HTTP-обработчика запрашивает профиль у процесса. Поэтому можно исследовать уже работающий экземпляр при воспроизводимой нагрузке.</p>
+<p><strong>Если изменить условие.</strong> Если сервис использует собственный ServeMux, побочный импорт не назначит маршруты этому mux. Выдели диагностический listener либо зарегистрируй нужные обработчики явно. Профили раскрывают сведения о процессе, поэтому ограничивай доступ.</p>
+</section>
+<p><strong>В бэкенде.</strong> Выбери экземпляр и временной интервал, затем сравни профиль с метриками и трассировкой за тот же период.</p>
+<details class="trace" data-animation="./media/interview/exercise-23.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-23.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Импорт запускает регистрацию обработчиков.</li>
+<li><strong>Строка 2.</strong> Профили доступны на стандартном mux.</li>
+<li><strong>Строка 3.</strong> Локальный listener обслуживает диагностический HTTP. <samp>/debug/pprof/</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-24" aria-labelledby="title-24">
+<h2 id="title-24">24. Накладные расходы профайлера</h2>
+<p>Почему семплирующий CPU-профиль дешевле записи каждого вызова?</p>
+<pre class="source-code"><code><span class="line">A → B → C        вызовы функций</span>
+<span class="line">·     ↑    ↑     отдельные замеры</span>
+<span class="line">CPU profile     распределение выборки</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> Оценка, а не точный счётчик.</p>
+<section class="theory" aria-labelledby="theory-24">
+<h3 id="theory-24">Почему так происходит</h3>
+<p>Семплирование периодически фиксирует стек выполняющегося кода. Чем больше времени проводим в функции, тем чаще её увидим в выборке. Это даёт представление о горячих участках без записи каждого вызова.</p>
+<p><strong>Если изменить условие.</strong> Короткий профиль может пропустить редкие события. Block, mutex и execution trace собирают другие данные и имеют иной overhead. Сравни метрики до и во время сбора, а разные инструменты при необходимости запускай отдельно.</p>
+</section>
+<p><strong>В бэкенде.</strong> При CPU-регрессии сними профиль на репрезентативном интервале и сравни с базовым профилем на сопоставимой нагрузке.</p>
+<details class="trace" data-animation="./media/interview/exercise-24.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-24.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> В реальности вызовов намного больше, чем замеров.</li>
+<li><strong>Строка 2.</strong> Семплер периодически снимает стек.</li>
+<li><strong>Строка 3.</strong> Строим распределение по собранным стекам. <samp>Оценка, а не точный счётчик</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-25" aria-labelledby="title-25">
+<h2 id="title-25">25. Embedding и наследование</h2>
+<p>Почему p.Read() доступен, но Profile нельзя передать как Base?</p>
+<pre class="source-code"><code><span class="line">type Base struct{}</span>
+<span class="line">func (Base) Read() {}</span>
+<span class="line">type Profile struct { Base }</span>
+<span class="line">var _ interface{ Read() } = Profile{}</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> Profile реализует Read.</p>
+<section class="theory" aria-labelledby="theory-25">
+<h3 id="theory-25">Почему так происходит</h3>
+<p>Embedding — композиция. Go разрешает сократить доступ к полю или методу, например p.Read() вместо p.Base.Read(). Вызов метода Base по-прежнему получает Base как receiver.</p>
+<p><strong>Если изменить условие.</strong> Если Profile объявит собственный Read, обычный вызов p.Read выберет внешний метод. Вызовы из методов Base не начнут динамически переадресовываться наружу. Profile и Base остаются разными типами.</p>
+</section>
+<p><strong>В бэкенде.</strong> Встраивание может упростить композицию типов. Для взаимозаменяемости адаптеров используй интерфейс с нужными методами.</p>
+<details class="trace" data-animation="./media/interview/exercise-25.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-25.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Есть самостоятельный тип Base.</li>
+<li><strong>Строка 2.</strong> Read объявлен у Base.</li>
+<li><strong>Строка 3.</strong> Profile содержит Base. Метод доступен через продвижение.</li>
+<li><strong>Строка 4.</strong> Проверка интерфейса проходит. <samp>Profile реализует Read</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-26" aria-labelledby="title-26">
+<h2 id="title-26">26. Обобщённое программирование</h2>
+<p>Почему generic-функция возвращает тот же тип, с которым её вызвали?</p>
+<pre class="source-code"><code><span class="line">func First[T any](s []T) T { return s[0] }</span>
+<span class="line">a := First([]int{42})</span>
+<span class="line">b := First([]string{&quot;go&quot;})</span>
+<span class="line">fmt.Printf(&quot;%T %T&quot;, a, b)</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> int string.</p>
+<section class="theory" aria-labelledby="theory-26">
+<h3 id="theory-26">Почему так происходит</h3>
+<p>Параметр типа позволяет описать один алгоритм для нескольких типов. Constraint определяет допустимые операции. Здесь any подходит для индексирования среза, а для применения оператора == к двум T понадобится сравнимый тип.</p>
+<p><strong>Если изменить условие.</strong> First с пустым срезом вызовет panic: generics проверяют типы, но не длину. Чтобы выразить отсутствие результата, верни пару (T, bool) и проверь len перед обращением.</p>
+</section>
+<p><strong>В бэкенде.</strong> Generic helper удобен для дедупликации разных типов ID, когда поведение общее, а конкретный тип нужен вызывающему коду.</p>
+<details class="trace" data-animation="./media/interview/exercise-26.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-26.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> T описывает тип элемента и результата.</li>
+<li><strong>Строка 2.</strong> Для первого вызова выводится T=int.</li>
+<li><strong>Строка 3.</strong> Для второго вызова выводится T=string.</li>
+<li><strong>Строка 4.</strong> Типы результатов сохранены. <samp>int string</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-27" aria-labelledby="title-27">
+<h2 id="title-27">27. Технологические преимущества Go</h2>
+<p>Чем горутина полезна для сервиса, который ждёт много сетевых ответов?</p>
+<pre class="source-code"><code><span class="line">go fetchProfiles(ctx)</span>
+<span class="line">go fetchEvents(ctx)</span>
+<span class="line">// Объединяем результаты после обоих вызовов</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<p><strong>Результат.</strong> Конкурентный ввод-вывод.</p>
+<section class="theory" aria-labelledby="theory-27">
+<h3 id="theory-27">Почему так происходит</h3>
+<p>Go runtime планирует много горутин на системных потоках. Для поддерживаемого сетевого ввода-вывода интеграция с poller позволяет приостановить ожидающую горутину и использовать поток для другой работы. Это упрощает написание конкурентного сервиса.</p>
+<p><strong>Если изменить условие.</strong> Запуск двух горутин не гарантирует вдвое меньшую задержку. Они могут делить пул или упираться в ограничение внешнего API. Если превышен общий дедлайн, нужен context и обработка ошибок в координаторе.</p>
+</section>
+<p><strong>В бэкенде.</strong> Когда несколько независимых зависимостей вызываются параллельно, ограничь fan-out и измерь p99 и нагрузку на зависимости.</p>
+<details class="trace" data-animation="./media/interview/exercise-27.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-27.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> Первый запрос может ждать сеть.</li>
+<li><strong>Строка 2.</strong> Пока он ждёт, другая goroutine продолжает работу.</li>
+<li><strong>Строка 3.</strong> Результаты и ошибки собирает координатор. <samp>Конкурентный ввод-вывод</samp></li>
+</ol>
+</details>
+</details>
+</article>
+<article id="exercise-28" aria-labelledby="title-28">
+<h2 id="title-28">28. Границы Go и преобразование срезов</h2>
+<p>Почему []io.ReadWriter нельзя присвоить []io.Reader? Почему поэлементное присваивание работает?</p>
+<pre class="source-code"><code><span class="line">func readers(in []io.ReadWriter) []io.Reader {</span>
+<span class="line">    out := make([]io.Reader, len(in))</span>
+<span class="line">    for i, rw := range in {</span>
+<span class="line">        out[i] = rw</span>
+<span class="line">    }</span>
+<span class="line">    return out</span>
+<span class="line">}</span></code></pre>
+<details>
+<summary>Сверить ответ</summary>
+<ol class="flow" aria-label="Шаги">
+<li><span>Один алгоритм</span></li>
+<li><i class="arrow" aria-hidden="true">→</i><span>разные конкретные типы · каждый элемент преобразуем явно</span></li>
+</ol>
+<p><strong>Ответ.</strong> Прямое присваивание срезов не компилируется. Поэлементное присваивание допустимо.</p>
+<p><strong>Почему.</strong> Go делает преобразование интерфейсных срезов явным. Если тебе нужна жёсткая гарантия верхней границы задержки, проверь, подходят ли планировщик, GC и системные зависимости под требования. Генерики есть начиная с Go 1.18, поэтому их отсутствие к ограничениям современного Go не относится.</p>
+<p><strong>В бэкенде.</strong> Типизированный helper дедупликации подходит для ID нескольких типов. При преобразовании интерфейсных срезов учитывай дополнительный проход и аллокацию.</p>
+<section class="theory" aria-labelledby="theory-28">
+<h3 id="theory-28">Почему Go так работает</h3>
+<p><code>[]io.ReadWriter</code> и <code>[]io.Reader</code> обещают разные возможности для каждого элемента. Представь, что один массив доступен через оба среза. Через <code>[]io.Reader</code> можно записать туда объект, у которого есть только <code>Read</code>. Тогда вызов <code>Write</code> через исходный срез потерял бы гарантию. Go отвергает такое присваивание срезов.</p>
+<p><strong>Если изменить условие.</strong> Присваивание одного элемента разрешено, потому что <code>io.ReadWriter</code> уже включает <code>Read</code>. Новые ячейки среза независимы. Если оба интерфейсных значения содержат один и тот же <code>*bytes.Buffer</code>, чтение через одно продвигает позицию того же буфера для второго.</p>
+</section>
+<details class="trace" data-animation="./media/interview/exercise-28.gif">
+<summary>Показать медленную анимацию</summary>
+<p class="muted">6,5 секунды на шаг. Последний кадр остаётся на экране.</p>
+<div class="trace-image"></div>
+<noscript><a href="./media/interview/exercise-28.gif">Открыть анимацию</a></noscript>
+</details>
+<details class="trace">
+<summary>Прочитать по шагам</summary>
+<ol>
+<li><strong>Строка 1.</strong> На входе []io.ReadWriter, например один *bytes.Buffer.</li>
+<li><strong>Строка 2.</strong> Создаём []io.Reader той же длины.</li>
+<li><strong>Строка 3.</strong> Берём очередной интерфейс io.ReadWriter.</li>
+<li><strong>Строка 4.</strong> Присваиваем элемент в io.Reader: операция Read доступна.</li>
+<li><strong>Строка 6.</strong> Возвращаем срез. Элемент всё ещё содержит *bytes.Buffer. <samp>[]io.Reader, длина 1</samp></li>
+</ol>
+</details>
+</details>
+</article>
+</main>
+<script>
+for (const trace of document.querySelectorAll('[data-animation]')) {
+  const container = trace.querySelector('.trace-image');
+  const answer = trace.parentElement;
+  trace.addEventListener('toggle', () => {
+    container.replaceChildren();
+    if (!trace.open || !answer.open) return;
+    const image = new Image(760, 340);
+    image.alt = 'Подсветка строк и результат. Текст шагов доступен ниже.';
+    image.src = trace.dataset.animation;
+    container.append(image);
+  });
+  answer.addEventListener('toggle', () => {
+    if (!answer.open) trace.open = false;
+  });
+}
+</script>
+</body>
+</html>
