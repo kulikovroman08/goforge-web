@@ -1,0 +1,2 @@
+# Guided Coding pilot
+Dedupe only: five stages, deterministic trace, line explanations, ordering, blanks, partial/bug/starter templates, progressive hints, compiler feedback. All code submissions still use existing Go Playground runner and consent. Draft replacement requires confirmation. Other tasks unchanged except generic compiler hints and clearer hint label. Guided UI state is session-local; no mastery tracking. Related exercises are existing filter and slice-detach, not new kata. Run node gym/guided-check.cjs and node --check gym/app.js; verify on mobile before merge.
