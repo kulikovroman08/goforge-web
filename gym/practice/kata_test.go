@@ -509,3 +509,19 @@ func TestConcatInts(t *testing.T) {
 func TestFirstRepeat(t *testing.T) {
  for _,tc:=range []struct{in []int;want int;ok bool}{{[]int{4,2,2,4},2,true},{[]int{0,0},0,true},{[]int{1,2},0,false},{nil,0,false}} {v,ok:=FirstRepeat(tc.in);if v!=tc.want||ok!=tc.ok{t.Fatal(tc,v,ok)}}
 }
+
+func TestBatchInts(t *testing.T) {
+ in:=[]int{1,2,3,4,5};out:=BatchInts(in,2);if !reflect.DeepEqual(out,[][]int{{1,2},{3,4},{5}}){t.Fatal(out)};_ = append(out[0],99);if out[1][0]!=3||in[2]!=3{t.Fatal("append overwrote next batch")};if len(BatchInts(in,0))!=0||len(BatchInts(nil,2))!=0||len(BatchInts(in,-1))!=0{t.Fatal("invalid or empty")};if got:=BatchInts(in, int(^uint(0)>>1));len(got)!=1||len(got[0])!=5{t.Fatal(got)}
+}
+
+func TestIntFrequency(t *testing.T) {
+ if got:=IntFrequency([]int{2,-1,2,0});!reflect.DeepEqual(got,map[int]int{2:2,-1:1,0:1}){t.Fatal(got)};if got:=IntFrequency(nil);got==nil||len(got)!=0{t.Fatal("empty",got)};if got:=IntFrequency([]int{7,7,7});got[7]!=3{t.Fatal(got)}
+}
+
+func TestLookupQuota(t *testing.T) {
+ q:=map[string]int{"alice":0,"bob":5};for _,tc:=range []struct{m map[string]int;u string;v int;ok bool}{{q,"alice",0,true},{q,"bob",5,true},{q,"charlie",0,false},{nil,"alice",0,false}}{v,ok:=LookupQuota(tc.m,tc.u);if v!=tc.v||ok!=tc.ok{t.Fatal(tc,v,ok)}};if !reflect.DeepEqual(q,map[string]int{"alice":0,"bob":5}){t.Fatal("modified map")}
+}
+
+func TestStringStats(t *testing.T) {
+ for _,tc:=range []struct{s string;b,r int}{{"Aя🙂",7,3},{"",0,0},{"abc",3,3},{string([]byte{0xff}),1,1},{"e\u0301",3,2}}{b,r:=StringStats(tc.s);if b!=tc.b||r!=tc.r{t.Fatal(tc,b,r)}}
+}

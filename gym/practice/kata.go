@@ -198,3 +198,11 @@ func ReverseCopy(values []int) []int { return nil }
 func ConcatInts(a, b []int) []int { return nil }
 
 func FirstRepeat(values []int) (int, bool) { return 0, false }
+
+func BatchInts(values []int, size int) [][]int { return nil }
+
+func IntFrequency(values []int) map[int]int { return nil }
+
+func LookupQuota(quotas map[string]int, user string) (int, bool) { return 0, false }
+
+func StringStats(s string) (int, int) { return 0, 0 }
