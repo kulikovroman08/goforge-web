@@ -252,3 +252,11 @@ func IntersectInts(a, b []int) []int { return nil }
 func DifferenceInts(a, b []int) []int { return nil }
 
 func MergeQuotas(a, b map[string]int) map[string]int { return nil }
+
+func GroupByLength(words []string) map[int][]string { return nil }
+
+func RemoveLowQuotas(quotas map[string]int, min int) int { return 0 }
+
+func CloneGroups(groups map[string][]int) map[string][]int { return nil }
+
+func SortedQuotaKeys(quotas map[string]int) []string { return nil }

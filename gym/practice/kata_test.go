@@ -606,3 +606,19 @@ func TestDifferenceInts(t *testing.T) {
 func TestMergeQuotas(t *testing.T) {
  a,b:=map[string]int{"x":5,"y":2},map[string]int{"x":0,"z":7};out:=MergeQuotas(a,b);if !reflect.DeepEqual(out,map[string]int{"x":0,"y":2,"z":7}){t.Fatal(out)};out["y"]=99;out["z"]=99;if !reflect.DeepEqual(a,map[string]int{"x":5,"y":2})||!reflect.DeepEqual(b,map[string]int{"x":0,"z":7}){t.Fatal("alias",a,b)};if out:=MergeQuotas(nil,nil);out==nil||len(out)!=0{t.Fatal("empty",out)};if out:=MergeQuotas(nil,b);!reflect.DeepEqual(out,b){t.Fatal(out)}
 }
+
+func TestGroupByLength(t *testing.T) {
+ in:=[]string{"a","go","b","go","я",""};want:=map[int][]string{1:{"a","b"},2:{"go","go","я"},0:{""}};out:=GroupByLength(in);if !reflect.DeepEqual(out,want){t.Fatal(out)};out[1][0]="changed";if in[0]!="a"{t.Fatal("alias")};if out:=GroupByLength(nil);out==nil||len(out)!=0{t.Fatal("empty",out)}
+}
+
+func TestRemoveLowQuotas(t *testing.T) {
+ q:=map[string]int{"a":1,"b":3,"c":5};if got:=RemoveLowQuotas(q,3);got!=1||!reflect.DeepEqual(q,map[string]int{"b":3,"c":5}){t.Fatal(got,q)};if RemoveLowQuotas(nil,3)!=0{t.Fatal("nil")};q=map[string]int{"a":-1,"b":0};if got:=RemoveLowQuotas(q,1);got!=2||len(q)!=0{t.Fatal(got,q)};if RemoveLowQuotas(q,1)!=0{t.Fatal("empty")}
+}
+
+func TestCloneGroups(t *testing.T) {
+ in:=map[string][]int{"a":{1,2},"nil":nil,"empty":{}};out:=CloneGroups(in);if !reflect.DeepEqual(in,out){t.Fatal(in,out)};out["a"][0]=99;out["new"]=[]int{8};if in["a"][0]!=1||len(in)!=3{t.Fatal("alias",in)};if out["nil"]!=nil||out["empty"]==nil{t.Fatal("nil contract")};if out:=CloneGroups(nil);out==nil||len(out)!=0{t.Fatal(out)};shared:=[]int{5};cl:=CloneGroups(map[string][]int{"x":shared,"y":shared});cl["x"][0]=8;if cl["y"][0]!=5||shared[0]!=5{t.Fatal("shared")}
+}
+
+func TestSortedQuotaKeys(t *testing.T) {
+ q:=map[string]int{"z":7,"a":2,"m":0,"":1};want:=[]string{"","a","m","z"};for i:=0;i<5;i++{if got:=SortedQuotaKeys(q);!reflect.DeepEqual(got,want){t.Fatal(got)}};if !reflect.DeepEqual(q,map[string]int{"z":7,"a":2,"m":0,"":1}){t.Fatal("modified")};if len(SortedQuotaKeys(nil))!=0{t.Fatal("nil")}
+}

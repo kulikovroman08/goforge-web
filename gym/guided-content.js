@@ -5111,5 +5111,514 @@ window.GOFORGE_GUIDES = {
     ],
     "production": "Объединение конфигурационных значений с явным приоритетом источника. Если значения содержат срезы или указатели, копирование map не является глубоким.",
     "interview": "Почему out := a не создаёт независимую map?"
+  },
+  "core-group-length": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "a",
+          "go",
+          "b",
+          "go"
+        ],
+        "out={}",
+        "Ключ — число байтов."
+      ],
+      [
+        "Первый элемент",
+        [
+          "1: [a]"
+        ],
+        "out[1]=append(out[1],\"a\")",
+        "Отсутствующий ключ даёт nil-срез, append работает."
+      ],
+      [
+        "Второй элемент",
+        [
+          "1: [a]",
+          "2: [go]"
+        ],
+        "len(\"go\")=2",
+        "Создаём новую группу."
+      ],
+      [
+        "Третий элемент",
+        [
+          "1: [a,b]",
+          "2: [go]"
+        ],
+        "append(out[1],\"b\")",
+        "Сохраняем предыдущее слово."
+      ],
+      [
+        "Выход",
+        [
+          "1: [a,b]",
+          "2: [go,go]"
+        ],
+        "return out",
+        "Дубли и порядок внутри групп сохранены."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать map",
+        "out:=make(map[int][]string)",
+        "Значение каждой записи — срез строк."
+      ],
+      [
+        "Перебрать слова",
+        "for _,word:=range words {",
+        "Каждый элемент обрабатываем один раз."
+      ],
+      [
+        "Определить ключ",
+        "n:=len(word)",
+        "len строки измеряется в байтах."
+      ],
+      [
+        "Дополнить группу",
+        "out[n]=append(out[n],word)\n}",
+        "Сохраняем возвращённый срез; новый ключ изначально даёт nil."
+      ],
+      [
+        "Вернуть группы",
+        "return out",
+        "Порядок внутри групп стабилен, порядок ключей map не гарантируется."
+      ]
+    ],
+    "blocks": [
+      "Вернуть группы",
+      "Создать map",
+      "Перебрать слова",
+      "Определить ключ",
+      "Дополнить группу"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out[n] = append(",
+        "after": " ,word)",
+        "options": [
+          "out[n]",
+          "words",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Добавляем к существующей группе."
+      },
+      {
+        "before": "n := ",
+        "after": "(word)",
+        "options": [
+          "cap",
+          "len",
+          "int"
+        ],
+        "correct": 1,
+        "explain": "Длина строки в байтах."
+      }
+    ],
+    "partial": "package practice\n\nfunc GroupByLength(words []string) map[int][]string {\n\tout:=make(map[int][]string)\n\tfor _,word:=range words {\n\t n:=len(word)\n\t // TODO: добавь слово в группу n\n\t _=n\n\t}\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc GroupByLength(words []string) map[int][]string {\n\tout:=make(map[int][]string)\n\tfor _,word:=range words { out[len(word)]=[]string{word} }\n\treturn out\n}\n",
+    "hints": [
+      "Верни новую map, где ключ — длина строки в байтах, значение — все строки этой длины в исходном порядке, включая дубли. Пустой вход — инициализированная пустая map.",
+      "Значение каждой записи — срез строк.",
+      "Каждый элемент обрабатываем один раз.",
+      "Сохраняем возвращённый срез; новый ключ изначально даёт nil.",
+      "out:=make(map[int][]string)"
+    ],
+    "related": [
+      [
+        "core-string-stats",
+        "Посчитать байты и руны строки"
+      ]
+    ],
+    "production": "Группировка событий по статусу или владельцу. Для строк заранее согласуй единицу длины: байты, руны или графемы.",
+    "interview": "Почему append к отсутствующему ключу работает?"
+  },
+  "core-map-delete": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "a:1",
+          "b:3",
+          "c:5"
+        ],
+        "min=3, removed=0",
+        "Рассматриваем возможный порядок обхода."
+      ],
+      [
+        "Низкая квота",
+        [
+          "a:1"
+        ],
+        "delete(quotas,\"a\"), removed=1",
+        "1 строго меньше 3."
+      ],
+      [
+        "Граница",
+        [
+          "b:3"
+        ],
+        "3 < 3 → false",
+        "Ключ b остаётся."
+      ],
+      [
+        "Выше порога",
+        [
+          "c:5"
+        ],
+        "5 < 3 → false",
+        "Ключ c остаётся."
+      ],
+      [
+        "Выход",
+        [
+          "b:3",
+          "c:5"
+        ],
+        "return 1",
+        "Исходная map изменена согласно контракту."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать счётчик",
+        "removed:=0",
+        "Считаем только удалённые ключи."
+      ],
+      [
+        "Обойти map",
+        "for k,v:=range quotas {",
+        "Порядок обхода не задан и не важен."
+      ],
+      [
+        "Проверить значение",
+        "if v<min {",
+        "Строгое сравнение сохраняет равные min записи."
+      ],
+      [
+        "Удалить и посчитать",
+        "delete(quotas,k);removed++\n}\n}",
+        "Удалять текущий ключ во время range разрешено."
+      ],
+      [
+        "Вернуть количество",
+        "return removed",
+        "При nil map цикл не выполнится."
+      ]
+    ],
+    "blocks": [
+      "Вернуть количество",
+      "Создать счётчик",
+      "Обойти map",
+      "Проверить значение",
+      "Удалить и посчитать"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if v ",
+        "after": " min",
+        "options": [
+          "<",
+          "<=",
+          ">"
+        ],
+        "correct": 0,
+        "explain": "По контракту удаляем строго меньшие."
+      },
+      {
+        "before": "delete(quotas,",
+        "after": ")",
+        "options": [
+          "v",
+          "k",
+          "min"
+        ],
+        "correct": 1,
+        "explain": "delete принимает ключ map."
+      }
+    ],
+    "partial": "package practice\n\nfunc RemoveLowQuotas(quotas map[string]int, min int) int {\n\tremoved:=0\n\tfor k,v:=range quotas {\n\t if v<min {\n\t // TODO: удали ключ и обнови счётчик\n\t _=k\n\t }\n\t}\n\treturn removed\n}\n",
+    "bug": "package practice\n\nfunc RemoveLowQuotas(quotas map[string]int, min int) int {\n\tremoved:=0\n\tfor k,v:=range quotas { if v<=min { delete(quotas,k);removed++ } }\n\treturn removed\n}\n",
+    "hints": [
+      "Удали из переданной map все записи со значением строго меньше min. Верни количество удалённых ключей. Значение, равное min, оставь. Nil map допустима.",
+      "Считаем только удалённые ключи.",
+      "Порядок обхода не задан и не важен.",
+      "Удалять текущий ключ во время range разрешено.",
+      "removed:=0"
+    ],
+    "related": [
+      [
+        "core-lookup",
+        "Проверить наличие квоты пользователя"
+      ]
+    ],
+    "production": "Очистка локальных наборов настроек по предикату. Для общей map с конкурентным доступом нужна синхронизация; для сохранения оригинала сначала сделай копию.",
+    "interview": "Можно ли удалять ключи map во время range?"
+  },
+  "core-deep-map": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "a → [1,2]",
+          "b → nil"
+        ],
+        "groups",
+        "Значения map — дескрипторы срезов."
+      ],
+      [
+        "Поверхностная копия",
+        [
+          "out.a → тот же массив"
+        ],
+        "out[k]=v",
+        "Новая map, но backing array общий."
+      ],
+      [
+        "Независимая копия",
+        [
+          "out.a → [0,0]"
+        ],
+        "dst:=make([]int,2)",
+        "Создаём новый массив для каждой группы."
+      ],
+      [
+        "Копируем",
+        [
+          "out.a → [1,2]",
+          "out.b → nil"
+        ],
+        "copy(dst,v)",
+        "Сохраняем данные и nil-контракт."
+      ],
+      [
+        "Проверка",
+        [
+          "out.a[0]=9",
+          "groups.a[0]=1"
+        ],
+        "оригинал не изменён",
+        "Независимость вложенных срезов обеспечена."
+      ]
+    ],
+    "steps": [
+      [
+        "Выделить map",
+        "out:=make(map[string][]int,len(groups))",
+        "Внешняя коллекция независима."
+      ],
+      [
+        "Перебрать записи",
+        "for k,v:=range groups {",
+        "Каждое значение — отдельный срез."
+      ],
+      [
+        "Сохранить nil",
+        "if v==nil { out[k]=nil;continue }",
+        "Не превращаем nil в пустой не nil срез."
+      ],
+      [
+        "Создать и заполнить копию",
+        "dst:=make([]int,len(v));copy(dst,v)",
+        "Для int достаточно копирования элементов."
+      ],
+      [
+        "Записать и вернуть",
+        "out[k]=dst\n}\nreturn out",
+        "Независимость сохраняется и при изменении вложенного массива."
+      ]
+    ],
+    "blocks": [
+      "Записать и вернуть",
+      "Выделить map",
+      "Перебрать записи",
+      "Сохранить nil",
+      "Создать и заполнить копию"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "dst:=make([]int,",
+        "after": ")",
+        "options": [
+          "cap(groups)",
+          "len(v)",
+          "0"
+        ],
+        "correct": 1,
+        "explain": "copy ограничен длиной назначения."
+      },
+      {
+        "before": "copy(dst,",
+        "after": ")",
+        "options": [
+          "v",
+          "dst",
+          "groups"
+        ],
+        "correct": 0,
+        "explain": "Копируем текущий вложенный срез."
+      }
+    ],
+    "partial": "package practice\n\nfunc CloneGroups(groups map[string][]int) map[string][]int {\n\tout:=make(map[string][]int,len(groups))\n\tfor k,v:=range groups {\n\t if v==nil { out[k]=nil;continue }\n\t dst:=make([]int,len(v))\n\t // TODO: перенеси элементы v в dst\n\t out[k]=dst\n\t}\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc CloneGroups(groups map[string][]int) map[string][]int {\n\tout:=make(map[string][]int,len(groups))\n\tfor k,v:=range groups { out[k]=v }\n\treturn out\n}\n",
+    "hints": [
+      "Верни независимую map с независимыми backing arrays всех ненулевых срезов. Сохрани nil-срезы и отличие пустого не nil среза от nil. Вход не меняй; nil map превращается в пустую не nil map.",
+      "Внешняя коллекция независима.",
+      "Каждое значение — отдельный срез.",
+      "Для int достаточно копирования элементов.",
+      "out:=make(map[string][]int,len(groups))"
+    ],
+    "related": [
+      [
+        "core-map-merge",
+        "Объединить две map с приоритетом"
+      ]
+    ],
+    "production": "Создание снимка локального состояния с коллекциями значений. Для указателей, вложенных map и структур с ссылочными полями требуется отдельный контракт копирования; конкурентное чтение оригинала должно быть безопасным.",
+    "interview": "Почему maps.Clone недостаточно для map[string][]int?"
+  },
+  "core-sorted-keys": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "z:7",
+          "a:2",
+          "m:0"
+        ],
+        "quotas",
+        "Map не обещает порядок обхода."
+      ],
+      [
+        "Собираем ключи",
+        [
+          "z",
+          "a",
+          "m"
+        ],
+        "keys=[z,a,m]",
+        "Один из возможных порядков range."
+      ],
+      [
+        "Сортируем",
+        [
+          "a",
+          "m",
+          "z"
+        ],
+        "slices.Sort(keys)",
+        "Сравниваем строки в порядке Go."
+      ],
+      [
+        "Выход",
+        [
+          "a",
+          "m",
+          "z"
+        ],
+        "return keys",
+        "Результат детерминирован для того же набора ключей."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать пустой срез",
+        "keys:=make([]string,0,len(quotas))",
+        "Нулевая длина нужна для append, cap резервирует место."
+      ],
+      [
+        "Собрать ключи",
+        "for k:=range quotas { keys=append(keys,k) }",
+        "Один результат range по map — ключ."
+      ],
+      [
+        "Отсортировать",
+        "slices.Sort(keys)",
+        "Сортировка устраняет зависимость от порядка range."
+      ],
+      [
+        "Вернуть результат",
+        "return keys",
+        "Значения map не используются."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Создать пустой срез",
+      "Собрать ключи",
+      "Отсортировать"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "make([]string,",
+        "after": ",len(quotas))",
+        "options": [
+          "0",
+          "len(quotas)",
+          "1"
+        ],
+        "correct": 0,
+        "explain": "Начинаем без элементов, иначе append добавит лишние пустые строки."
+      },
+      {
+        "before": "for ",
+        "after": " :=range quotas",
+        "options": [
+          "k",
+          "v,ok",
+          "len"
+        ],
+        "correct": 0,
+        "explain": "Один результат range — ключ."
+      }
+    ],
+    "partial": "package practice\n\nfunc SortedQuotaKeys(quotas map[string]int) []string {\n\tkeys:=make([]string,0,len(quotas))\n\tfor k:=range quotas { keys=append(keys,k) }\n\t// TODO: отсортируй ключи\n\treturn keys\n}\n",
+    "bug": "package practice\n\nfunc SortedQuotaKeys(quotas map[string]int) []string {\n\tkeys:=make([]string,len(quotas))\n\tfor k:=range quotas { keys=append(keys,k) }\n\tslices.Sort(keys)\n\treturn keys\n}\n",
+    "hints": [
+      "Верни новый срез всех ключей map в лексикографическом порядке Go. Не меняй map; nil map даёт пустой результат.",
+      "Нулевая длина нужна для append, cap резервирует место.",
+      "Один результат range по map — ключ.",
+      "Сортировка устраняет зависимость от порядка range.",
+      "keys:=make([]string,0,len(quotas))"
+    ],
+    "related": [
+      [
+        "core-sort-copy",
+        "Отсортировать независимую копию"
+      ]
+    ],
+    "production": "Детерминированный вывод диагностических данных, стабильные обходы узлов и сравнимые отчёты. Лексикографический порядок Go не равен языковой сортировке для всех локалей.",
+    "interview": "Как получить детерминированный порядок обхода map?"
   }
 };
