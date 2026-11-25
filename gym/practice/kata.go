@@ -180,3 +180,13 @@ type TxBeginner interface { BeginTx(context.Context) (Tx,error) }
 func WithinTx(ctx context.Context, db TxBeginner, work func(context.Context,Tx)error) error {
  _=ctx;_=db;_=work;return nil
 }
+
+func DefaultRetries(configured int) int { return 0 }
+
+func Sum(values []int) int { return 0 }
+
+func CountPositive(values []int) int { return 0 }
+
+func ClampLimit(limit, max int) int { return 0 }
+
+func SwapInts(a, b *int) bool { return false }

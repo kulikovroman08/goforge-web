@@ -460,3 +460,36 @@ func TestWithinTx(t *testing.T) {
   if len(log)!=0{t.Fatalf("began after cancel: %v",log)}
  })
 }
+
+func TestDefaultRetries(t *testing.T) {
+ if got := DefaultRetries(0); got != 3 { t.Errorf("got %v, want 3", got) }
+ if got := DefaultRetries(-2); got != 3 { t.Errorf("got %v, want 3", got) }
+ if got := DefaultRetries(5); got != 5 { t.Errorf("got %v, want 5", got) }
+}
+
+func TestSum(t *testing.T) {
+ if got := Sum([]int{2,3,-1}); got != 4 { t.Errorf("got %v, want 4", got) }
+ if got := Sum(nil); got != 0 { t.Errorf("got %v, want 0", got) }
+ if got := Sum([]int{-2,-3}); got != -5 { t.Errorf("got %v, want -5", got) }
+}
+
+func TestCountPositive(t *testing.T) {
+ if got := CountPositive([]int{-1,0,2,5}); got != 2 { t.Errorf("got %v, want 2", got) }
+ if got := CountPositive(nil); got != 0 { t.Errorf("got %v, want 0", got) }
+ if got := CountPositive([]int{0,-3}); got != 0 { t.Errorf("got %v, want 0", got) }
+}
+
+func TestClampLimit(t *testing.T) {
+ if got := ClampLimit(0,0); got != 0 { t.Errorf("got %v, want 0", got) }
+ if got := ClampLimit(-2,10); got != 1 { t.Errorf("got %v, want 1", got) }
+ if got := ClampLimit(50,10); got != 10 { t.Errorf("got %v, want 10", got) }
+ if got := ClampLimit(4,10); got != 4 { t.Errorf("got %v, want 4", got) }
+}
+
+func TestSwapInts(t *testing.T) {
+ a,b:=10,20
+ if !SwapInts(&a,&b)||a!=20||b!=10{t.Fatal(a,b)}
+ if SwapInts(nil,&b)||b!=10{t.Fatal("nil a")}
+ if SwapInts(&a,nil)||a!=20{t.Fatal("nil b")}
+ if !SwapInts(&a,&a)||a!=20{t.Fatal("same pointer")}
+}
