@@ -778,5 +778,407 @@ window.GOFORGE_GUIDES = {
     ],
     "production": "Валидация команды смены статуса до изменения объекта. При конкурентном доступе нужны отдельные гарантии синхронизации.",
     "interview": "Чем передача структуры по значению отличается от передачи указателя? Почему нельзя менять состояние до валидации?"
+  },
+  "slice-detach": {
+    "frames": [
+      [
+        "Исходный буфер",
+        [
+          "1",
+          "2",
+          "3",
+          "4"
+        ],
+        "n = 2",
+        "Нужны первые два байта, но не весь массив."
+      ],
+      [
+        "Ограничиваем n",
+        [
+          "1",
+          "2"
+        ],
+        "n = min(n, len(data))",
+        "Не выходим за длину."
+      ],
+      [
+        "Выделяем отдельно",
+        [
+          "0",
+          "0"
+        ],
+        "dst = [0, 0]",
+        "Новый массив не связан с data."
+      ],
+      [
+        "Копируем",
+        [
+          "1",
+          "2"
+        ],
+        "dst = [1, 2]",
+        "Изменение data[0] больше не меняет dst[0]."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить пустой результат",
+        "if n <= 0 { return []byte{} }",
+        "Неположительное число элементов означает пустой результат."
+      ],
+      [
+        "Ограничить длину",
+        "if n > len(data) { n = len(data) }",
+        "Не допускаем panic при срезании."
+      ],
+      [
+        "Создать массив результата",
+        "dst := make([]byte, n)",
+        "Длина n нужна, чтобы copy записал n элементов."
+      ],
+      [
+        "Скопировать байты",
+        "copy(dst, data[:n])",
+        "copy переносит значения, не ссылку на массив."
+      ],
+      [
+        "Вернуть копию",
+        "return dst",
+        "Результат владеет отдельным массивом."
+      ]
+    ],
+    "blocks": [
+      "Вернуть копию",
+      "Проверить пустой результат",
+      "Ограничить длину",
+      "Создать массив результата",
+      "Скопировать байты"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "dst := make([]byte, ",
+        "after": ")",
+        "options": [
+          "0",
+          "n",
+          "cap(data)"
+        ],
+        "correct": 1,
+        "explain": "copy ограничен длиной получателя."
+      },
+      {
+        "before": "copy(dst, data[:",
+        "after": "])",
+        "options": [
+          "n",
+          "cap(data)",
+          "0"
+        ],
+        "correct": 0,
+        "explain": "Копируем только нужный префикс."
+      },
+      {
+        "before": "return ",
+        "after": "",
+        "options": [
+          "data[:n]",
+          "data",
+          "dst"
+        ],
+        "correct": 2,
+        "explain": "Возвращаем независимый массив."
+      }
+    ],
+    "partial": "package practice\n\nfunc DetachedPrefix(data []byte, n int) []byte {\n\tif n <= 0 { return []byte{} }\n\tif n > len(data) { n = len(data) }\n\tdst := make([]byte, n)\n\t// TODO: скопируй префикс в dst\n\treturn dst\n}\n",
+    "bug": "package practice\n\nfunc DetachedPrefix(data []byte, n int) []byte {\n\tif n <= 0 { return []byte{} }\n\tif n > len(data) { n = len(data) }\n\treturn data[:n]\n}\n",
+    "hints": [
+      "Не возвращай просто окно в исходный массив.",
+      "Проверь n и ограничь длиной data.",
+      "Выдели отдельный []byte.",
+      "copy переносит минимум из двух длин.",
+      "dst := make([]byte, n)\n// скопируй data[:n]"
+    ],
+    "related": [
+      [
+        "pagination",
+        "Пагинация"
+      ],
+      [
+        "filter",
+        "Фильтрация"
+      ]
+    ],
+    "production": "Кэширование короткого префикса большого буфера. Отдельная копия позволяет GC освободить исходный массив, если других ссылок нет.",
+    "interview": "Почему уменьшение cap не освобождает backing array? Как проверить независимость тестом?"
+  },
+  "event-validation": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "Title: пробелы",
+          "OwnerID: 42"
+        ],
+        "req не меняем",
+        "Проверяем обязательные поля."
+      ],
+      [
+        "Убираем пробелы для проверки",
+        [
+          "Title: пусто",
+          "OwnerID: 42"
+        ],
+        "TrimSpace(Title) == \"\"",
+        "Пробелы не считаются значением."
+      ],
+      [
+        "Возвращаем ошибку",
+        [
+          "title required"
+        ],
+        "return error",
+        "Не продолжаем обработку невалидного запроса."
+      ],
+      [
+        "Валидный пример",
+        [
+          "Title: встреча",
+          "OwnerID: 42"
+        ],
+        "return nil",
+        "Оба поля заполнены."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить название",
+        "if strings.TrimSpace(req.Title) == \"\" { return errors.New(\"title required\") }",
+        "TrimSpace возвращает строку без крайних пробельных символов."
+      ],
+      [
+        "Проверить владельца",
+        "if strings.TrimSpace(req.OwnerID) == \"\" { return errors.New(\"owner required\") }",
+        "Второе обязательное поле проверяется отдельно."
+      ],
+      [
+        "Вернуть успех",
+        "return nil",
+        "Все условия выполнены."
+      ]
+    ],
+    "blocks": [
+      "Вернуть успех",
+      "Проверить название",
+      "Проверить владельца"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "strings.",
+        "after": "(req.Title)",
+        "options": [
+          "Split",
+          "TrimSpace",
+          "Join"
+        ],
+        "correct": 1,
+        "explain": "Нужно убрать пробелы по краям."
+      },
+      {
+        "before": "if strings.TrimSpace(req.OwnerID) ",
+        "after": " \"\" {",
+        "options": [
+          "!=",
+          "=",
+          "=="
+        ],
+        "correct": 2,
+        "explain": "Ошибка при пустом значении."
+      },
+      {
+        "before": "return ",
+        "after": "",
+        "options": [
+          "nil",
+          "req",
+          "true"
+        ],
+        "correct": 0,
+        "explain": "Функция возвращает error."
+      }
+    ],
+    "partial": "package practice\n\nfunc ValidateCreateEvent(req CreateEventRequest) error {\n\tif strings.TrimSpace(req.Title) == \"\" { return errors.New(\"title required\") }\n\t// TODO: проверь OwnerID\n\treturn nil\n}\n",
+    "bug": "package practice\n\nfunc ValidateCreateEvent(req CreateEventRequest) error {\n\tif req.Title == \"\" || req.OwnerID == \"\" { return errors.New(\"required\") }\n\treturn nil\n}\n",
+    "hints": [
+      "Запиши правила валидации словами.",
+      "Поля должны быть непустыми после TrimSpace.",
+      "Проверь каждое отдельно.",
+      "На ошибке сделай ранний return.",
+      "if strings.TrimSpace(req.Title) == \"\" {\n    return errors.New(\"title required\")\n}"
+    ],
+    "related": [
+      [
+        "event-pointer",
+        "Валидация перед записью"
+      ],
+      [
+        "filter",
+        "Условия"
+      ]
+    ],
+    "production": "Валидация API до обращения к репозиторию. Проверки должны быть детерминированными.",
+    "interview": "Как составить table-driven tests для пустых строк, пробелов и валидных полей?"
+  },
+  "perf-builder": {
+    "frames": [
+      [
+        "Начинаем",
+        [
+          "a",
+          "",
+          "b"
+        ],
+        "builder = \"\"",
+        "Пустые фрагменты тоже учитываем."
+      ],
+      [
+        "Первый фрагмент",
+        [
+          "a",
+          "",
+          "b"
+        ],
+        "a",
+        "До первого элемента разделитель не нужен."
+      ],
+      [
+        "Второй фрагмент",
+        [
+          "a",
+          "",
+          "b"
+        ],
+        "a|",
+        "Добавляем разделитель и пустую строку."
+      ],
+      [
+        "Третий фрагмент",
+        [
+          "a",
+          "",
+          "b"
+        ],
+        "a||b",
+        "Нет лишнего разделителя в конце."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать накопитель",
+        "var b strings.Builder",
+        "Builder хранит накапливаемые байты."
+      ],
+      [
+        "Перебрать части с индексом",
+        "for i, part := range parts {",
+        "Индекс помогает определить первый элемент."
+      ],
+      [
+        "Добавить разделитель не перед первым",
+        "    if i > 0 { b.WriteByte('|') }",
+        "Разделитель нужен между элементами."
+      ],
+      [
+        "Записать строку",
+        "    b.WriteString(part)\n}",
+        "Пустая строка допустима."
+      ],
+      [
+        "Вернуть итог",
+        "return b.String()",
+        "Получаем накопленную строку."
+      ]
+    ],
+    "blocks": [
+      "Вернуть итог",
+      "Создать накопитель",
+      "Перебрать части с индексом",
+      "Добавить разделитель не перед первым",
+      "Записать строку"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "var b strings.",
+        "after": "",
+        "options": [
+          "Reader",
+          "Builder",
+          "Replacer"
+        ],
+        "correct": 1,
+        "explain": "Builder накапливает строку."
+      },
+      {
+        "before": "if i ",
+        "after": " 0 { b.WriteByte('|') }",
+        "options": [
+          "==",
+          "<",
+          ">"
+        ],
+        "correct": 2,
+        "explain": "Разделитель перед каждым элементом после первого."
+      },
+      {
+        "before": "return b.",
+        "after": "()",
+        "options": [
+          "String",
+          "Len",
+          "Reset"
+        ],
+        "correct": 0,
+        "explain": "Нужна строка, а не длина."
+      }
+    ],
+    "partial": "package practice\n\nfunc BuildLogLine(parts []string) string {\n\tvar b strings.Builder\n\tfor i, part := range parts {\n\t\t// TODO: добавь разделитель где нужно\n\t\t_ = i\n\t\tb.WriteString(part)\n\t}\n\treturn b.String()\n}\n",
+    "bug": "package practice\n\nfunc BuildLogLine(parts []string) string {\n\tvar b strings.Builder\n\tfor _, part := range parts { b.WriteString(part); b.WriteByte('|') }\n\treturn b.String()\n}\n",
+    "hints": [
+      "Разделитель нужен между фрагментами.",
+      "Сохрани пустые фрагменты.",
+      "Используй индекс цикла.",
+      "Builder.WriteString добавляет строку.",
+      "var b strings.Builder\nfor i, part := range parts {\n    // добавь разделитель и part\n}"
+    ],
+    "related": [
+      [
+        "utf8-truncate",
+        "Строки и руны"
+      ],
+      [
+        "map-count",
+        "Циклы"
+      ]
+    ],
+    "production": "Сборка логов и текстовых полей. Сравни с strings.Join и измерь аллокации до оптимизации.",
+    "interview": "Почему повторное сложение строк может копировать накопленные данные? Когда Builder не нужен?"
   }
 };
