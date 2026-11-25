@@ -574,3 +574,19 @@ func TestRemoveAtCopy(t *testing.T) {
 func TestTransposeInts(t *testing.T) {
  in:=[][]int{{1,2,3},{4,5,6}};out,ok:=TransposeInts(in);if !ok||!reflect.DeepEqual(out,[][]int{{1,4},{2,5},{3,6}}){t.Fatal(out,ok)};out[0][0]=99;if in[0][0]!=1{t.Fatal("alias")};if out,ok:=TransposeInts([][]int{{1},{2,3}});ok||out!=nil{t.Fatal(out,ok)};for _,m:=range [][][]int{nil,{{},{}}}{if out,ok:=TransposeInts(m);!ok||len(out)!=0{t.Fatal(out,ok)}}
 }
+
+func TestBubbleSortInts(t *testing.T) {
+ for _,tc:=range []struct{in,want []int}{{[]int{5,2,4},[]int{2,4,5}},{[]int{3,3,-1},[]int{-1,3,3}},{nil,nil},{[]int{1},[]int{1}},{[]int{4,3,2,1},[]int{1,2,3,4}}}{BubbleSortInts(tc.in);if !reflect.DeepEqual(tc.in,tc.want){t.Fatal(tc)}}
+}
+
+func TestInsertionSortInts(t *testing.T) {
+ for _,tc:=range []struct{in,want []int}{{[]int{4,2,3},[]int{2,3,4}},{[]int{3,-1,3},[]int{-1,3,3}},{nil,nil},{[]int{1},[]int{1}},{[]int{4,3,2,1},[]int{1,2,3,4}}}{InsertionSortInts(tc.in);if !reflect.DeepEqual(tc.in,tc.want){t.Fatal(tc)}}
+}
+
+func TestSortedIntsCopy(t *testing.T) {
+ in:=[]int{7,2,5,-1,2};out:=SortedIntsCopy(in);if !reflect.DeepEqual(out,[]int{-1,2,2,5,7})||!reflect.DeepEqual(in,[]int{7,2,5,-1,2}){t.Fatal(in,out)};out[0]=99;if in[0]!=7||in[3]!=-1{t.Fatal("alias")};if len(SortedIntsCopy(nil))!=0{t.Fatal("empty")}
+}
+
+func TestMergeSortedInts(t *testing.T) {
+ for _,tc:=range []struct{a,b,want []int}{{[]int{1,4},[]int{2,3,5},[]int{1,2,3,4,5}},{[]int{1,1},[]int{1},[]int{1,1,1}},{nil,[]int{2},[]int{2}},{[]int{1,2},nil,[]int{1,2}}}{got:=MergeSortedInts(tc.a,tc.b);if !reflect.DeepEqual(got,tc.want){t.Fatal(tc,got)}};a,b:=[]int{1},[]int{2};out:=MergeSortedInts(a,b);out[0],out[1]=9,9;if a[0]!=1||b[0]!=2{t.Fatal("alias")};if len(MergeSortedInts(nil,nil))!=0{t.Fatal("empty")}
+}

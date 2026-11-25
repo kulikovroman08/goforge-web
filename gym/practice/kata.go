@@ -2,6 +2,7 @@ package practice
 
 import (
  "context"
+ "slices"
  "strconv"
  "errors"
  "fmt"
@@ -233,3 +234,13 @@ func LowerBoundIndex(values []int, target int) int { return -1 }
 func RemoveAtCopy(values []int, index int) ([]int, bool) { return nil, false }
 
 func TransposeInts(matrix [][]int) ([][]int, bool) { return nil, false }
+
+func BubbleSortInts(values []int) {  }
+
+func InsertionSortInts(values []int) {  }
+
+func SortedIntsCopy(values []int) []int { return nil }
+
+func MergeSortedInts(a, b []int) []int { return nil }
+
+var _ = slices.Sort[[]int,int]

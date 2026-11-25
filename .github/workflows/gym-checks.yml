@@ -58,3 +58,6 @@ jobs:
         run: |
           node gym/guided-check.cjs
           node gym/core-guided-check.cjs
+
+      - name: Run new Core reference solutions and negative fixtures
+        run: node gym/core-solutions-check.cjs
