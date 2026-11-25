@@ -14,6 +14,15 @@ try {state=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{state={}}
 state.selected=state.selected||catalog[0]?.id;
 state.tab=state.tab||'learn';
 state.progress=state.progress||{};
+// Explicit links from Trainer open a task without removing its saved draft.
+// Ignore unknown task IDs and tabs; ordinary visits keep their previous state.
+const entryParams=new URLSearchParams(window.location.search);
+const entryTask=entryParams.get('task');
+if(catalog.some(t=>t.id===entryTask)){
+ state.selected=entryTask;
+ const entryTab=entryParams.get('tab');
+ state.tab=['learn','quiz','code','repeat'].includes(entryTab)?entryTab:'learn';
+}
 const testNames={"dedupe":"TestUniqueUsers","filter":"TestActive","errors":"TestWithContext","json":"TestDecodeEvent","pagination":"TestPage","retry":"TestRetry","race":"TestCounter","typednil":"TestMaybeError","map-count":"TestCountStatuses","utf8-truncate":"TestTruncateRunes","channel-merge":"TestMergeInts","http-health":"TestHealthHandler","event-pointer":"TestUpdateEventStatus","activity-methods":"TestChatActivityApplyMessage","defer-cleanup":"TestCloseWithError","worker-pool":"TestProcessJobs","http-middleware":"TestRequestIDMiddleware","select-first":"TestWaitMessage","event-validation":"TestValidateCreateEvent","slice-detach":"TestDetachedPrefix","idempotent-events":"TestEventProcessor","grpc-errors":"TestMapServiceError","pg-keyset":"TestBuildEventsPageQuery","kafka-ack":"TestHandleAndCommit","perf-builder":"TestBuildLogLine","generic-unique":"TestUniqueValues","gc-cache":"TestEvictExpired","scheduler-fanout":"TestRunLimited","channel-pipeline":"TestSquarePipeline","pg-transaction":"TestWithinTx"};
 const getTheory=id=>theory.find(t=>t.id===id);
 const getQuestions=task=>task.quiz.concat(extraQuestions[task.id]||[]);
