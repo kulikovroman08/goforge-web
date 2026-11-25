@@ -53,3 +53,8 @@ jobs:
             console.log(task.id,all.length,'questions',t.theory.length,'sections');
           }
           JS
+
+      - name: Validate guided coding materials
+        run: |
+          node gym/guided-check.cjs
+          node gym/core-guided-check.cjs

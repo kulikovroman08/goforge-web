@@ -190,3 +190,11 @@ func CountPositive(values []int) int { return 0 }
 func ClampLimit(limit, max int) int { return 0 }
 
 func SwapInts(a, b *int) bool { return false }
+
+func MaxValue(values []int) (int, bool) { return 0, false }
+
+func ReverseCopy(values []int) []int { return nil }
+
+func ConcatInts(a, b []int) []int { return nil }
+
+func FirstRepeat(values []int) (int, bool) { return 0, false }

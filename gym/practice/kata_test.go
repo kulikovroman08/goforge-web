@@ -493,3 +493,19 @@ func TestSwapInts(t *testing.T) {
  if SwapInts(&a,nil)||a!=20{t.Fatal("nil b")}
  if !SwapInts(&a,&a)||a!=20{t.Fatal("same pointer")}
 }
+
+func TestMaxValue(t *testing.T) {
+ for _,tc:=range []struct{in []int; want int; ok bool}{{nil,0,false},{[]int{-5,-2,-8},-2,true},{[]int{0},0,true},{[]int{1,9,2},9,true}} {v,ok:=MaxValue(tc.in);if v!=tc.want||ok!=tc.ok{t.Fatalf("%v: got %d,%v",tc.in,v,ok)}}
+}
+
+func TestReverseCopy(t *testing.T) {
+ in:=[]int{1,2,3};out:=ReverseCopy(in);if !reflect.DeepEqual(out,[]int{3,2,1})||!reflect.DeepEqual(in,[]int{1,2,3}){t.Fatal(in,out)};out[0]=9;if in[2]!=3{t.Fatal("alias")};if len(ReverseCopy(nil))!=0{t.Fatal("empty")}
+}
+
+func TestConcatInts(t *testing.T) {
+ a:=make([]int,2,8);a[0],a[1]=1,2;b:=[]int{3,4};out:=ConcatInts(a,b);if !reflect.DeepEqual(out,[]int{1,2,3,4}){t.Fatal(out)};out[0],out[2]=9,9;if a[0]!=1||b[0]!=3{t.Fatal("alias")};if len(ConcatInts(nil,nil))!=0{t.Fatal("empty")}
+}
+
+func TestFirstRepeat(t *testing.T) {
+ for _,tc:=range []struct{in []int;want int;ok bool}{{[]int{4,2,2,4},2,true},{[]int{0,0},0,true},{[]int{1,2},0,false},{nil,0,false}} {v,ok:=FirstRepeat(tc.in);if v!=tc.want||ok!=tc.ok{t.Fatal(tc,v,ok)}}
+}
