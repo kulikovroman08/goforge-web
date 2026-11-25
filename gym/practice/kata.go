@@ -244,3 +244,11 @@ func SortedIntsCopy(values []int) []int { return nil }
 func MergeSortedInts(a, b []int) []int { return nil }
 
 var _ = slices.Sort[[]int,int]
+
+func InsertAtCopy(values []int, index, value int) ([]int, bool) { return nil,false }
+
+func IntersectInts(a, b []int) []int { return nil }
+
+func DifferenceInts(a, b []int) []int { return nil }
+
+func MergeQuotas(a, b map[string]int) map[string]int { return nil }

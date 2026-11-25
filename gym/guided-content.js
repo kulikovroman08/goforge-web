@@ -4593,5 +4593,523 @@ window.GOFORGE_GUIDES = {
     ],
     "production": "Слияние отсортированных результатов из двух источников или шардов. Для нескольких потоков можно расширить идею через очередь с приоритетом.",
     "interview": "Почему слияние занимает O(n+m), а не O(n*m)?"
+  },
+  "core-insert": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "10",
+          "20",
+          "30"
+        ],
+        "index=1, value=99",
+        "Вставляем перед старым элементом с индексом 1."
+      ],
+      [
+        "Префикс",
+        [
+          "10"
+        ],
+        "out=[10]",
+        "Копируем часть до index."
+      ],
+      [
+        "Вставка",
+        [
+          "10",
+          "99"
+        ],
+        "out=append(out,99)",
+        "Добавляем новое число."
+      ],
+      [
+        "Суффикс",
+        [
+          "10",
+          "99",
+          "20",
+          "30"
+        ],
+        "out=append(out,values[1:]...)",
+        "Копируем всё начиная с прежнего index."
+      ],
+      [
+        "Выход",
+        [
+          "10",
+          "99",
+          "20",
+          "30"
+        ],
+        "return out,true",
+        "Оригинал [10,20,30] не изменился."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить границы",
+        "if index<0 || index>len(values) { return nil,false }",
+        "Для вставки допустима позиция len, в отличие от удаления."
+      ],
+      [
+        "Выделить результат",
+        "out:=make([]int,0,len(values)+1)",
+        "Новый массив гарантирует независимость элементов."
+      ],
+      [
+        "Добавить префикс",
+        "out=append(out,values[:index]...)",
+        "Правая граница не входит в срез."
+      ],
+      [
+        "Вставить число",
+        "out=append(out,value)",
+        "Один новый элемент в нужной позиции."
+      ],
+      [
+        "Добавить суффикс",
+        "out=append(out,values[index:]...)",
+        "Сохраняем и старый элемент index."
+      ],
+      [
+        "Вернуть результат",
+        "return out,true",
+        "Получили на один элемент больше."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Проверить границы",
+      "Выделить результат",
+      "Добавить префикс",
+      "Вставить число",
+      "Добавить суффикс"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "index ",
+        "after": " len(values)",
+        "options": [
+          ">",
+          ">=",
+          "=="
+        ],
+        "correct": 0,
+        "explain": "Вставка в конец допустима."
+      },
+      {
+        "before": "out=append(out,values[",
+        "after": ":]...)",
+        "options": [
+          "index",
+          "index+1",
+          "0"
+        ],
+        "correct": 0,
+        "explain": "Суффикс включает старый элемент index."
+      }
+    ],
+    "partial": "package practice\n\nfunc InsertAtCopy(values []int, index, value int) ([]int, bool) {\n\tif index<0 || index>len(values) { return nil,false }\n\tout:=make([]int,0,len(values)+1)\n\tout=append(out,values[:index]...)\n\t// TODO: добавь value\n\tout=append(out,values[index:]...)\n\treturn out,true\n}\n",
+    "bug": "package practice\n\nfunc InsertAtCopy(values []int, index, value int) ([]int, bool) {\n\tif index<0 || index>=len(values) { return nil,false }\n\tout:=make([]int,0,len(values)+1)\n\tout=append(out,values[:index]...)\n\tout=append(out,value)\n\tout=append(out,values[index:]...)\n\treturn out,true\n}\n",
+    "hints": [
+      "Вставь value перед элементом index, сохрани порядок и не меняй исходный массив. index==len(values) означает добавление в конец. Недопустимый индекс — nil,false.",
+      "Для вставки допустима позиция len, в отличие от удаления.",
+      "Новый массив гарантирует независимость элементов.",
+      "Сохраняем и старый элемент index.",
+      "if index<0 || index>len(values) { return nil,false }"
+    ],
+    "related": [
+      [
+        "core-remove",
+        "Удалить элемент без изменения исходного среза"
+      ]
+    ],
+    "production": "Добавление элемента в упорядоченный список интерфейса без мутации общей коллекции. Для очень больших списков учитывай стоимость копирования.",
+    "interview": "Чем диапазон допустимых индексов вставки отличается от удаления?"
+  },
+  "core-intersection": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "a: 3,1,3,2",
+          "b: 2,3"
+        ],
+        "members={2,3}",
+        "Map хранит кандидатов из b."
+      ],
+      [
+        "Первое число",
+        [
+          "3"
+        ],
+        "out=[3], members={2}",
+        "3 входит в b; после выдачи удаляем ключ."
+      ],
+      [
+        "Следующие числа",
+        [
+          "1",
+          "3"
+        ],
+        "out=[3]",
+        "1 отсутствует, повтор 3 уже выдан."
+      ],
+      [
+        "Последнее число",
+        [
+          "2"
+        ],
+        "out=[3,2]",
+        "2 есть в members."
+      ],
+      [
+        "Выход",
+        [
+          "3",
+          "2"
+        ],
+        "return out",
+        "Порядок первого появления в a сохранён."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать множество b",
+        "members:=make(map[int]struct{},len(b))\nfor _,v:=range b { members[v]=struct{}{} }",
+        "Проверяем наличие, а не количество."
+      ],
+      [
+        "Создать результат",
+        "out:=make([]int,0)",
+        "Результат формируется в порядке a."
+      ],
+      [
+        "Перебрать a",
+        "for _,v:=range a { if _,ok:=members[v];ok {",
+        "Только общие элементы подходят."
+      ],
+      [
+        "Добавить и удалить ключ",
+        "out=append(out,v);delete(members,v)\n} }",
+        "Удаляем из локальной map, чтобы не выдавать дубли."
+      ],
+      [
+        "Вернуть пересечение",
+        "return out",
+        "Входные срезы не меняются."
+      ]
+    ],
+    "blocks": [
+      "Вернуть пересечение",
+      "Создать множество b",
+      "Создать результат",
+      "Перебрать a",
+      "Добавить и удалить ключ"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if _,ok:=members[v]; ",
+        "after": " {",
+        "options": [
+          "ok",
+          "!ok",
+          "v"
+        ],
+        "correct": 0,
+        "explain": "Нужен элемент, который есть в обоих множествах."
+      },
+      {
+        "before": "delete(members,",
+        "after": ")",
+        "options": [
+          "v",
+          "a",
+          "b"
+        ],
+        "correct": 0,
+        "explain": "После выдачи удаляем именно текущий ключ."
+      }
+    ],
+    "partial": "package practice\n\nfunc IntersectInts(a, b []int) []int {\n\tmembers:=make(map[int]struct{},len(b))\n\tfor _,v:=range b { members[v]=struct{}{} }\n\tout:=make([]int,0)\n\tfor _,v:=range a { if _,ok:=members[v];ok { out=append(out,v); /* TODO: исключи повторную выдачу */ } }\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc IntersectInts(a, b []int) []int {\n\tmembers:=make(map[int]struct{},len(b))\n\tfor _,v:=range b { members[v]=struct{}{} }\n\tout:=make([]int,0)\n\tfor _,v:=range a { if _,ok:=members[v];ok { out=append(out,v) } }\n\treturn out\n}\n",
+    "hints": [
+      "Верни уникальные числа, которые присутствуют в обоих срезах, в порядке первого появления в a. Входы не меняй. Пустой результат допустим.",
+      "Проверяем наличие, а не количество.",
+      "Результат формируется в порядке a.",
+      "Удаляем из локальной map, чтобы не выдавать дубли.",
+      "members:=make(map[int]struct{},len(b))\nfor _,v:=range b { members[v]=struct{}{} }"
+    ],
+    "related": [
+      [
+        "core-frequency",
+        "Посчитать частоту чисел"
+      ]
+    ],
+    "production": "Получить общие ID между двумя наборами. Для пересечения списков прав доступа обязательно учитывай актуальность источников и точный контракт.",
+    "interview": "Как получить уникальное пересечение за ожидаемое O(n+m)?"
+  },
+  "core-difference": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "a: 3,1,3,2,4",
+          "b: 1,4"
+        ],
+        "blocked={1,4}",
+        "Исключаем числа из b."
+      ],
+      [
+        "Первый элемент",
+        [
+          "3"
+        ],
+        "out=[3], blocked={1,4,3}",
+        "3 разрешено; после добавления отмечаем его."
+      ],
+      [
+        "Следующие элементы",
+        [
+          "1",
+          "3"
+        ],
+        "out=[3]",
+        "1 исключён, 3 уже выдано."
+      ],
+      [
+        "Остаток",
+        [
+          "2",
+          "4"
+        ],
+        "out=[3,2]",
+        "Добавляем 2, пропускаем 4."
+      ],
+      [
+        "Выход",
+        [
+          "3",
+          "2"
+        ],
+        "return out",
+        "Разница A\\B с сохранением порядка."
+      ]
+    ],
+    "steps": [
+      [
+        "Построить множество исключений",
+        "blocked:=make(map[int]struct{},len(b))\nfor _,v:=range b { blocked[v]=struct{}{} }",
+        "Все элементы b запрещены к выдаче."
+      ],
+      [
+        "Создать результат",
+        "out:=make([]int,0)",
+        "Добавляем только разрешённые элементы."
+      ],
+      [
+        "Перебрать a",
+        "for _,v:=range a { if _,ok:=blocked[v];ok { continue }",
+        "Пропускаем исключения и уже выданные числа."
+      ],
+      [
+        "Добавить и отметить",
+        "out=append(out,v);blocked[v]=struct{}{}\n}",
+        "Добавленный элемент больше не выдаём."
+      ],
+      [
+        "Вернуть результат",
+        "return out",
+        "Порядок соответствует первому появлению в a."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Построить множество исключений",
+      "Создать результат",
+      "Перебрать a",
+      "Добавить и отметить"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if _,ok:=blocked[v];ok { ",
+        "after": " }",
+        "options": [
+          "continue",
+          "break",
+          "return nil"
+        ],
+        "correct": 0,
+        "explain": "Пропускаем только текущий элемент."
+      },
+      {
+        "before": "blocked[v]=",
+        "after": "",
+        "options": [
+          "struct{}{}",
+          "false",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Отмечаем уже выданный элемент."
+      }
+    ],
+    "partial": "package practice\n\nfunc DifferenceInts(a, b []int) []int {\n\tblocked:=make(map[int]struct{},len(b))\n\tfor _,v:=range b { blocked[v]=struct{}{} }\n\tout:=make([]int,0)\n\tfor _,v:=range a { /* TODO: пропусти заблокированное число */ out=append(out,v);blocked[v]=struct{}{} }\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc DifferenceInts(a, b []int) []int {\n\tblocked:=make(map[int]struct{},len(b))\n\tfor _,v:=range b { blocked[v]=struct{}{} }\n\tout:=make([]int,0)\n\tfor _,v:=range a { if _,ok:=blocked[v];ok { continue };out=append(out,v) }\n\treturn out\n}\n",
+    "hints": [
+      "Верни уникальные числа из a, отсутствующие в b, в порядке первого появления в a. Входы не меняй.",
+      "Все элементы b запрещены к выдаче.",
+      "Добавляем только разрешённые элементы.",
+      "Добавленный элемент больше не выдаём.",
+      "blocked:=make(map[int]struct{},len(b))\nfor _,v:=range b { blocked[v]=struct{}{} }"
+    ],
+    "related": [
+      [
+        "core-intersection",
+        "Найти пересечение множеств"
+      ]
+    ],
+    "production": "Сравнение уже обработанных ID с новым батчем. Локальное множество помогает вычислить недостающие элементы, но не заменяет идемпотентность при конкурентной обработке.",
+    "interview": "Коммутативна ли разница множеств?"
+  },
+  "core-map-merge": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "a: x=5, y=2",
+          "b: x=0, z=7"
+        ],
+        "out={}",
+        "Нужна новая map."
+      ],
+      [
+        "Копируем a",
+        [
+          "x=5",
+          "y=2"
+        ],
+        "out={x:5,y:2}",
+        "Сохраняем исходные настройки."
+      ],
+      [
+        "Копируем b",
+        [
+          "x=0",
+          "y=2",
+          "z=7"
+        ],
+        "out[x]=0",
+        "b имеет приоритет, даже если значение ноль."
+      ],
+      [
+        "Выход",
+        [
+          "x=0",
+          "y=2",
+          "z=7"
+        ],
+        "return out",
+        "Обе исходные map неизменны."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать независимую map",
+        "out:=make(map[string]int,len(a)+len(b))",
+        "Подсказка размера не задаёт точное число элементов."
+      ],
+      [
+        "Перенести a",
+        "for k,v:=range a { out[k]=v }",
+        "Копируем базовые значения."
+      ],
+      [
+        "Перенести b",
+        "for k,v:=range b { out[k]=v }",
+        "Присваивание перезаписывает конфликтующие ключи."
+      ],
+      [
+        "Вернуть результат",
+        "return out",
+        "Ключи и int скопированы; map независима."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Создать независимую map",
+      "Перенести a",
+      "Перенести b"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "for k,v:=range ",
+        "after": " { out[k]=v }",
+        "options": [
+          "a",
+          "out",
+          "b"
+        ],
+        "correct": 2,
+        "explain": "Последней копируем map с приоритетом b."
+      },
+      {
+        "before": "out[",
+        "after": "]=v",
+        "options": [
+          "k",
+          "v",
+          "len(out)"
+        ],
+        "correct": 0,
+        "explain": "Ключ сохраняется при переносе."
+      }
+    ],
+    "partial": "package practice\n\nfunc MergeQuotas(a, b map[string]int) map[string]int {\n\tout:=make(map[string]int,len(a)+len(b))\n\tfor k,v:=range a { out[k]=v }\n\t// TODO: перенеси b с приоритетом над a\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc MergeQuotas(a, b map[string]int) map[string]int {\n\tout:=make(map[string]int,len(a)+len(b))\n\tfor k,v:=range b { out[k]=v }\n\tfor k,v:=range a { out[k]=v }\n\treturn out\n}\n",
+    "hints": [
+      "Верни новую map со всеми ключами a и b. При совпадении ключей побеждает b, включая значение 0. Не меняй входы и не разделяй с ними map. Для двух nil верни инициализированную пустую map.",
+      "Подсказка размера не задаёт точное число элементов.",
+      "Копируем базовые значения.",
+      "Присваивание перезаписывает конфликтующие ключи.",
+      "out:=make(map[string]int,len(a)+len(b))"
+    ],
+    "related": [
+      [
+        "core-lookup",
+        "Проверить наличие квоты пользователя"
+      ]
+    ],
+    "production": "Объединение конфигурационных значений с явным приоритетом источника. Если значения содержат срезы или указатели, копирование map не является глубоким.",
+    "interview": "Почему out := a не создаёт независимую map?"
   }
 };

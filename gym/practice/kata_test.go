@@ -590,3 +590,19 @@ func TestSortedIntsCopy(t *testing.T) {
 func TestMergeSortedInts(t *testing.T) {
  for _,tc:=range []struct{a,b,want []int}{{[]int{1,4},[]int{2,3,5},[]int{1,2,3,4,5}},{[]int{1,1},[]int{1},[]int{1,1,1}},{nil,[]int{2},[]int{2}},{[]int{1,2},nil,[]int{1,2}}}{got:=MergeSortedInts(tc.a,tc.b);if !reflect.DeepEqual(got,tc.want){t.Fatal(tc,got)}};a,b:=[]int{1},[]int{2};out:=MergeSortedInts(a,b);out[0],out[1]=9,9;if a[0]!=1||b[0]!=2{t.Fatal("alias")};if len(MergeSortedInts(nil,nil))!=0{t.Fatal("empty")}
 }
+
+func TestInsertAtCopy(t *testing.T) {
+ in:=[]int{10,20,30};out,ok:=InsertAtCopy(in,1,99);if !ok||!reflect.DeepEqual(out,[]int{10,99,20,30})||!reflect.DeepEqual(in,[]int{10,20,30}){t.Fatal(in,out,ok)};out[0]=0;if in[0]!=10{t.Fatal("alias")};for _,tc:=range []struct{v []int;i,x int;want []int}{{nil,0,7,[]int{7}},{[]int{1},1,2,[]int{1,2}},{[]int{1},0,2,[]int{2,1}}}{out,ok:=InsertAtCopy(tc.v,tc.i,tc.x);if !ok||!reflect.DeepEqual(out,tc.want){t.Fatal(tc,out,ok)}};for _,i:=range []int{-1,4}{out,ok:=InsertAtCopy(in,i,0);if ok||out!=nil{t.Fatal(i,out,ok)}}
+}
+
+func TestIntersectInts(t *testing.T) {
+ a,b:=[]int{3,1,3,2},[]int{2,3};if got:=IntersectInts(a,b);!reflect.DeepEqual(got,[]int{3,2}){t.Fatal(got)};if !reflect.DeepEqual(a,[]int{3,1,3,2})||!reflect.DeepEqual(b,[]int{2,3}){t.Fatal("modified inputs")};if got:=IntersectInts([]int{1,1},[]int{1,1});!reflect.DeepEqual(got,[]int{1}){t.Fatal(got)};if len(IntersectInts([]int{1},[]int{2}))!=0||len(IntersectInts(nil,b))!=0{t.Fatal("empty")}
+}
+
+func TestDifferenceInts(t *testing.T) {
+ a,b:=[]int{3,1,3,2,4},[]int{1,4};if got:=DifferenceInts(a,b);!reflect.DeepEqual(got,[]int{3,2}){t.Fatal(got)};if !reflect.DeepEqual(a,[]int{3,1,3,2,4})||!reflect.DeepEqual(b,[]int{1,4}){t.Fatal("modified inputs")};if got:=DifferenceInts([]int{1,1},nil);!reflect.DeepEqual(got,[]int{1}){t.Fatal(got)};if len(DifferenceInts([]int{1},[]int{1}))!=0||len(DifferenceInts(nil,b))!=0{t.Fatal("empty")}
+}
+
+func TestMergeQuotas(t *testing.T) {
+ a,b:=map[string]int{"x":5,"y":2},map[string]int{"x":0,"z":7};out:=MergeQuotas(a,b);if !reflect.DeepEqual(out,map[string]int{"x":0,"y":2,"z":7}){t.Fatal(out)};out["y"]=99;out["z"]=99;if !reflect.DeepEqual(a,map[string]int{"x":5,"y":2})||!reflect.DeepEqual(b,map[string]int{"x":0,"z":7}){t.Fatal("alias",a,b)};if out:=MergeQuotas(nil,nil);out==nil||len(out)!=0{t.Fatal("empty",out)};if out:=MergeQuotas(nil,b);!reflect.DeepEqual(out,b){t.Fatal(out)}
+}
