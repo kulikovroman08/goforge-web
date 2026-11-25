@@ -525,3 +525,20 @@ func TestLookupQuota(t *testing.T) {
 func TestStringStats(t *testing.T) {
  for _,tc:=range []struct{s string;b,r int}{{"Aя🙂",7,3},{"",0,0},{"abc",3,3},{string([]byte{0xff}),1,1},{"e\u0301",3,2}}{b,r:=StringStats(tc.s);if b!=tc.b||r!=tc.r{t.Fatal(tc,b,r)}}
 }
+
+func TestParsePort(t *testing.T) {
+ for _,s:=range []string{"1","8080","65535"}{v,e:=ParsePort(s);if e!=nil||fmt.Sprint(v)!=s{t.Fatal(s,v,e)}}
+ for _,s:=range []string{"abc","","0","-1","65536","999999999999999999999999"," 80"}{v,e:=ParsePort(s);if e==nil||v!=0{t.Fatal(s,v,e)}}
+}
+
+func TestToByte(t *testing.T) {
+ for _,tc:=range []struct{n int;want byte;ok bool}{{0,0,true},{255,255,true},{200,200,true},{256,0,false},{-1,0,false},{1000,0,false}}{v,ok:=ToByte(tc.n);if v!=tc.want||ok!=tc.ok{t.Fatal(tc,v,ok)}}
+}
+
+func TestRotateArray(t *testing.T) {
+ a:=[3]int{10,20,30};out:=RotateArray(a);if out!=([3]int{30,10,20})||a!=([3]int{10,20,30}){t.Fatal(a,out)};if RotateArray([3]int{-1,0,2})!=([3]int{2,-1,0}){t.Fatal("rotation")}
+}
+
+func TestApplyInts(t *testing.T) {
+ in:=[]int{1,2,3};out:=ApplyInts(in,func(x int)int{return x*2});if !reflect.DeepEqual(out,[]int{2,4,6})||!reflect.DeepEqual(in,[]int{1,2,3}){t.Fatal(in,out)};out[0]=99;if in[0]!=1{t.Fatal("alias")};if len(ApplyInts(in,nil))!=0||len(ApplyInts(nil,func(x int)int{return x}))!=0{t.Fatal("empty")};if got:=ApplyInts(in,func(x int)int{return -x});!reflect.DeepEqual(got,[]int{-1,-2,-3}){t.Fatal(got)}
+}

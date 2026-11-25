@@ -2,6 +2,7 @@ package practice
 
 import (
  "context"
+ "strconv"
  "errors"
  "fmt"
  "io"
@@ -206,3 +207,13 @@ func IntFrequency(values []int) map[int]int { return nil }
 func LookupQuota(quotas map[string]int, user string) (int, bool) { return 0, false }
 
 func StringStats(s string) (int, int) { return 0, 0 }
+
+func ParsePort(s string) (int, error) { return 0, nil }
+
+func ToByte(n int) (byte, bool) { return 0, false }
+
+func RotateArray(a [3]int) [3]int { return [3]int{} }
+
+func ApplyInts(values []int, fn func(int) int) []int { return nil }
+
+var _ = strconv.Atoi
