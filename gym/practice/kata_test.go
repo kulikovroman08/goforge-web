@@ -460,3 +460,165 @@ func TestWithinTx(t *testing.T) {
   if len(log)!=0{t.Fatalf("began after cancel: %v",log)}
  })
 }
+
+func TestDefaultRetries(t *testing.T) {
+ if got := DefaultRetries(0); got != 3 { t.Errorf("got %v, want 3", got) }
+ if got := DefaultRetries(-2); got != 3 { t.Errorf("got %v, want 3", got) }
+ if got := DefaultRetries(5); got != 5 { t.Errorf("got %v, want 5", got) }
+}
+
+func TestSum(t *testing.T) {
+ if got := Sum([]int{2,3,-1}); got != 4 { t.Errorf("got %v, want 4", got) }
+ if got := Sum(nil); got != 0 { t.Errorf("got %v, want 0", got) }
+ if got := Sum([]int{-2,-3}); got != -5 { t.Errorf("got %v, want -5", got) }
+}
+
+func TestCountPositive(t *testing.T) {
+ if got := CountPositive([]int{-1,0,2,5}); got != 2 { t.Errorf("got %v, want 2", got) }
+ if got := CountPositive(nil); got != 0 { t.Errorf("got %v, want 0", got) }
+ if got := CountPositive([]int{0,-3}); got != 0 { t.Errorf("got %v, want 0", got) }
+}
+
+func TestClampLimit(t *testing.T) {
+ if got := ClampLimit(0,0); got != 0 { t.Errorf("got %v, want 0", got) }
+ if got := ClampLimit(-2,10); got != 1 { t.Errorf("got %v, want 1", got) }
+ if got := ClampLimit(50,10); got != 10 { t.Errorf("got %v, want 10", got) }
+ if got := ClampLimit(4,10); got != 4 { t.Errorf("got %v, want 4", got) }
+}
+
+func TestSwapInts(t *testing.T) {
+ a,b:=10,20
+ if !SwapInts(&a,&b)||a!=20||b!=10{t.Fatal(a,b)}
+ if SwapInts(nil,&b)||b!=10{t.Fatal("nil a")}
+ if SwapInts(&a,nil)||a!=20{t.Fatal("nil b")}
+ if !SwapInts(&a,&a)||a!=20{t.Fatal("same pointer")}
+}
+
+func TestMaxValue(t *testing.T) {
+ for _,tc:=range []struct{in []int; want int; ok bool}{{nil,0,false},{[]int{-5,-2,-8},-2,true},{[]int{0},0,true},{[]int{1,9,2},9,true}} {v,ok:=MaxValue(tc.in);if v!=tc.want||ok!=tc.ok{t.Fatalf("%v: got %d,%v",tc.in,v,ok)}}
+}
+
+func TestReverseCopy(t *testing.T) {
+ in:=[]int{1,2,3};out:=ReverseCopy(in);if !reflect.DeepEqual(out,[]int{3,2,1})||!reflect.DeepEqual(in,[]int{1,2,3}){t.Fatal(in,out)};out[0]=9;if in[2]!=3{t.Fatal("alias")};if len(ReverseCopy(nil))!=0{t.Fatal("empty")}
+}
+
+func TestConcatInts(t *testing.T) {
+ a:=make([]int,2,8);a[0],a[1]=1,2;b:=[]int{3,4};out:=ConcatInts(a,b);if !reflect.DeepEqual(out,[]int{1,2,3,4}){t.Fatal(out)};out[0],out[2]=9,9;if a[0]!=1||b[0]!=3{t.Fatal("alias")};if len(ConcatInts(nil,nil))!=0{t.Fatal("empty")}
+}
+
+func TestFirstRepeat(t *testing.T) {
+ for _,tc:=range []struct{in []int;want int;ok bool}{{[]int{4,2,2,4},2,true},{[]int{0,0},0,true},{[]int{1,2},0,false},{nil,0,false}} {v,ok:=FirstRepeat(tc.in);if v!=tc.want||ok!=tc.ok{t.Fatal(tc,v,ok)}}
+}
+
+func TestBatchInts(t *testing.T) {
+ in:=[]int{1,2,3,4,5};out:=BatchInts(in,2);if !reflect.DeepEqual(out,[][]int{{1,2},{3,4},{5}}){t.Fatal(out)};_ = append(out[0],99);if out[1][0]!=3||in[2]!=3{t.Fatal("append overwrote next batch")};if len(BatchInts(in,0))!=0||len(BatchInts(nil,2))!=0||len(BatchInts(in,-1))!=0{t.Fatal("invalid or empty")};if got:=BatchInts(in, int(^uint(0)>>1));len(got)!=1||len(got[0])!=5{t.Fatal(got)}
+}
+
+func TestIntFrequency(t *testing.T) {
+ if got:=IntFrequency([]int{2,-1,2,0});!reflect.DeepEqual(got,map[int]int{2:2,-1:1,0:1}){t.Fatal(got)};if got:=IntFrequency(nil);got==nil||len(got)!=0{t.Fatal("empty",got)};if got:=IntFrequency([]int{7,7,7});got[7]!=3{t.Fatal(got)}
+}
+
+func TestLookupQuota(t *testing.T) {
+ q:=map[string]int{"alice":0,"bob":5};for _,tc:=range []struct{m map[string]int;u string;v int;ok bool}{{q,"alice",0,true},{q,"bob",5,true},{q,"charlie",0,false},{nil,"alice",0,false}}{v,ok:=LookupQuota(tc.m,tc.u);if v!=tc.v||ok!=tc.ok{t.Fatal(tc,v,ok)}};if !reflect.DeepEqual(q,map[string]int{"alice":0,"bob":5}){t.Fatal("modified map")}
+}
+
+func TestStringStats(t *testing.T) {
+ for _,tc:=range []struct{s string;b,r int}{{"Aя🙂",7,3},{"",0,0},{"abc",3,3},{string([]byte{0xff}),1,1},{"e\u0301",3,2}}{b,r:=StringStats(tc.s);if b!=tc.b||r!=tc.r{t.Fatal(tc,b,r)}}
+}
+
+func TestParsePort(t *testing.T) {
+ for _,s:=range []string{"1","8080","65535"}{v,e:=ParsePort(s);if e!=nil||fmt.Sprint(v)!=s{t.Fatal(s,v,e)}}
+ for _,s:=range []string{"abc","","0","-1","65536","999999999999999999999999"," 80"}{v,e:=ParsePort(s);if e==nil||v!=0{t.Fatal(s,v,e)}}
+}
+
+func TestToByte(t *testing.T) {
+ for _,tc:=range []struct{n int;want byte;ok bool}{{0,0,true},{255,255,true},{200,200,true},{256,0,false},{-1,0,false},{1000,0,false}}{v,ok:=ToByte(tc.n);if v!=tc.want||ok!=tc.ok{t.Fatal(tc,v,ok)}}
+}
+
+func TestRotateArray(t *testing.T) {
+ a:=[3]int{10,20,30};out:=RotateArray(a);if out!=([3]int{30,10,20})||a!=([3]int{10,20,30}){t.Fatal(a,out)};if RotateArray([3]int{-1,0,2})!=([3]int{2,-1,0}){t.Fatal("rotation")}
+}
+
+func TestApplyInts(t *testing.T) {
+ in:=[]int{1,2,3};out:=ApplyInts(in,func(x int)int{return x*2});if !reflect.DeepEqual(out,[]int{2,4,6})||!reflect.DeepEqual(in,[]int{1,2,3}){t.Fatal(in,out)};out[0]=99;if in[0]!=1{t.Fatal("alias")};if len(ApplyInts(in,nil))!=0||len(ApplyInts(nil,func(x int)int{return x}))!=0{t.Fatal("empty")};if got:=ApplyInts(in,func(x int)int{return -x});!reflect.DeepEqual(got,[]int{-1,-2,-3}){t.Fatal(got)}
+}
+
+func TestEffectiveLimit(t *testing.T) {
+ for _,tc:=range []struct{in,want int}{{7,7},{0,20},{-1,20},{1,1},{30,30}}{if got:=EffectiveLimit(tc.in);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestNewCounter(t *testing.T) {
+ a,b:=NewCounter(10),NewCounter(100);if a==nil||b==nil{t.Fatal("nil counter")};if a()!=11||a()!=12||b()!=101||a()!=13||b()!=102{t.Fatal("state or independence")};if NewCounter(-1)()!=0{t.Fatal("start")}
+}
+
+func TestSumAll(t *testing.T) {
+ if SumAll(10,2,3)!=15||SumAll(10)!=10||SumAll(-2,2,-1)!=-1{t.Fatal("sum")};nums:=[]int{2,3};if SumAll(1,nums...)!=6||!reflect.DeepEqual(nums,[]int{2,3}){t.Fatal("spread")};if SumAll(5,([]int)(nil)...)!=5{t.Fatal("nil")}
+}
+
+func TestStatusClass(t *testing.T) {
+ for _,tc:=range []struct{code int;want string}{{99,"invalid"},{100,"informational"},{199,"informational"},{200,"success"},{299,"success"},{300,"redirect"},{399,"redirect"},{400,"client_error"},{499,"client_error"},{500,"server_error"},{599,"server_error"},{600,"invalid"},{-1,"invalid"}}{if got:=StatusClass(tc.code);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestIndexOf(t *testing.T) {
+ for _,tc:=range []struct{v []int;target,want int}{{[]int{8,3,5,3},3,1},{[]int{0},0,0},{nil,5,-1},{[]int{4,1},7,-1},{[]int{4,1},1,1}}{if got:=IndexOf(tc.v,tc.target);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestLowerBoundIndex(t *testing.T) {
+ for _,tc:=range []struct{v []int;target,want int}{{[]int{1,3,3,3,8},3,1},{[]int{1,3},2,-1},{nil,2,-1},{[]int{1},1,0},{[]int{1,3},9,-1},{[]int{1,3},0,-1},{[]int{2,2,2},2,0}}{if got:=LowerBoundIndex(tc.v,tc.target);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestRemoveAtCopy(t *testing.T) {
+ in:=[]int{10,20,30,40};out,ok:=RemoveAtCopy(in,1);if !ok||!reflect.DeepEqual(out,[]int{10,30,40})||!reflect.DeepEqual(in,[]int{10,20,30,40}){t.Fatal(in,out,ok)};out[0]=99;if in[0]!=10{t.Fatal("alias")};if out,ok:=RemoveAtCopy([]int{1},0);!ok||len(out)!=0{t.Fatal(out,ok)};for _,i:=range []int{-1,4}{if out,ok:=RemoveAtCopy(in,i);ok||out!=nil{t.Fatal(i,out,ok)}}
+}
+
+func TestTransposeInts(t *testing.T) {
+ in:=[][]int{{1,2,3},{4,5,6}};out,ok:=TransposeInts(in);if !ok||!reflect.DeepEqual(out,[][]int{{1,4},{2,5},{3,6}}){t.Fatal(out,ok)};out[0][0]=99;if in[0][0]!=1{t.Fatal("alias")};if out,ok:=TransposeInts([][]int{{1},{2,3}});ok||out!=nil{t.Fatal(out,ok)};for _,m:=range [][][]int{nil,{{},{}}}{if out,ok:=TransposeInts(m);!ok||len(out)!=0{t.Fatal(out,ok)}}
+}
+
+func TestBubbleSortInts(t *testing.T) {
+ for _,tc:=range []struct{in,want []int}{{[]int{5,2,4},[]int{2,4,5}},{[]int{3,3,-1},[]int{-1,3,3}},{nil,nil},{[]int{1},[]int{1}},{[]int{4,3,2,1},[]int{1,2,3,4}}}{BubbleSortInts(tc.in);if !reflect.DeepEqual(tc.in,tc.want){t.Fatal(tc)}}
+}
+
+func TestInsertionSortInts(t *testing.T) {
+ for _,tc:=range []struct{in,want []int}{{[]int{4,2,3},[]int{2,3,4}},{[]int{3,-1,3},[]int{-1,3,3}},{nil,nil},{[]int{1},[]int{1}},{[]int{4,3,2,1},[]int{1,2,3,4}}}{InsertionSortInts(tc.in);if !reflect.DeepEqual(tc.in,tc.want){t.Fatal(tc)}}
+}
+
+func TestSortedIntsCopy(t *testing.T) {
+ in:=[]int{7,2,5,-1,2};out:=SortedIntsCopy(in);if !reflect.DeepEqual(out,[]int{-1,2,2,5,7})||!reflect.DeepEqual(in,[]int{7,2,5,-1,2}){t.Fatal(in,out)};out[0]=99;if in[0]!=7||in[3]!=-1{t.Fatal("alias")};if len(SortedIntsCopy(nil))!=0{t.Fatal("empty")}
+}
+
+func TestMergeSortedInts(t *testing.T) {
+ for _,tc:=range []struct{a,b,want []int}{{[]int{1,4},[]int{2,3,5},[]int{1,2,3,4,5}},{[]int{1,1},[]int{1},[]int{1,1,1}},{nil,[]int{2},[]int{2}},{[]int{1,2},nil,[]int{1,2}}}{got:=MergeSortedInts(tc.a,tc.b);if !reflect.DeepEqual(got,tc.want){t.Fatal(tc,got)}};a,b:=[]int{1},[]int{2};out:=MergeSortedInts(a,b);out[0],out[1]=9,9;if a[0]!=1||b[0]!=2{t.Fatal("alias")};if len(MergeSortedInts(nil,nil))!=0{t.Fatal("empty")}
+}
+
+func TestInsertAtCopy(t *testing.T) {
+ in:=[]int{10,20,30};out,ok:=InsertAtCopy(in,1,99);if !ok||!reflect.DeepEqual(out,[]int{10,99,20,30})||!reflect.DeepEqual(in,[]int{10,20,30}){t.Fatal(in,out,ok)};out[0]=0;if in[0]!=10{t.Fatal("alias")};for _,tc:=range []struct{v []int;i,x int;want []int}{{nil,0,7,[]int{7}},{[]int{1},1,2,[]int{1,2}},{[]int{1},0,2,[]int{2,1}}}{out,ok:=InsertAtCopy(tc.v,tc.i,tc.x);if !ok||!reflect.DeepEqual(out,tc.want){t.Fatal(tc,out,ok)}};for _,i:=range []int{-1,4}{out,ok:=InsertAtCopy(in,i,0);if ok||out!=nil{t.Fatal(i,out,ok)}}
+}
+
+func TestIntersectInts(t *testing.T) {
+ a,b:=[]int{3,1,3,2},[]int{2,3};if got:=IntersectInts(a,b);!reflect.DeepEqual(got,[]int{3,2}){t.Fatal(got)};if !reflect.DeepEqual(a,[]int{3,1,3,2})||!reflect.DeepEqual(b,[]int{2,3}){t.Fatal("modified inputs")};if got:=IntersectInts([]int{1,1},[]int{1,1});!reflect.DeepEqual(got,[]int{1}){t.Fatal(got)};if len(IntersectInts([]int{1},[]int{2}))!=0||len(IntersectInts(nil,b))!=0{t.Fatal("empty")}
+}
+
+func TestDifferenceInts(t *testing.T) {
+ a,b:=[]int{3,1,3,2,4},[]int{1,4};if got:=DifferenceInts(a,b);!reflect.DeepEqual(got,[]int{3,2}){t.Fatal(got)};if !reflect.DeepEqual(a,[]int{3,1,3,2,4})||!reflect.DeepEqual(b,[]int{1,4}){t.Fatal("modified inputs")};if got:=DifferenceInts([]int{1,1},nil);!reflect.DeepEqual(got,[]int{1}){t.Fatal(got)};if len(DifferenceInts([]int{1},[]int{1}))!=0||len(DifferenceInts(nil,b))!=0{t.Fatal("empty")}
+}
+
+func TestMergeQuotas(t *testing.T) {
+ a,b:=map[string]int{"x":5,"y":2},map[string]int{"x":0,"z":7};out:=MergeQuotas(a,b);if !reflect.DeepEqual(out,map[string]int{"x":0,"y":2,"z":7}){t.Fatal(out)};out["y"]=99;out["z"]=99;if !reflect.DeepEqual(a,map[string]int{"x":5,"y":2})||!reflect.DeepEqual(b,map[string]int{"x":0,"z":7}){t.Fatal("alias",a,b)};if out:=MergeQuotas(nil,nil);out==nil||len(out)!=0{t.Fatal("empty",out)};if out:=MergeQuotas(nil,b);!reflect.DeepEqual(out,b){t.Fatal(out)}
+}
+
+func TestGroupByLength(t *testing.T) {
+ in:=[]string{"a","go","b","go","я",""};want:=map[int][]string{1:{"a","b"},2:{"go","go","я"},0:{""}};out:=GroupByLength(in);if !reflect.DeepEqual(out,want){t.Fatal(out)};out[1][0]="changed";if in[0]!="a"{t.Fatal("alias")};if out:=GroupByLength(nil);out==nil||len(out)!=0{t.Fatal("empty",out)}
+}
+
+func TestRemoveLowQuotas(t *testing.T) {
+ q:=map[string]int{"a":1,"b":3,"c":5};if got:=RemoveLowQuotas(q,3);got!=1||!reflect.DeepEqual(q,map[string]int{"b":3,"c":5}){t.Fatal(got,q)};if RemoveLowQuotas(nil,3)!=0{t.Fatal("nil")};q=map[string]int{"a":-1,"b":0};if got:=RemoveLowQuotas(q,1);got!=2||len(q)!=0{t.Fatal(got,q)};if RemoveLowQuotas(q,1)!=0{t.Fatal("empty")}
+}
+
+func TestCloneGroups(t *testing.T) {
+ in:=map[string][]int{"a":{1,2},"nil":nil,"empty":{}};out:=CloneGroups(in);if !reflect.DeepEqual(in,out){t.Fatal(in,out)};out["a"][0]=99;out["new"]=[]int{8};if in["a"][0]!=1||len(in)!=3{t.Fatal("alias",in)};if out["nil"]!=nil||out["empty"]==nil{t.Fatal("nil contract")};if out:=CloneGroups(nil);out==nil||len(out)!=0{t.Fatal(out)};shared:=[]int{5};cl:=CloneGroups(map[string][]int{"x":shared,"y":shared});cl["x"][0]=8;if cl["y"][0]!=5||shared[0]!=5{t.Fatal("shared")}
+}
+
+func TestSortedQuotaKeys(t *testing.T) {
+ q:=map[string]int{"z":7,"a":2,"m":0,"":1};want:=[]string{"","a","m","z"};for i:=0;i<5;i++{if got:=SortedQuotaKeys(q);!reflect.DeepEqual(got,want){t.Fatal(got)}};if !reflect.DeepEqual(q,map[string]int{"z":7,"a":2,"m":0,"":1}){t.Fatal("modified")};if len(SortedQuotaKeys(nil))!=0{t.Fatal("nil")}
+}
