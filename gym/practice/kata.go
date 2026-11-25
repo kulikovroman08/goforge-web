@@ -225,3 +225,11 @@ func NewCounter(start int) func() int { return func() int { return 0 } }
 func SumAll(base int, values ...int) int { return 0 }
 
 func StatusClass(code int) string { return "invalid" }
+
+func IndexOf(values []int, target int) int { return -1 }
+
+func LowerBoundIndex(values []int, target int) int { return -1 }
+
+func RemoveAtCopy(values []int, index int) ([]int, bool) { return nil, false }
+
+func TransposeInts(matrix [][]int) ([][]int, bool) { return nil, false }

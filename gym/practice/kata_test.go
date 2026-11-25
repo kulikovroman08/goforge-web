@@ -558,3 +558,19 @@ func TestSumAll(t *testing.T) {
 func TestStatusClass(t *testing.T) {
  for _,tc:=range []struct{code int;want string}{{99,"invalid"},{100,"informational"},{199,"informational"},{200,"success"},{299,"success"},{300,"redirect"},{399,"redirect"},{400,"client_error"},{499,"client_error"},{500,"server_error"},{599,"server_error"},{600,"invalid"},{-1,"invalid"}}{if got:=StatusClass(tc.code);got!=tc.want{t.Fatal(tc,got)}}
 }
+
+func TestIndexOf(t *testing.T) {
+ for _,tc:=range []struct{v []int;target,want int}{{[]int{8,3,5,3},3,1},{[]int{0},0,0},{nil,5,-1},{[]int{4,1},7,-1},{[]int{4,1},1,1}}{if got:=IndexOf(tc.v,tc.target);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestLowerBoundIndex(t *testing.T) {
+ for _,tc:=range []struct{v []int;target,want int}{{[]int{1,3,3,3,8},3,1},{[]int{1,3},2,-1},{nil,2,-1},{[]int{1},1,0},{[]int{1,3},9,-1},{[]int{1,3},0,-1},{[]int{2,2,2},2,0}}{if got:=LowerBoundIndex(tc.v,tc.target);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestRemoveAtCopy(t *testing.T) {
+ in:=[]int{10,20,30,40};out,ok:=RemoveAtCopy(in,1);if !ok||!reflect.DeepEqual(out,[]int{10,30,40})||!reflect.DeepEqual(in,[]int{10,20,30,40}){t.Fatal(in,out,ok)};out[0]=99;if in[0]!=10{t.Fatal("alias")};if out,ok:=RemoveAtCopy([]int{1},0);!ok||len(out)!=0{t.Fatal(out,ok)};for _,i:=range []int{-1,4}{if out,ok:=RemoveAtCopy(in,i);ok||out!=nil{t.Fatal(i,out,ok)}}
+}
+
+func TestTransposeInts(t *testing.T) {
+ in:=[][]int{{1,2,3},{4,5,6}};out,ok:=TransposeInts(in);if !ok||!reflect.DeepEqual(out,[][]int{{1,4},{2,5},{3,6}}){t.Fatal(out,ok)};out[0][0]=99;if in[0][0]!=1{t.Fatal("alias")};if out,ok:=TransposeInts([][]int{{1},{2,3}});ok||out!=nil{t.Fatal(out,ok)};for _,m:=range [][][]int{nil,{{},{}}}{if out,ok:=TransposeInts(m);!ok||len(out)!=0{t.Fatal(out,ok)}}
+}
