@@ -542,3 +542,19 @@ func TestRotateArray(t *testing.T) {
 func TestApplyInts(t *testing.T) {
  in:=[]int{1,2,3};out:=ApplyInts(in,func(x int)int{return x*2});if !reflect.DeepEqual(out,[]int{2,4,6})||!reflect.DeepEqual(in,[]int{1,2,3}){t.Fatal(in,out)};out[0]=99;if in[0]!=1{t.Fatal("alias")};if len(ApplyInts(in,nil))!=0||len(ApplyInts(nil,func(x int)int{return x}))!=0{t.Fatal("empty")};if got:=ApplyInts(in,func(x int)int{return -x});!reflect.DeepEqual(got,[]int{-1,-2,-3}){t.Fatal(got)}
 }
+
+func TestEffectiveLimit(t *testing.T) {
+ for _,tc:=range []struct{in,want int}{{7,7},{0,20},{-1,20},{1,1},{30,30}}{if got:=EffectiveLimit(tc.in);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestNewCounter(t *testing.T) {
+ a,b:=NewCounter(10),NewCounter(100);if a==nil||b==nil{t.Fatal("nil counter")};if a()!=11||a()!=12||b()!=101||a()!=13||b()!=102{t.Fatal("state or independence")};if NewCounter(-1)()!=0{t.Fatal("start")}
+}
+
+func TestSumAll(t *testing.T) {
+ if SumAll(10,2,3)!=15||SumAll(10)!=10||SumAll(-2,2,-1)!=-1{t.Fatal("sum")};nums:=[]int{2,3};if SumAll(1,nums...)!=6||!reflect.DeepEqual(nums,[]int{2,3}){t.Fatal("spread")};if SumAll(5,([]int)(nil)...)!=5{t.Fatal("nil")}
+}
+
+func TestStatusClass(t *testing.T) {
+ for _,tc:=range []struct{code int;want string}{{99,"invalid"},{100,"informational"},{199,"informational"},{200,"success"},{299,"success"},{300,"redirect"},{399,"redirect"},{400,"client_error"},{499,"client_error"},{500,"server_error"},{599,"server_error"},{600,"invalid"},{-1,"invalid"}}{if got:=StatusClass(tc.code);got!=tc.want{t.Fatal(tc,got)}}
+}

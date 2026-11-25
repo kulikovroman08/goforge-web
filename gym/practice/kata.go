@@ -217,3 +217,11 @@ func RotateArray(a [3]int) [3]int { return [3]int{} }
 func ApplyInts(values []int, fn func(int) int) []int { return nil }
 
 var _ = strconv.Atoi
+
+func EffectiveLimit(requested int) int { return 0 }
+
+func NewCounter(start int) func() int { return func() int { return 0 } }
+
+func SumAll(base int, values ...int) int { return 0 }
+
+func StatusClass(code int) string { return "invalid" }
