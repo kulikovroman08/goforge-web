@@ -702,3 +702,19 @@ func TestKeepPositiveInPlace(t *testing.T) {
 func TestDetachByteWindow(t *testing.T) {
  in:=[]byte("ABCDEF");out,ok:=DetachByteWindow(in,2,4);if !ok||string(out)!="CD"||cap(out)!=2{t.Fatal(out,ok)};out[0]='X';if string(in)!="ABCDEF"{t.Fatal("alias",in)};in[3]='Y';if string(out)!="XD"{t.Fatal(out)};for _,p:=range [][2]int{{-1,2},{4,3},{0,7}}{v,ok:=DetachByteWindow(in,p[0],p[1]);if ok||v!=nil{t.Fatal(p,v,ok)}};v,ok:=DetachByteWindow(nil,0,0);if !ok||v==nil||len(v)!=0||cap(v)!=0{t.Fatal(v,ok)}
 }
+
+func TestTwoSumIndices(t *testing.T) {
+ for _,tc:=range []struct{v []int;target,i,j int;ok bool}{{[]int{3,1,4,2},5,1,2,true},{[]int{3,3},6,0,1,true},{[]int{3},6,-1,-1,false},{[]int{1,1,4},5,0,2,true},{[]int{-2,5,4},3,0,1,true},{nil,0,-1,-1,false},{[]int{0,0},0,0,1,true}}{i,j,ok:=TwoSumIndices(tc.v,tc.target);if i!=tc.i||j!=tc.j||ok!=tc.ok{t.Fatal(tc,i,j,ok)}}
+}
+
+func TestFirstUniqueRune(t *testing.T) {
+ for _,tc:=range []struct{s string;r rune;ok bool}{{"яAя🙂A",'🙂',true},{"aabb",0,false},{"",0,false},{"abac",'b',true},{"\x00aa",0,true},{"Aa",'A',true},{string([]byte{0xff,65,0xfe}),'A',true}}{r,ok:=FirstUniqueRune(tc.s);if r!=tc.r||ok!=tc.ok{t.Fatal(tc,r,ok)}}
+}
+
+func TestMaxWindowSum(t *testing.T) {
+ for _,tc:=range []struct{v []int;k,want int;ok bool}{{[]int{2,1,5,3,2},3,10,true},{[]int{-5,-2,-7},2,-7,true},{[]int{9,1,2},2,10,true},{[]int{2,3},2,5,true},{[]int{-5,-1},1,-1,true},{nil,1,0,false},{[]int{1},0,0,false},{[]int{1},2,0,false},{[]int{1},-1,0,false}}{got,ok:=MaxWindowSum(tc.v,tc.k);if got!=tc.want||ok!=tc.ok{t.Fatal(tc,got,ok)}}
+}
+
+func TestSummarizeEventStatuses(t *testing.T) {
+ in:=[]string{" Active ","cancelled","ACTIVE"," ","Pending"};order,counts:=SummarizeEventStatuses(in);if !reflect.DeepEqual(order,[]string{"active","cancelled","pending"})||!reflect.DeepEqual(counts,map[string]int{"active":2,"cancelled":1,"pending":1}){t.Fatal(order,counts)};if !reflect.DeepEqual(in,[]string{" Active ","cancelled","ACTIVE"," ","Pending"}){t.Fatal("modified input")};order[0]="x";if in[0]!=" Active "{t.Fatal("alias")};for _,v:=range [][]string{nil,{"","\t","\u00a0"}}{order,counts:=SummarizeEventStatuses(v);if order==nil||counts==nil||len(order)!=0||len(counts)!=0{t.Fatal(order,counts)}};order,counts=SummarizeEventStatuses([]string{" Я ","я","A","a"});if !reflect.DeepEqual(order,[]string{"я","a"})||!reflect.DeepEqual(counts,map[string]int{"я":2,"a":2}){t.Fatal(order,counts)}
+}

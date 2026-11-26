@@ -1,2 +1,5 @@
-# Go Core expansion — increment 1
-Six guided tasks total: dedupe, filter, map-count, pagination, utf8-truncate, event-pointer. Each new guide has task-specific frames, thought-to-code, ordering, blanks, partial and buggy templates, five hints, workplace and interview prompts. Existing runner and catalog IDs unchanged. This is not the complete seven-topic curriculum or 260-question/70-task target. No bot changes. No database changes. Cache revalidation and versioned scripts included; device verification pending. Run node gym/core-guided-check.cjs and node gym/guided-check.cjs. Verify each template through the existing runner.
+# Go Core practice milestone
+
+91 Gym tasks, 970 questions across all Gym topics, 70 guided scenarios (66 tagged Go Core; 4 in other categories). 71 tasks tagged Go Core. The 70-scenario count is a platform-wide guided milestone, not a claim that every item belongs to Go Core or that every Junior/Middle/Senior curriculum objective has been met.
+
+Each new core-* task contains theory, 10 questions, walkthrough frames, thought-to-code, order exercise, blanks, partial/bug/starter templates, five hints, reference solution and Go tests. CI compiles starters and tests reference/negative fixtures for core-* tasks. Device, offline cache and Telegram synchronization require separate verification.

@@ -302,3 +302,11 @@ func TruncateUTF8Bytes(s string, max int) string { return s }
 func KeepPositiveInPlace(values []int) []int { return values }
 
 func DetachByteWindow(data []byte,start,end int) ([]byte,bool) { return nil,false }
+
+func TwoSumIndices(values []int,target int) (int,int,bool) { return -1,-1,false }
+
+func FirstUniqueRune(s string) (rune,bool) { return 0,false }
+
+func MaxWindowSum(values []int,k int) (int,bool) { return 0,false }
+
+func SummarizeEventStatuses(statuses []string) ([]string,map[string]int) { return nil,nil }

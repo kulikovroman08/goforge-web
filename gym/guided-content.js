@@ -7971,5 +7971,532 @@ window.GOFORGE_GUIDES = {
     ],
     "production": "Кеширование небольших частей сетевых сообщений: копирование позволяет освободить большой буфер после исчезновения остальных ссылок. Тест проверяет независимость данных, а фактическое удержание памяти измеряют heap-профилем.",
     "interview": "Почему s[i:j:j] не решает проблему удержания большого массива?"
+  },
+  "core-two-sum": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "3",
+          "1",
+          "4",
+          "2"
+        ],
+        "target=5, seen={}",
+        "Ищем дополнение до target."
+      ],
+      [
+        "Первый элемент",
+        [
+          "3"
+        ],
+        "j=0, need=2, seen={3:0}",
+        "Дополнения ещё нет; запоминаем индекс."
+      ],
+      [
+        "Второй элемент",
+        [
+          "3",
+          "1"
+        ],
+        "j=1, need=4, seen={3:0,1:1}",
+        "Дополнение отсутствует."
+      ],
+      [
+        "Третий элемент",
+        [
+          "1",
+          "4"
+        ],
+        "j=2, need=1, i=1",
+        "Ключ 1 уже встречался."
+      ],
+      [
+        "Выход",
+        [
+          "1",
+          "2"
+        ],
+        "return 1,2,true",
+        "Проверка до записи гарантирует разные индексы."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать map индексов",
+        "seen:=make(map[int]int)",
+        "Храним первый индекс каждого значения."
+      ],
+      [
+        "Перебрать числа",
+        "for j,v:=range values {",
+        "j — правый индекс потенциальной пары."
+      ],
+      [
+        "Найти дополнение",
+        "if i,ok:=seen[target-v];ok { return i,j,true }",
+        "Ищем только среди ранее прочитанных элементов."
+      ],
+      [
+        "Запомнить первое появление",
+        "if _,ok:=seen[v];!ok { seen[v]=j }\n}",
+        "Первый индекс нужен для детерминированного результата."
+      ],
+      [
+        "Обработать отсутствие пары",
+        "return -1,-1,false",
+        "Перебрали все варианты правого индекса."
+      ]
+    ],
+    "blocks": [
+      "Обработать отсутствие пары",
+      "Создать map индексов",
+      "Перебрать числа",
+      "Найти дополнение",
+      "Запомнить первое появление"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "seen[",
+        "after": "]",
+        "options": [
+          "target-v",
+          "target+v",
+          "j"
+        ],
+        "correct": 0,
+        "explain": "Дополнение равно target минус текущее число."
+      },
+      {
+        "before": "if _,ok:=seen[v];",
+        "after": " { seen[v]=j }",
+        "options": [
+          "!ok",
+          "ok",
+          "v"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем первое появление."
+      }
+    ],
+    "partial": "package practice\n\nfunc TwoSumIndices(values []int,target int) (int,int,bool) {\n\tseen:=make(map[int]int)\n\tfor j,v:=range values {\n\t // TODO: найди дополнение target-v среди ранее прочитанных чисел\n\t if _,ok:=seen[v];!ok { seen[v]=j }\n\t}\n\treturn -1,-1,false\n}\n",
+    "bug": "package practice\n\nfunc TwoSumIndices(values []int,target int) (int,int,bool) {\n\tseen:=make(map[int]int)\n\tfor j,v:=range values {\n\t seen[v]=j\n\t if i,ok:=seen[target-v];ok { return i,j,true }\n\t}\n\treturn -1,-1,false\n}\n",
+    "hints": [
+      "Верни индексы двух разных элементов с суммой target. Выбери пару с минимальным правым индексом, а при равенстве — минимальным левым. При отсутствии верни -1,-1,false. Вход не меняй. Все числа и target-value укладываются в int.",
+      "Храним первый индекс каждого значения.",
+      "j — правый индекс потенциальной пары.",
+      "Перебрали все варианты правого индекса.",
+      "seen:=make(map[int]int)\nfor j,v:=range values {\n if i,ok:=seen[target-v];ok { return i,j,true }\n if _,ok:=seen[v];!ok { seen[v]=j }\n}\nreturn -1,-1,false"
+    ],
+    "related": [
+      [
+        "core-first-repeat",
+        "Найти первый повторяющийся элемент"
+      ]
+    ],
+    "production": "Поиск пар по ключу или дополнению без квадратичного перебора. Для произвольных int отдельно контролируй переполнение при вычислении дополнения.",
+    "interview": "Как решить Two Sum за ожидаемое O(n) вместо O(n²)?"
+  },
+  "core-first-unique-rune": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "я",
+          "A",
+          "я",
+          "🙂",
+          "A"
+        ],
+        "s=\"яAя🙂A\"",
+        "Первое появление не обязательно уникально."
+      ],
+      [
+        "Первый проход",
+        [
+          "я:2",
+          "A:2",
+          "🙂:1"
+        ],
+        "counts",
+        "Считаем частоты всей строки."
+      ],
+      [
+        "Второй проход",
+        [
+          "я",
+          "A"
+        ],
+        "counts[я]=2, counts[A]=2",
+        "Пропускаем повторы."
+      ],
+      [
+        "Выход",
+        [
+          "🙂"
+        ],
+        "counts[🙂]=1",
+        "Это первая руна с частотой один."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать счётчики",
+        "counts:=make(map[rune]int)",
+        "Нужно знать полную кратность каждой руны."
+      ],
+      [
+        "Подсчитать частоты",
+        "for _,r:=range s { counts[r]++ }",
+        "Первый проход учитывает и будущие повторы."
+      ],
+      [
+        "Сохранить порядок входа",
+        "for _,r:=range s { if counts[r]==1 { return r,true } }",
+        "Второй проход по строке, а не по map, гарантирует первый уникальный элемент."
+      ],
+      [
+        "Обработать отсутствие",
+        "return 0,false",
+        "Нулевая руна может быть валидным результатом, поэтому нужен bool."
+      ]
+    ],
+    "blocks": [
+      "Обработать отсутствие",
+      "Создать счётчики",
+      "Подсчитать частоты",
+      "Сохранить порядок входа"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if counts[r]==",
+        "after": " { return r,true }",
+        "options": [
+          "1",
+          "0",
+          "2"
+        ],
+        "correct": 0,
+        "explain": "Уникальный элемент имеет частоту 1."
+      },
+      {
+        "before": "for _,r:=range ",
+        "after": " {",
+        "options": [
+          "s",
+          "counts",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Порядок исходной строки важен."
+      }
+    ],
+    "partial": "package practice\n\nfunc FirstUniqueRune(s string) (rune,bool) {\n\tcounts:=make(map[rune]int)\n\tfor _,r:=range s { counts[r]++ }\n\t// TODO: вторым проходом найди первую руну с частотой 1\n\treturn 0,false\n}\n",
+    "bug": "package practice\n\nfunc FirstUniqueRune(s string) (rune,bool) {\n\tseen:=make(map[rune]bool)\n\tfor _,r:=range s { if !seen[r] { return r,true };seen[r]=true }\n\treturn 0,false\n}\n",
+    "hints": [
+      "Верни первую руну, встречающуюся ровно один раз, в порядке исходной строки. Если такой руны нет, верни 0,false. Регистр значим; range по строке задаёт обработку невалидного UTF-8.",
+      "Нужно знать полную кратность каждой руны.",
+      "Первый проход учитывает и будущие повторы.",
+      "Нулевая руна может быть валидным результатом, поэтому нужен bool.",
+      "counts:=make(map[rune]int)\nfor _,r:=range s { counts[r]++ }\nfor _,r:=range s { if counts[r]==1 { return r,true } }\nreturn 0,false"
+    ],
+    "related": [
+      [
+        "core-rune-frequency",
+        "Посчитать частоту Unicode code points"
+      ]
+    ],
+    "production": "Поиск первого уникального идентификатора или символа по полной коллекции. В потоковой задаче без полного входа понятие уникальности требует отдельного контракта.",
+    "interview": "Почему нельзя просто вернуть первый ключ с частотой 1 при range по map?"
+  },
+  "core-sliding-window": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "2",
+          "1",
+          "5",
+          "3",
+          "2"
+        ],
+        "k=3",
+        "Окно фиксированной длины."
+      ],
+      [
+        "Первое окно",
+        [
+          "2",
+          "1",
+          "5"
+        ],
+        "sum=8, best=8",
+        "Суммируем первые k элементов."
+      ],
+      [
+        "Сдвиг вправо",
+        [
+          "1",
+          "5",
+          "3"
+        ],
+        "sum=8-2+3=9, best=9",
+        "Убираем левый и добавляем новый правый элемент."
+      ],
+      [
+        "Следующее окно",
+        [
+          "5",
+          "3",
+          "2"
+        ],
+        "sum=9-1+2=10, best=10",
+        "Обновление суммы O(1)."
+      ],
+      [
+        "Выход",
+        [
+          "10"
+        ],
+        "return 10,true",
+        "Максимум среди всех окон."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить размер",
+        "if k<=0||k>len(values) { return 0,false }",
+        "Нужно хотя бы одно полное окно."
+      ],
+      [
+        "Посчитать первое окно",
+        "sum:=0\nfor _,v:=range values[:k] { sum+=v }\nbest:=sum",
+        "Даже при всех отрицательных числах best — реальная сумма."
+      ],
+      [
+        "Сдвигать окно",
+        "for i:=k;i<len(values);i++ {",
+        "i — индекс нового правого элемента."
+      ],
+      [
+        "Обновить сумму и максимум",
+        "sum-=values[i-k]\nsum+=values[i]\nif sum>best { best=sum }\n}",
+        "Размер окна остаётся k, пересчитывать остальные элементы не нужно."
+      ],
+      [
+        "Вернуть максимум",
+        "return best,true",
+        "Все допустимые окна проверены."
+      ]
+    ],
+    "blocks": [
+      "Вернуть максимум",
+      "Проверить размер",
+      "Посчитать первое окно",
+      "Сдвигать окно",
+      "Обновить сумму и максимум"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "best := ",
+        "after": "",
+        "options": [
+          "sum",
+          "0",
+          "k"
+        ],
+        "correct": 0,
+        "explain": "Максимум должен начинаться с действительного окна."
+      },
+      {
+        "before": "sum -= values[",
+        "after": "]",
+        "options": [
+          "i-k",
+          "i",
+          "k"
+        ],
+        "correct": 0,
+        "explain": "Убираем вышедший слева элемент."
+      }
+    ],
+    "partial": "package practice\n\nfunc MaxWindowSum(values []int,k int) (int,bool) {\n\tif k<=0||k>len(values) { return 0,false }\n\tsum:=0\n\tfor _,v:=range values[:k] { sum+=v }\n\tbest:=sum\n\t// TODO: сдвигай окно и обновляй best\n\treturn best,true\n}\n",
+    "bug": "package practice\n\nfunc MaxWindowSum(values []int,k int) (int,bool) {\n\tif k<=0||k>len(values) { return 0,false }\n\tsum:=0\n\tfor _,v:=range values[:k] { sum+=v }\n\tbest:=0\n\tfor i:=k;i<len(values);i++ { sum-=values[i-k];sum+=values[i];if sum>best { best=sum } }\n\treturn best,true\n}\n",
+    "hints": [
+      "Верни максимальную сумму непрерывного окна ровно из k элементов. Если k<=0 или k>len(values), верни 0,false. Вход не меняй. Все промежуточные суммы укладываются в int. Используй скользящее окно O(n).",
+      "Нужно хотя бы одно полное окно.",
+      "Даже при всех отрицательных числах best — реальная сумма.",
+      "Все допустимые окна проверены.",
+      "if k<=0||k>len(values) { return 0,false }\nsum:=0\nfor _,v:=range values[:k] { sum+=v }\nbest:=sum\nfor i:=k;i<len(values);i++ {\n sum-=values[i-k]\n sum+=values[i]\n if sum>best { best=sum }\n}\nreturn best,true"
+    ],
+    "related": [
+      [
+        "core-batches",
+        "Разбить список на батчи"
+      ]
+    ],
+    "production": "Агрегация фиксированного числа последних измерений, rolling sum. Для окна по времени нужны timestamps и удаление устаревших событий, а не просто фиксированное k.",
+    "interview": "Как сократить перебор окон O(n*k) до O(n)?"
+  },
+  "core-event-summary": {
+    "frames": [
+      [
+        "Вход",
+        [
+          " Active ",
+          "cancelled",
+          "ACTIVE",
+          " ",
+          "Pending"
+        ],
+        "order=[], counts={}",
+        "Условия API определяют нормализацию."
+      ],
+      [
+        "Первый статус",
+        [
+          "active"
+        ],
+        "order=[active], counts={active:1}",
+        "TrimSpace и ToLower; первое появление."
+      ],
+      [
+        "Следующий статус",
+        [
+          "active",
+          "cancelled"
+        ],
+        "counts={active:1,cancelled:1}",
+        "Новый ключ добавляется в порядок."
+      ],
+      [
+        "Повтор и пустое значение",
+        [
+          "active",
+          "cancelled"
+        ],
+        "counts.active=2; пустой пропускаем",
+        "Счётчик растёт, порядок не дублируется."
+      ],
+      [
+        "Выход",
+        [
+          "active",
+          "cancelled",
+          "pending"
+        ],
+        "counts={active:2,cancelled:1,pending:1}",
+        "Два согласованных результата для API."
+      ]
+    ],
+    "steps": [
+      [
+        "Подготовить результаты",
+        "order:=make([]string,0)\ncounts:=make(map[string]int)",
+        "Срез хранит порядок, map — частоты."
+      ],
+      [
+        "Перебрать и нормализовать",
+        "for _,raw:=range statuses {\n status:=strings.ToLower(strings.TrimSpace(raw))",
+        "Правила нормализации заданы контрактом."
+      ],
+      [
+        "Пропустить пустой статус",
+        "if status==\"\" { continue }",
+        "Не создаём пустые группы."
+      ],
+      [
+        "Зафиксировать первое появление",
+        "if counts[status]==0 { order=append(order,status) }",
+        "Частота 0 до увеличения означает новый ключ."
+      ],
+      [
+        "Увеличить частоту",
+        "counts[status]++\n}",
+        "Повторы учитываются без добавления в order."
+      ],
+      [
+        "Вернуть сводку",
+        "return order,counts",
+        "Оба результата независимы от входной коллекции."
+      ]
+    ],
+    "blocks": [
+      "Вернуть сводку",
+      "Подготовить результаты",
+      "Перебрать и нормализовать",
+      "Пропустить пустой статус",
+      "Зафиксировать первое появление",
+      "Увеличить частоту"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if status==\"\" { ",
+        "after": " }",
+        "options": [
+          "continue",
+          "break",
+          "return nil,nil"
+        ],
+        "correct": 0,
+        "explain": "Пропускаем только текущий пустой элемент."
+      },
+      {
+        "before": "if counts[status]==",
+        "after": " { order=append(order,status) }",
+        "options": [
+          "0",
+          "1",
+          "-1"
+        ],
+        "correct": 0,
+        "explain": "До первого увеличения частота равна нулю."
+      }
+    ],
+    "partial": "package practice\n\nfunc SummarizeEventStatuses(statuses []string) ([]string,map[string]int) {\n\torder:=make([]string,0)\n\tcounts:=make(map[string]int)\n\tfor _,raw:=range statuses {\n\t status:=strings.ToLower(strings.TrimSpace(raw))\n\t if status==\"\" { continue }\n\t // TODO: обнови порядок при первом появлении и увеличь частоту\n\t _=status\n\t}\n\treturn order,counts\n}\n",
+    "bug": "package practice\n\nfunc SummarizeEventStatuses(statuses []string) ([]string,map[string]int) {\n\torder:=make([]string,0)\n\tcounts:=make(map[string]int)\n\tfor _,raw:=range statuses {\n\t status:=strings.ToLower(strings.TrimSpace(raw))\n\t if status==\"\" { continue }\n\t order=append(order,status)\n\t counts[status]++\n\t}\n\treturn order,counts\n}\n",
+    "hints": [
+      "Нормализуй каждый статус через strings.TrimSpace и strings.ToLower. Пропусти пустые статусы. Верни уникальные нормализованные статусы в порядке первого появления и map их частот. Вход не меняй. Для пустого результата верни инициализированные пустые срез и map.",
+      "Срез хранит порядок, map — частоты.",
+      "Правила нормализации заданы контрактом.",
+      "Оба результата независимы от входной коллекции.",
+      "order:=make([]string,0)\ncounts:=make(map[string]int)\nfor _,raw:=range statuses {\n status:=strings.ToLower(strings.TrimSpace(raw))\n if status==\"\" { continue }\n if counts[status]==0 { order=append(order,status) }\n counts[status]++\n}\nreturn order,counts"
+    ],
+    "related": [
+      [
+        "core-normalize-space",
+        "Нормализовать пробелы в строке"
+      ]
+    ],
+    "production": "Агрегация статусов для API, аналитики или UI. В реальном сервисе статусы обычно enum: неизвестные значения валидируются, а нормализация и порядок определяются продуктовым контрактом.",
+    "interview": "Почему для такого ответа используют и map, и slice?"
   }
 };
