@@ -268,3 +268,11 @@ func DivideParts(a, b int) (quotient, remainder int, ok bool) { return }
 func FinalScore(base, bonus int) (score int) { return }
 
 func AddToValue(value *int, delta int) bool { return false }
+
+func FindIntPointer(values []int, target int) *int { return nil }
+
+func ReverseRunes(s string) string { return s }
+
+func IsRunePalindrome(s string) bool { return false }
+
+func CountOccurrences(s, needle string) int { return 0 }

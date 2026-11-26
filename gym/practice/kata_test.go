@@ -638,3 +638,19 @@ func TestFinalScore(t *testing.T) {
 func TestAddToValue(t *testing.T) {
  x:=10;if !AddToValue(&x,3)||x!=13{t.Fatal(x)};if !AddToValue(&x,-5)||x!=8{t.Fatal(x)};if AddToValue(nil,1){t.Fatal("nil")};if !AddToValue(&x,0)||x!=8{t.Fatal(x)}
 }
+
+func TestFindIntPointer(t *testing.T) {
+ in:=[]int{8,3,3};p:=FindIntPointer(in,3);if p!=&in[1]{t.Fatal("wrong address")};*p=99;if !reflect.DeepEqual(in,[]int{8,99,3}){t.Fatal(in)};if FindIntPointer(in,7)!=nil||FindIntPointer(nil,1)!=nil{t.Fatal("missing")}
+}
+
+func TestReverseRunes(t *testing.T) {
+ for _,tc:=range []struct{s,want string}{{"Aя🙂","🙂яA"},{"abc","cba"},{"",""},{"я","я"},{"e\u0301","\u0301e"},{string([]byte{0xff,65}),"A\uFFFD"}}{if got:=ReverseRunes(tc.s);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestIsRunePalindrome(t *testing.T) {
+ for _,tc:=range []struct{s string;want bool}{{"топот",true},{"🙂a🙂",true},{"Abba",false},{"abba",true},{"abc",false},{"",true},{"я",true},{"a a",true},{"a a ",false},{"\u00e9e\u0301",false}}{if got:=IsRunePalindrome(tc.s);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestCountOccurrences(t *testing.T) {
+ for _,tc:=range []struct{s,n string;want int}{{"aaaaa","aa",2},{"я-я-я","я",3},{"ababa","aba",1},{"abc","",0},{"abc","x",0},{"","a",0},{"Aaa","a",2},{"abc","abc",1}}{if got:=CountOccurrences(tc.s,tc.n);got!=tc.want{t.Fatal(tc,got)}}
+}

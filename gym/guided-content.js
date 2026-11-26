@@ -6073,5 +6073,491 @@ window.GOFORGE_GUIDES = {
     ],
     "production": "Обновление небольшого mutable-состояния через указатель. При конкурентном доступе необходима синхронизация, а не просто указатель.",
     "interview": "Передаются ли указатели по ссылке в Go?"
+  },
+  "core-element-pointer": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "8",
+          "3",
+          "3"
+        ],
+        "target=3",
+        "Нужен адрес элемента, а не копии числа."
+      ],
+      [
+        "Обход",
+        [
+          "8",
+          "3",
+          "3"
+        ],
+        "i=0, values[0]=8",
+        "Не совпало."
+      ],
+      [
+        "Совпадение",
+        [
+          "8",
+          "3",
+          "3"
+        ],
+        "i=1, &values[1]",
+        "Возвращаем адрес первого совпадения."
+      ],
+      [
+        "Запись через указатель",
+        [
+          "8",
+          "99",
+          "3"
+        ],
+        "*p=99",
+        "Исходный элемент с индексом 1 меняется."
+      ]
+    ],
+    "steps": [
+      [
+        "Перебирать индексы",
+        "for i:=range values {",
+        "Индекс позволяет обратиться к самому элементу."
+      ],
+      [
+        "Найти совпадение",
+        "if values[i]==target {",
+        "Сравниваем значение исходного элемента."
+      ],
+      [
+        "Вернуть адрес",
+        "return &values[i]\n}\n}",
+        "Адрес переменной v из range указывает на копию."
+      ],
+      [
+        "Вернуть отсутствие",
+        "return nil",
+        "Нет совпадений — нет адреса."
+      ]
+    ],
+    "blocks": [
+      "Вернуть отсутствие",
+      "Перебирать индексы",
+      "Найти совпадение",
+      "Вернуть адрес"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "return &",
+        "after": "[i]",
+        "options": [
+          "values",
+          "target",
+          "i"
+        ],
+        "correct": 0,
+        "explain": "Нужен адрес элемента массива."
+      },
+      {
+        "before": "return ",
+        "after": "",
+        "options": [
+          "0",
+          "nil",
+          "target"
+        ],
+        "correct": 1,
+        "explain": "Отсутствующий указатель — nil."
+      }
+    ],
+    "partial": "package practice\n\nfunc FindIntPointer(values []int, target int) *int {\n\tfor i:=range values {\n\t if values[i]==target {\n\t  // TODO: верни адрес элемента\n\t  return nil\n\t }\n\t}\n\treturn nil\n}\n",
+    "bug": "package practice\n\nfunc FindIntPointer(values []int, target int) *int {\n\tfor _,v:=range values { if v==target { return &v } }\n\treturn nil\n}\n",
+    "hints": [
+      "Верни указатель на первый элемент исходного среза, равный target, или nil. Изменение через возвращённый указатель должно менять именно элемент входного массива.",
+      "Индекс позволяет обратиться к самому элементу.",
+      "Сравниваем значение исходного элемента.",
+      "Нет совпадений — нет адреса.",
+      "for i:=range values {\nif values[i]==target {\nreturn &values[i]\n}\n}\nreturn nil"
+    ],
+    "related": [
+      [
+        "core-linear-search",
+        "Найти индекс первого совпадения"
+      ]
+    ],
+    "production": "Указатель на элемент может удерживать backing array. После append с перераспределением он продолжает указывать на старый массив, а не на новый элемент среза.",
+    "interview": "Почему &v из for _, v := range s не равен &s[i]?"
+  },
+  "core-reverse-runes": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "A",
+          "я",
+          "🙂"
+        ],
+        "s=\"Aя🙂\", len(s)=7",
+        "Байты и Unicode code points — разные единицы."
+      ],
+      [
+        "Декодирование",
+        [
+          "A",
+          "я",
+          "🙂"
+        ],
+        "[]rune(s), len=3",
+        "Получаем изменяемый срез code points."
+      ],
+      [
+        "Обмен",
+        [
+          "🙂",
+          "я",
+          "A"
+        ],
+        "i=0, j=2",
+        "Меняем крайние руны."
+      ],
+      [
+        "Выход",
+        [
+          "🙂",
+          "я",
+          "A"
+        ],
+        "string(runes)",
+        "Кодируем руны обратно в UTF-8."
+      ]
+    ],
+    "steps": [
+      [
+        "Декодировать строку",
+        "runes:=[]rune(s)",
+        "Индексы среза рун соответствуют code points."
+      ],
+      [
+        "Задать два индекса",
+        "for i,j:=0,len(runes)-1;i<j;i,j=i+1,j-1 {",
+        "Движемся навстречу от двух краёв."
+      ],
+      [
+        "Обменять элементы",
+        "runes[i],runes[j]=runes[j],runes[i]\n}",
+        "Меняем руны, а не байты."
+      ],
+      [
+        "Закодировать результат",
+        "return string(runes)",
+        "Преобразование восстанавливает UTF-8."
+      ]
+    ],
+    "blocks": [
+      "Закодировать результат",
+      "Декодировать строку",
+      "Задать два индекса",
+      "Обменять элементы"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "runes := []",
+        "after": "(s)",
+        "options": [
+          "byte",
+          "rune",
+          "int"
+        ],
+        "correct": 1,
+        "explain": "Нужно переставлять целые code points."
+      },
+      {
+        "before": "return ",
+        "after": "(runes)",
+        "options": [
+          "string",
+          "int",
+          "byte"
+        ],
+        "correct": 0,
+        "explain": "Строка создаётся из последовательности рун."
+      }
+    ],
+    "partial": "package practice\n\nfunc ReverseRunes(s string) string {\n\trunes:=[]rune(s)\n\tfor i,j:=0,len(runes)-1;i<j;i,j=i+1,j-1 {\n\t // TODO: поменяй элементы i и j\n\t}\n\treturn string(runes)\n}\n",
+    "bug": "package practice\n\nfunc ReverseRunes(s string) string {\n\tbytes:=[]byte(s)\n\tfor i,j:=0,len(bytes)-1;i<j;i,j=i+1,j-1 { bytes[i],bytes[j]=bytes[j],bytes[i] }\n\treturn string(bytes)\n}\n",
+    "hints": [
+      "Верни строку с обратным порядком Unicode code points. Вход интерпретируй как []rune(s), включая замену некорректного UTF-8 на U+FFFD. Не требуется сохранять графемные кластеры.",
+      "Индексы среза рун соответствуют code points.",
+      "Движемся навстречу от двух краёв.",
+      "Преобразование восстанавливает UTF-8.",
+      "runes:=[]rune(s)\nfor i,j:=0,len(runes)-1;i<j;i,j=i+1,j-1 {\nrunes[i],runes[j]=runes[j],runes[i]\n}\nreturn string(runes)"
+    ],
+    "related": [
+      [
+        "core-string-stats",
+        "Посчитать байты и руны строки"
+      ]
+    ],
+    "production": "Разворот code points полезен для изучения Unicode, но не подходит для корректного разворота всех видимых символов: emoji ZWJ и combining marks требуют сегментации графем.",
+    "interview": "Почему разворот []byte ломает UTF-8?"
+  },
+  "core-palindrome": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "т",
+          "о",
+          "п",
+          "о",
+          "т"
+        ],
+        "i=0, j=4",
+        "Сравниваем крайние code points."
+      ],
+      [
+        "Первая пара",
+        [
+          "т",
+          "о",
+          "п",
+          "о",
+          "т"
+        ],
+        "т == т",
+        "Оба индекса движутся внутрь."
+      ],
+      [
+        "Вторая пара",
+        [
+          "т",
+          "о",
+          "п",
+          "о",
+          "т"
+        ],
+        "о == о",
+        "Пары совпадают."
+      ],
+      [
+        "Центр",
+        [
+          "п"
+        ],
+        "i=j=2",
+        "Центральный элемент не требует сравнения."
+      ],
+      [
+        "Выход",
+        [
+          "true"
+        ],
+        "return true",
+        "Все зеркальные пары равны."
+      ]
+    ],
+    "steps": [
+      [
+        "Декодировать руны",
+        "runes:=[]rune(s)",
+        "Сравниваем code points, а не байты."
+      ],
+      [
+        "Перебирать зеркальные пары",
+        "for i,j:=0,len(runes)-1;i<j;i,j=i+1,j-1 {",
+        "Доходим до середины."
+      ],
+      [
+        "Остановиться при несовпадении",
+        "if runes[i]!=runes[j] { return false }\n}",
+        "Одного несовпадения достаточно."
+      ],
+      [
+        "Подтвердить результат",
+        "return true",
+        "Пустой ввод и одиночная руна тоже проходят."
+      ]
+    ],
+    "blocks": [
+      "Подтвердить результат",
+      "Декодировать руны",
+      "Перебирать зеркальные пары",
+      "Остановиться при несовпадении"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if runes[i] ",
+        "after": " runes[j]",
+        "options": [
+          "==",
+          "!=",
+          "<"
+        ],
+        "correct": 1,
+        "explain": "При несовпадении палиндром невозможен."
+      },
+      {
+        "before": "for i,j:=0,len(runes)-1; i ",
+        "after": " j",
+        "options": [
+          "<",
+          ">",
+          "=="
+        ],
+        "correct": 0,
+        "explain": "Сравниваем пары до середины."
+      }
+    ],
+    "partial": "package practice\n\nfunc IsRunePalindrome(s string) bool {\n\trunes:=[]rune(s)\n\tfor i,j:=0,len(runes)-1;i<j;i,j=i+1,j-1 {\n\t // TODO: сравни пару рун\n\t _,_=i,j\n\t}\n\treturn len(runes)==0\n}\n",
+    "bug": "package practice\n\nfunc IsRunePalindrome(s string) bool {\n\tfor i,j:=0,len(s)-1;i<j;i,j=i+1,j-1 { if s[i]!=s[j] { return false } }\n\treturn true\n}\n",
+    "hints": [
+      "Проверь, совпадает ли последовательность []rune(s) с обратной. Регистр, пробелы и знаки значимы. Пустая строка — палиндром. Нормализация Unicode не нужна.",
+      "Сравниваем code points, а не байты.",
+      "Доходим до середины.",
+      "Пустой ввод и одиночная руна тоже проходят.",
+      "runes:=[]rune(s)\nfor i,j:=0,len(runes)-1;i<j;i,j=i+1,j-1 {\nif runes[i]!=runes[j] { return false }\n}\nreturn true"
+    ],
+    "related": [
+      [
+        "core-reverse-runes",
+        "Развернуть строку по Unicode code points"
+      ]
+    ],
+    "production": "Сравнение строк требует явного контракта: учитываются ли регистр, пробелы, каноническая эквивалентность и графемы. Не нормализуй данные молча.",
+    "interview": "Можно ли проверить UTF-8 палиндром без выделения []rune?"
+  },
+  "core-count-substring": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "a",
+          "a",
+          "a",
+          "a",
+          "a"
+        ],
+        "needle=\"aa\", count=0",
+        "Считаем неперекрывающиеся вхождения."
+      ],
+      [
+        "Первое совпадение",
+        [
+          "a",
+          "a",
+          "a"
+        ],
+        "i=0, count=1",
+        "Отбрасываем найденные два байта."
+      ],
+      [
+        "Второе совпадение",
+        [
+          "a"
+        ],
+        "i=0, count=2",
+        "Следующий поиск начинается после предыдущего."
+      ],
+      [
+        "Выход",
+        [
+          "2"
+        ],
+        "strings.Index(\"a\",\"aa\")=-1",
+        "Больше совпадений нет."
+      ]
+    ],
+    "steps": [
+      [
+        "Обработать пустую подстроку",
+        "if needle==\"\" { return 0 }",
+        "Контракт исключает пустой шаблон и обеспечивает продвижение."
+      ],
+      [
+        "Искать первое вхождение",
+        "count:=0\nfor {\n i:=strings.Index(s,needle)",
+        "Index возвращает байтовый индекс."
+      ],
+      [
+        "Завершить при отсутствии",
+        "if i<0 { return count }",
+        "-1 означает, что совпадений больше нет."
+      ],
+      [
+        "Обновить счётчик и остаток",
+        "count++\ns=s[i+len(needle):]\n}",
+        "Пропускаем всю совпавшую подстроку."
+      ]
+    ],
+    "blocks": [
+      "Обновить счётчик и остаток",
+      "Обработать пустую подстроку",
+      "Искать первое вхождение",
+      "Завершить при отсутствии"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if i ",
+        "after": " 0 { return count }",
+        "options": [
+          "<",
+          ">",
+          "=="
+        ],
+        "correct": 0,
+        "explain": "-1 — признак отсутствия."
+      },
+      {
+        "before": "s=s[i+",
+        "after": ":]",
+        "options": [
+          "1",
+          "len(needle)",
+          "len(s)"
+        ],
+        "correct": 1,
+        "explain": "Продвигаемся за всё совпадение, а не один байт."
+      }
+    ],
+    "partial": "package practice\n\nfunc CountOccurrences(s, needle string) int {\n\tif needle==\"\" { return 0 }\n\tcount:=0\n\tfor {\n\t i:=strings.Index(s,needle)\n\t if i<0 { return count }\n\t count++\n\t // TODO: продолжи после найденного вхождения\n\t return count\n\t}\n}\n",
+    "bug": "package practice\n\nfunc CountOccurrences(s, needle string) int {\n\tif needle==\"\" { return 0 }\n\tcount:=0\n\tfor {\n\t i:=strings.Index(s,needle)\n\t if i<0 { return count }\n\t count++\n\t s=s[i+1:]\n\t}\n}\n",
+    "hints": [
+      "Верни число точных неперекрывающихся вхождений непустой needle в s. Для пустой needle верни 0. Используй strings.Index, сравнение байтовое и чувствительно к регистру.",
+      "Контракт исключает пустой шаблон и обеспечивает продвижение.",
+      "Index возвращает байтовый индекс.",
+      "Пропускаем всю совпавшую подстроку.",
+      "if needle==\"\" { return 0 }\ncount:=0\nfor {\n i:=strings.Index(s,needle)\nif i<0 { return count }\ncount++\ns=s[i+len(needle):]\n}"
+    ],
+    "related": [
+      [
+        "core-linear-search",
+        "Найти индекс первого совпадения"
+      ]
+    ],
+    "production": "Поиск маркеров в небольших текстовых данных. Для стандартного подсчёта подходит strings.Count, но его семантика пустой подстроки отличается от данного контракта.",
+    "interview": "Чем отличаются перекрывающиеся и неперекрывающиеся совпадения?"
   }
 };
