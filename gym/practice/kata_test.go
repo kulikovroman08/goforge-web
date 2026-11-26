@@ -654,3 +654,19 @@ func TestIsRunePalindrome(t *testing.T) {
 func TestCountOccurrences(t *testing.T) {
  for _,tc:=range []struct{s,n string;want int}{{"aaaaa","aa",2},{"я-я-я","я",3},{"ababa","aba",1},{"abc","",0},{"abc","x",0},{"","a",0},{"Aaa","a",2},{"abc","abc",1}}{if got:=CountOccurrences(tc.s,tc.n);got!=tc.want{t.Fatal(tc,got)}}
 }
+
+func TestAppendInt(t *testing.T) {
+ s:=[]int{1,2};if !AppendInt(&s,3)||!reflect.DeepEqual(s,[]int{1,2,3}){t.Fatal(s)};var n []int;if !AppendInt(&n,5)||!reflect.DeepEqual(n,[]int{5}){t.Fatal(n)};if AppendInt(nil,1){t.Fatal("nil pointer")};spare:=make([]int,1,4);spare[0]=7;if !AppendInt(&spare,8)||!reflect.DeepEqual(spare,[]int{7,8}){t.Fatal(spare)}
+}
+
+func TestNormalizeSpaces(t *testing.T) {
+ for _,tc:=range []struct{s,want string}{{"  Go\t backend\n","Go backend"},{"a\u00a0b\u2003c","a b c"},{"\t \n",""},{"",""},{"Hello,  WORLD","Hello, WORLD"},{"one","one"}}{if got:=NormalizeSpaces(tc.s);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestRuneFrequency(t *testing.T) {
+ for _,tc:=range []struct{s string;want map[rune]int}{{"яAя🙂",map[rune]int{'я':2,'A':1,'🙂':1}},{"Aa ",map[rune]int{'A':1,'a':1,' ':1}},{"",map[rune]int{}},{string([]byte{0xff,0xfe}),map[rune]int{'\uFFFD':2}},{"e\u0301",map[rune]int{'e':1,'\u0301':1}}}{if got:=RuneFrequency(tc.s);!reflect.DeepEqual(got,tc.want){t.Fatal(tc,got)}}
+}
+
+func TestAreRuneAnagrams(t *testing.T) {
+ for _,tc:=range []struct{a,b string;want bool}{{"кот","ток",true},{"aab","abb",false},{"🙂я","я🙂",true},{"Ab","ba",false},{"","",true},{"a","",false},{"","a",false},{"aa","a",false},{"a b","ba ",true},{"\u00e9","e\u0301",false},{string([]byte{0xff}),"\uFFFD",true}}{if got:=AreRuneAnagrams(tc.a,tc.b);got!=tc.want{t.Fatal(tc,got)}}
+}

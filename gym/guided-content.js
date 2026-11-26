@@ -6559,5 +6559,462 @@ window.GOFORGE_GUIDES = {
     ],
     "production": "Поиск маркеров в небольших текстовых данных. Для стандартного подсчёта подходит strings.Count, но его семантика пустой подстроки отличается от данного контракта.",
     "interview": "Чем отличаются перекрывающиеся и неперекрывающиеся совпадения?"
+  },
+  "core-append-pointer": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "1",
+          "2"
+        ],
+        "dst=&s; len(s)=2, cap(s)=2",
+        "Указатель ведёт к дескриптору среза."
+      ],
+      [
+        "Проверка",
+        [
+          "dst != nil"
+        ],
+        "value=3",
+        "Указатель на nil-срез тоже допустим."
+      ],
+      [
+        "Append",
+        [
+          "1",
+          "2",
+          "3"
+        ],
+        "append(*dst,3)",
+        "Получаем новый дескриптор; backing array может измениться."
+      ],
+      [
+        "Присваивание",
+        [
+          "1",
+          "2",
+          "3"
+        ],
+        "*dst = новый дескриптор",
+        "Длина среза вызывающего кода теперь 3."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить адрес",
+        "if dst==nil { return false }",
+        "Nil-указатель нельзя разыменовывать, но сам срез может быть nil."
+      ],
+      [
+        "Добавить и сохранить дескриптор",
+        "*dst=append(*dst,value)",
+        "append возвращает новый slice header. Присваивание через указатель обновляет исходную переменную."
+      ],
+      [
+        "Сообщить успех",
+        "return true",
+        "Вызывающий код видит новую длину и данные."
+      ]
+    ],
+    "blocks": [
+      "Сообщить успех",
+      "Проверить адрес",
+      "Добавить и сохранить дескриптор"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "*dst = append(",
+        "after": " ,value)",
+        "options": [
+          "*dst",
+          "dst",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "append принимает срез, а не указатель."
+      },
+      {
+        "before": "",
+        "after": "dst = append(*dst,value)",
+        "options": [
+          "*",
+          "&",
+          ""
+        ],
+        "correct": 0,
+        "explain": "Записываем дескриптор по адресу."
+      }
+    ],
+    "partial": "package practice\n\nfunc AppendInt(dst *[]int, value int) bool {\n\tif dst==nil { return false }\n\t// TODO: обнови дескриптор среза через указатель\n\treturn true\n}\n",
+    "bug": "package practice\n\nfunc AppendInt(dst *[]int, value int) bool {\n\tif dst==nil { return false }\n\tlocal:=append(*dst,value)\n\t_ = local\n\treturn true\n}\n",
+    "hints": [
+      "Добавь value в срез, на который указывает dst, обновив сам дескриптор среза вызывающего кода. Если dst==nil, верни false. Указатель на nil-срез допустим; при успехе верни true.",
+      "Nil-указатель нельзя разыменовывать, но сам срез может быть nil.",
+      "append возвращает новый slice header. Присваивание через указатель обновляет исходную переменную.",
+      "Вызывающий код видит новую длину и данные.",
+      "if dst==nil { return false }\n*dst=append(*dst,value)\nreturn true"
+    ],
+    "related": [
+      [
+        "core-element-pointer",
+        "Найти указатель на первый элемент среза по значению"
+      ]
+    ],
+    "production": "Обычно API проще возвращать новый срез вместо *[]T. Указатель на срез нужен, если контракт требует обновить переменную вызывающего кода.",
+    "interview": "Почему append(s,v) внутри функции не меняет len(s) у вызывающего кода?"
+  },
+  "core-normalize-space": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "  Go",
+          "\\t",
+          "backend",
+          "\\n"
+        ],
+        "s=\"  Go\\t backend\\n\"",
+        "Вход содержит разные пробельные символы."
+      ],
+      [
+        "Разбиение",
+        [
+          "Go",
+          "backend"
+        ],
+        "strings.Fields(s)",
+        "Пустые элементы не появляются, Unicode whitespace учитывается."
+      ],
+      [
+        "Сборка",
+        [
+          "Go backend"
+        ],
+        "strings.Join(fields,\" \")",
+        "Вставляем один пробел между словами."
+      ],
+      [
+        "Выход",
+        [
+          "Go backend"
+        ],
+        "return result",
+        "Края и повторяющиеся пробелы нормализованы."
+      ]
+    ],
+    "steps": [
+      [
+        "Выделить непустые слова",
+        "fields:=strings.Fields(s)",
+        "Fields разделяет по Unicode whitespace и отбрасывает пустые группы."
+      ],
+      [
+        "Объединить слова",
+        "return strings.Join(fields,\" \")",
+        "Join добавляет разделитель только между элементами."
+      ]
+    ],
+    "blocks": [
+      "Объединить слова",
+      "Выделить непустые слова"
+    ],
+    "order": [
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "fields := strings.",
+        "after": "(s)",
+        "options": [
+          "Split",
+          "Fields",
+          "TrimSpace"
+        ],
+        "correct": 1,
+        "explain": "Fields принимает Unicode whitespace как разделители."
+      },
+      {
+        "before": "strings.Join(fields,",
+        "after": ")",
+        "options": [
+          "\" \"",
+          "\"\"",
+          "\"\\n\""
+        ],
+        "correct": 0,
+        "explain": "Между словами нужен один обычный пробел."
+      }
+    ],
+    "partial": "package practice\n\nfunc NormalizeSpaces(s string) string {\n\tfields:=strings.Fields(s)\n\t// TODO: соедини слова одним пробелом\n\treturn strings.Join(fields,\"\")\n}\n",
+    "bug": "package practice\n\nfunc NormalizeSpaces(s string) string {\n\treturn strings.TrimSpace(s)\n}\n",
+    "hints": [
+      "Удали пробельные символы по краям и замени каждую последовательность Unicode whitespace между словами одним ASCII-пробелом. Не меняй регистр и содержимое слов. Используй strings.Fields и strings.Join.",
+      "Fields разделяет по Unicode whitespace и отбрасывает пустые группы.",
+      "Join добавляет разделитель только между элементами.",
+      "Join добавляет разделитель только между элементами.",
+      "fields:=strings.Fields(s)\nreturn strings.Join(fields,\" \")"
+    ],
+    "related": [
+      [
+        "core-string-stats",
+        "Посчитать байты и руны строки"
+      ]
+    ],
+    "production": "Нормализация пользовательского текста и поисковых запросов. Не применяй её к паролям, подписи или данным, где пробелы значимы.",
+    "interview": "Чем strings.Fields отличается от strings.Split(s,\" \")?"
+  },
+  "core-rune-frequency": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "я",
+          "A",
+          "я",
+          "🙂"
+        ],
+        "s=\"яAя🙂\"",
+        "Строка содержит многобайтовые символы."
+      ],
+      [
+        "Первое чтение",
+        [
+          "я:1"
+        ],
+        "r='я'",
+        "range декодирует Unicode code point."
+      ],
+      [
+        "Следующие",
+        [
+          "я:2",
+          "A:1"
+        ],
+        "counts[r]++",
+        "Отсутствующий ключ даёт 0."
+      ],
+      [
+        "Выход",
+        [
+          "я:2",
+          "A:1",
+          "🙂:1"
+        ],
+        "return counts",
+        "Порядок ключей не задан."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать счётчики",
+        "counts:=make(map[rune]int)",
+        "Ключ — rune, значение — количество."
+      ],
+      [
+        "Перебрать code points",
+        "for _,r:=range s {",
+        "Второй результат range — rune, первый — байтовый индекс."
+      ],
+      [
+        "Увеличить частоту",
+        "counts[r]++\n}",
+        "Нулевое значение отсутствующей записи позволяет начать с 0."
+      ],
+      [
+        "Вернуть map",
+        "return counts",
+        "Для пустого ввода map остаётся инициализированной."
+      ]
+    ],
+    "blocks": [
+      "Вернуть map",
+      "Создать счётчики",
+      "Перебрать code points",
+      "Увеличить частоту"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "make(map[",
+        "after": "]int)",
+        "options": [
+          "rune",
+          "byte",
+          "string"
+        ],
+        "correct": 0,
+        "explain": "Храним Unicode code point."
+      },
+      {
+        "before": "counts[r]",
+        "after": "",
+        "options": [
+          "++",
+          "--",
+          "=0"
+        ],
+        "correct": 0,
+        "explain": "Каждое появление увеличивает частоту."
+      }
+    ],
+    "partial": "package practice\n\nfunc RuneFrequency(s string) map[rune]int {\n\tcounts:=make(map[rune]int)\n\tfor _,r:=range s {\n\t // TODO: увеличь счётчик руны\n\t _=r\n\t}\n\treturn counts\n}\n",
+    "bug": "package practice\n\nfunc RuneFrequency(s string) map[rune]int {\n\tcounts:=make(map[rune]int)\n\tfor i:=0;i<len(s);i++ { counts[rune(s[i])]++ }\n\treturn counts\n}\n",
+    "hints": [
+      "Верни новую map с количеством каждого code point в s. Используй range по строке; регистр значим, пробелы учитываются, некорректный UTF-8 декодируется как U+FFFD. Для пустой строки верни не nil map.",
+      "Ключ — rune, значение — количество.",
+      "Второй результат range — rune, первый — байтовый индекс.",
+      "Для пустого ввода map остаётся инициализированной.",
+      "counts:=make(map[rune]int)\nfor _,r:=range s { counts[r]++ }\nreturn counts"
+    ],
+    "related": [
+      [
+        "core-string-stats",
+        "Посчитать байты и руны строки"
+      ]
+    ],
+    "production": "Статистика символов требует определить, что считать: байты, code points или графемы. Для сравнения естественного языка также может понадобиться нормализация.",
+    "interview": "Что возвращает range по строке?"
+  },
+  "core-anagram": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "a: кот",
+          "b: ток"
+        ],
+        "counts={}",
+        "Порядок букв различается."
+      ],
+      [
+        "Считаем a",
+        [
+          "к:1",
+          "о:1",
+          "т:1"
+        ],
+        "counts={к:1,о:1,т:1}",
+        "Запоминаем количество каждой руны."
+      ],
+      [
+        "Читаем b",
+        [
+          "к:1",
+          "о:1"
+        ],
+        "т найден, вычитаем 1",
+        "Удаляем запись с нулевым остатком."
+      ],
+      [
+        "Следующие",
+        [
+          "к:1"
+        ],
+        "о найден, удаляем",
+        "Каждую руну используем только один раз."
+      ],
+      [
+        "Выход",
+        [
+          "{}"
+        ],
+        "len(counts)==0 → true",
+        "Все частоты взаимно компенсировались."
+      ]
+    ],
+    "steps": [
+      [
+        "Посчитать руны a",
+        "counts:=make(map[rune]int)\nfor _,r:=range a { counts[r]++ }",
+        "Важно количество, а не только присутствие."
+      ],
+      [
+        "Перебрать руны b",
+        "for _,r:=range b {",
+        "Для каждого элемента ищем доступный остаток."
+      ],
+      [
+        "Проверить доступность",
+        "if counts[r]==0 { return false }",
+        "Отсутствующий или исчерпанный ключ означает несовпадение."
+      ],
+      [
+        "Уменьшить и очистить",
+        "counts[r]--\nif counts[r]==0 { delete(counts,r) }\n}",
+        "Удаляем только полностью использованные записи."
+      ],
+      [
+        "Проверить остаток",
+        "return len(counts)==0",
+        "Если остались ключи, в a были лишние руны."
+      ]
+    ],
+    "blocks": [
+      "Проверить остаток",
+      "Посчитать руны a",
+      "Перебрать руны b",
+      "Проверить доступность",
+      "Уменьшить и очистить"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if counts[r]==",
+        "after": " { return false }",
+        "options": [
+          "0",
+          "1",
+          "-1"
+        ],
+        "correct": 0,
+        "explain": "Нет доступной руны для сопоставления."
+      },
+      {
+        "before": "return len(counts) ",
+        "after": " 0",
+        "options": [
+          "==",
+          "!=",
+          "<"
+        ],
+        "correct": 0,
+        "explain": "Все частоты должны быть исчерпаны."
+      }
+    ],
+    "partial": "package practice\n\nfunc AreRuneAnagrams(a, b string) bool {\n\tcounts:=make(map[rune]int)\n\tfor _,r:=range a { counts[r]++ }\n\tfor _,r:=range b {\n\t if counts[r]==0 { return false }\n\t // TODO: уменьши счётчик и удали нулевую запись\n\t}\n\treturn len(counts)==0\n}\n",
+    "bug": "package practice\n\nfunc AreRuneAnagrams(a, b string) bool {\n\tseen:=make(map[rune]bool)\n\tfor _,r:=range a { seen[r]=true }\n\tfor _,r:=range b { if !seen[r] { return false } }\n\treturn true\n}\n",
+    "hints": [
+      "Проверь, содержат ли []rune(a) и []rune(b) одинаковое количество каждого code point независимо от порядка. Регистр, пробелы и combining marks значимы. Unicode-нормализация не нужна. Используй map частот.",
+      "Важно количество, а не только присутствие.",
+      "Для каждого элемента ищем доступный остаток.",
+      "Если остались ключи, в a были лишние руны.",
+      "counts:=make(map[rune]int)\nfor _,r:=range a { counts[r]++ }\nfor _,r:=range b {\n if counts[r]==0 { return false }\n counts[r]--\n if counts[r]==0 { delete(counts,r) }\n}\nreturn len(counts)==0"
+    ],
+    "related": [
+      [
+        "core-rune-frequency",
+        "Посчитать частоту Unicode code points"
+      ]
+    ],
+    "production": "Сравнение мультимножеств полезно и для ID, токенов, событий. Для пользовательского текста явно решай, нужны ли case folding и Unicode-нормализация.",
+    "interview": "Почему множества рун недостаточно для проверки анаграмм?"
   }
 };

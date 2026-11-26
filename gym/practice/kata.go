@@ -276,3 +276,11 @@ func ReverseRunes(s string) string { return s }
 func IsRunePalindrome(s string) bool { return false }
 
 func CountOccurrences(s, needle string) int { return 0 }
+
+func AppendInt(dst *[]int, value int) bool { return false }
+
+func NormalizeSpaces(s string) string { return s }
+
+func RuneFrequency(s string) map[rune]int { return nil }
+
+func AreRuneAnagrams(a, b string) bool { return false }
