@@ -670,3 +670,19 @@ func TestRuneFrequency(t *testing.T) {
 func TestAreRuneAnagrams(t *testing.T) {
  for _,tc:=range []struct{a,b string;want bool}{{"кот","ток",true},{"aab","abb",false},{"🙂я","я🙂",true},{"Ab","ba",false},{"","",true},{"a","",false},{"","a",false},{"aa","a",false},{"a b","ba ",true},{"\u00e9","e\u0301",false},{string([]byte{0xff}),"\uFFFD",true}}{if got:=AreRuneAnagrams(tc.a,tc.b);got!=tc.want{t.Fatal(tc,got)}}
 }
+
+func TestCloneQuotaConfig(t *testing.T) {
+ n:=10;in:=QuotaConfig{Name:"api",Limit:&n};out:=CloneQuotaConfig(in);if out.Name!="api"||out.Limit==nil||out.Limit==in.Limit||*out.Limit!=10{t.Fatal(out)};*out.Limit=99;if n!=10{t.Fatal("alias")};out=CloneQuotaConfig(QuotaConfig{Name:"empty"});if out.Name!="empty"||out.Limit!=nil{t.Fatal(out)}
+}
+
+func TestSumIntTree(t *testing.T) {
+ root:=&IntTree{Value:5,Left:&IntTree{Value:2,Right:&IntTree{Value:-1}},Right:&IntTree{Value:7}};if got:=SumIntTree(root);got!=13{t.Fatal(got)};if SumIntTree(nil)!=0||SumIntTree(&IntTree{Value:-4})!=-4{t.Fatal("base cases")};if root.Left.Right.Value!=-1||root.Right.Value!=7{t.Fatal("modified tree")}
+}
+
+func TestEqualNames(t *testing.T) {
+ for _,tc:=range []struct{a,b string;want bool}{{"Go","gO",true},{"Я","я",true},{"Σ","ς",true},{"K","K",true},{"Go"," Go",false},{"ß","SS",false},{"é","e\u0301",false},{"","",true},{"a","b",false}}{if got:=EqualNames(tc.a,tc.b);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestLimitedWindow(t *testing.T) {
+ in:=[]int{10,20,30,40,50};out,ok:=LimitedWindow(in,1,3);if !ok||!reflect.DeepEqual(out,[]int{20,30})||cap(out)!=2{t.Fatal(out,ok,cap(out))};out[0]=21;if in[1]!=21{t.Fatal("expected shared elements")};out=append(out,99);if in[3]!=40{t.Fatal("overwritten tail")};for _,p:=range [][2]int{{-1,2},{2,1},{0,6}}{v,ok:=LimitedWindow(in,p[0],p[1]);if ok||v!=nil{t.Fatal(p,v,ok)}};v,ok:=LimitedWindow(nil,0,0);if !ok||len(v)!=0||cap(v)!=0{t.Fatal(v,ok)}
+}

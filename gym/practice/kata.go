@@ -284,3 +284,13 @@ func NormalizeSpaces(s string) string { return s }
 func RuneFrequency(s string) map[rune]int { return nil }
 
 func AreRuneAnagrams(a, b string) bool { return false }
+
+type QuotaConfig struct { Name string; Limit *int }
+func CloneQuotaConfig(cfg QuotaConfig) QuotaConfig { return QuotaConfig{} }
+
+type IntTree struct { Value int; Left, Right *IntTree }
+func SumIntTree(root *IntTree) int { return 0 }
+
+func EqualNames(a,b string) bool { return false }
+
+func LimitedWindow(values []int,start,end int) ([]int,bool) { return nil,false }

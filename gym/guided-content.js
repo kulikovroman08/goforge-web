@@ -7016,5 +7016,461 @@ window.GOFORGE_GUIDES = {
     ],
     "production": "Сравнение мультимножеств полезно и для ID, токенов, событий. Для пользовательского текста явно решай, нужны ли case folding и Unicode-нормализация.",
     "interview": "Почему множества рун недостаточно для проверки анаграмм?"
+  },
+  "core-clone-config": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "Name=api",
+          "Limit → 10"
+        ],
+        "cfg",
+        "Структура содержит указатель на число."
+      ],
+      [
+        "Поверхностная копия",
+        [
+          "cfg.Limit → 10",
+          "out.Limit → 10"
+        ],
+        "out:=cfg",
+        "Оба указателя ведут к одному числу."
+      ],
+      [
+        "Глубокая копия",
+        [
+          "cfg.Limit → 10",
+          "out.Limit → 10 (новое)"
+        ],
+        "n:=*cfg.Limit; out.Limit=&n",
+        "Создаём независимое число."
+      ],
+      [
+        "Проверка",
+        [
+          "cfg.Limit → 10",
+          "out.Limit → 99"
+        ],
+        "*out.Limit=99",
+        "Исходное число осталось прежним."
+      ]
+    ],
+    "steps": [
+      [
+        "Скопировать структуру",
+        "out:=cfg",
+        "Строка копируется как значение, указатель сохраняет адрес."
+      ],
+      [
+        "Проверить nil",
+        "if cfg.Limit!=nil {",
+        "Нельзя разыменовывать отсутствующий указатель."
+      ],
+      [
+        "Скопировать число",
+        "n:=*cfg.Limit\nout.Limit=&n\n}",
+        "Адрес новой переменной не совпадает с адресом оригинала."
+      ],
+      [
+        "Вернуть результат",
+        "return out",
+        "Оригинал и копия независимы по полю Limit."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Скопировать структуру",
+      "Проверить nil",
+      "Скопировать число"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "n := ",
+        "after": "cfg.Limit",
+        "options": [
+          "*",
+          "&",
+          ""
+        ],
+        "correct": 0,
+        "explain": "Разыменование читает число."
+      },
+      {
+        "before": "out.Limit = ",
+        "after": "n",
+        "options": [
+          "*",
+          "&",
+          ""
+        ],
+        "correct": 1,
+        "explain": "Нужен адрес новой переменной."
+      }
+    ],
+    "partial": "package practice\n\ntype QuotaConfig struct { Name string; Limit *int }\n\nfunc CloneQuotaConfig(cfg QuotaConfig) QuotaConfig {\n\tout:=cfg\n\tif cfg.Limit!=nil {\n\t // TODO: скопируй число и замени указатель\n\t}\n\treturn out\n}\n",
+    "bug": "package practice\n\ntype QuotaConfig struct { Name string; Limit *int }\n\nfunc CloneQuotaConfig(cfg QuotaConfig) QuotaConfig {\n\treturn cfg\n}\n",
+    "hints": [
+      "Верни копию QuotaConfig. Если Limit не nil, скопируй число в отдельную переменную и сохрани её адрес. Если Limit nil, оставь nil. Name сохраняется.",
+      "Строка копируется как значение, указатель сохраняет адрес.",
+      "Нельзя разыменовывать отсутствующий указатель.",
+      "Оригинал и копия независимы по полю Limit.",
+      "out:=cfg\nif cfg.Limit!=nil {\n n:=*cfg.Limit\n out.Limit=&n\n}\nreturn out"
+    ],
+    "related": [
+      [
+        "core-deep-map",
+        "Глубоко скопировать map со срезами"
+      ]
+    ],
+    "production": "Копирование конфигурации с optional-полями. Для сложных графов объектов заранее определяй, какие ссылки должны быть общими и какие независимыми.",
+    "interview": "Безопасно ли возвращать адрес локальной переменной в Go?"
+  },
+  "core-tree-sum": {
+    "frames": [
+      [
+        "Корень",
+        [
+          "5",
+          "↙ 2",
+          "↘ 7"
+        ],
+        "SumIntTree(root)",
+        "Корень имеет два поддерева."
+      ],
+      [
+        "Левый узел",
+        [
+          "2",
+          "nil",
+          "nil"
+        ],
+        "2+0+0=2",
+        "Nil завершает вызов."
+      ],
+      [
+        "Правый узел",
+        [
+          "7",
+          "nil",
+          "nil"
+        ],
+        "7+0+0=7",
+        "Обрабатываем и правую ветвь."
+      ],
+      [
+        "Возврат",
+        [
+          "5",
+          "2",
+          "7"
+        ],
+        "5+2+7=14",
+        "Складываем корень и обе суммы."
+      ]
+    ],
+    "steps": [
+      [
+        "Обработать пустой узел",
+        "if root==nil { return 0 }",
+        "Базовый случай предотвращает разыменование nil."
+      ],
+      [
+        "Обойти левую ветвь",
+        "SumIntTree(root.Left)",
+        "Рекурсивный вызов возвращает сумму левого поддерева."
+      ],
+      [
+        "Обойти правую ветвь",
+        "SumIntTree(root.Right)",
+        "Не пропускаем вторую ветвь."
+      ],
+      [
+        "Сложить результаты",
+        "return root.Value+SumIntTree(root.Left)+SumIntTree(root.Right)",
+        "Каждый узел учитывается один раз."
+      ]
+    ],
+    "blocks": [
+      "Сложить результаты",
+      "Обработать пустой узел",
+      "Обойти левую ветвь",
+      "Обойти правую ветвь"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if root==",
+        "after": " { return 0 }",
+        "options": [
+          "nil",
+          "0",
+          "false"
+        ],
+        "correct": 0,
+        "explain": "Пустое дерево завершает рекурсию."
+      },
+      {
+        "before": "root.Value+SumIntTree(root.Left)+",
+        "after": "",
+        "options": [
+          "SumIntTree(root.Right)",
+          "root.Value",
+          "0"
+        ],
+        "correct": 0,
+        "explain": "Нужна сумма правого поддерева."
+      }
+    ],
+    "partial": "package practice\n\ntype IntTree struct { Value int; Left, Right *IntTree }\n\nfunc SumIntTree(root *IntTree) int {\n\tif root==nil { return 0 }\n\t// TODO: добавь суммы обоих поддеревьев\n\treturn root.Value\n}\n",
+    "bug": "package practice\n\ntype IntTree struct { Value int; Left, Right *IntTree }\n\nfunc SumIntTree(root *IntTree) int {\n\tif root==nil { return 0 }\n\treturn root.Value+SumIntTree(root.Left)\n}\n",
+    "hints": [
+      "Верни сумму значений всех узлов конечного бинарного дерева без циклов и общих узлов. Nil-дерево даёт 0. Используй рекурсию, не меняй дерево.",
+      "Базовый случай предотвращает разыменование nil.",
+      "Рекурсивный вызов возвращает сумму левого поддерева.",
+      "Каждый узел учитывается один раз.",
+      "if root==nil { return 0 }\nreturn root.Value+SumIntTree(root.Left)+SumIntTree(root.Right)"
+    ],
+    "related": [
+      [
+        "core-recursive-sum",
+        "Рекурсивно сложить числа"
+      ]
+    ],
+    "production": "Обход иерархий категорий и деревьев выражений. Для произвольных графов нужна защита от циклов, для глубокой иерархии может потребоваться явный стек.",
+    "interview": "Какова память рекурсивного обхода дерева?"
+  },
+  "core-equal-fold": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "Go",
+          "gO"
+        ],
+        "a=\"Go\", b=\"gO\"",
+        "Обычное == чувствительно к регистру."
+      ],
+      [
+        "Сравнение",
+        [
+          "G ↔ g",
+          "o ↔ O"
+        ],
+        "strings.EqualFold(a,b)",
+        "Сравнение учитывает Unicode simple folding."
+      ],
+      [
+        "Греческий пример",
+        [
+          "Σ",
+          "ς"
+        ],
+        "EqualFold(\"Σ\",\"ς\") → true",
+        "Приведение обеих строк к нижнему регистру не всегда эквивалентно folding."
+      ],
+      [
+        "Граница контракта",
+        [
+          "Go",
+          " Go"
+        ],
+        "false",
+        "Пробелы не удаляем."
+      ]
+    ],
+    "steps": [
+      [
+        "Определить контракт",
+        "// Unicode simple case folding",
+        "Сравнение регистра не означает нормализацию или удаление пробелов."
+      ],
+      [
+        "Выбрать функцию",
+        "strings.EqualFold(a,b)",
+        "Стандартная библиотека выполняет нужное сравнение."
+      ],
+      [
+        "Вернуть результат",
+        "return strings.EqualFold(a,b)",
+        "Не создаём вручную строки в нижнем регистре."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Определить контракт",
+      "Выбрать функцию"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "return strings.",
+        "after": "(a,b)",
+        "options": [
+          "EqualFold",
+          "Contains",
+          "Compare"
+        ],
+        "correct": 0,
+        "explain": "EqualFold сравнивает без учёта регистра."
+      },
+      {
+        "before": "EqualNames(\"Go\", \" Go\") == ",
+        "after": "",
+        "options": [
+          "true",
+          "false",
+          "nil"
+        ],
+        "correct": 1,
+        "explain": "Пробелы значимы."
+      }
+    ],
+    "partial": "package practice\n\nfunc EqualNames(a,b string) bool {\n\t// TODO: используй Unicode-aware сравнение\n\treturn a==b\n}\n",
+    "bug": "package practice\n\nfunc EqualNames(a,b string) bool {\n\treturn strings.ToLower(a)==strings.ToLower(b)\n}\n",
+    "hints": [
+      "Сравни строки без учёта регистра по правилам Unicode simple case folding, используя strings.EqualFold. Пробелы и нормализация Unicode не изменяются.",
+      "Сравнение регистра не означает нормализацию или удаление пробелов.",
+      "Стандартная библиотека выполняет нужное сравнение.",
+      "Не создаём вручную строки в нижнем регистре.",
+      "return strings.EqualFold(a,b)"
+    ],
+    "related": [
+      [
+        "core-normalize-space",
+        "Нормализовать пробелы в строке"
+      ]
+    ],
+    "production": "Сравнение пользовательских имён по оговорённому контракту. Для идентификаторов и безопасности не выбирай правила эквивалентности без требований продукта.",
+    "interview": "Почему EqualFold не равно сравнению ToLower(a)==ToLower(b)?"
+  },
+  "core-cap-window": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "10",
+          "20",
+          "30",
+          "40",
+          "50"
+        ],
+        "start=1, end=3",
+        "Выбираем элементы 20 и 30."
+      ],
+      [
+        "Обычный подсрез",
+        [
+          "20",
+          "30",
+          "40",
+          "50"
+        ],
+        "len=2, cap=4",
+        "Append может перезаписать 40."
+      ],
+      [
+        "Полное выражение",
+        [
+          "20",
+          "30"
+        ],
+        "values[1:3:3], len=2, cap=2",
+        "Третий индекс ограничивает capacity."
+      ],
+      [
+        "Append",
+        [
+          "20",
+          "30",
+          "99"
+        ],
+        "новый backing array",
+        "Исходный элемент 40 сохраняется."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить границы",
+        "if start<0||end<start||end>len(values) { return nil,false }",
+        "Контракт ограничивает окно длиной, не capacity."
+      ],
+      [
+        "Выбрать полное выражение",
+        "values[start:end:end]",
+        "Длина end-start, capacity также end-start."
+      ],
+      [
+        "Вернуть окно",
+        "return values[start:end:end],true",
+        "Существующие элементы общие, следующий append требует места в новом массиве."
+      ]
+    ],
+    "blocks": [
+      "Вернуть окно",
+      "Проверить границы",
+      "Выбрать полное выражение"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "values[start:end:",
+        "after": "]",
+        "options": [
+          "end",
+          "start",
+          "len(values)"
+        ],
+        "correct": 0,
+        "explain": "Третий индекс определяет cap относительно start."
+      },
+      {
+        "before": "end>",
+        "after": "(values)",
+        "options": [
+          "cap",
+          "len",
+          "copy"
+        ],
+        "correct": 1,
+        "explain": "Контракт разрешает только видимые элементы входа."
+      }
+    ],
+    "partial": "package practice\n\nfunc LimitedWindow(values []int,start,end int) ([]int,bool) {\n\tif start<0||end<start||end>len(values) { return nil,false }\n\t// TODO: ограничь capacity третьим индексом\n\treturn values[start:end],true\n}\n",
+    "bug": "package practice\n\nfunc LimitedWindow(values []int,start,end int) ([]int,bool) {\n\tif start<0||end<start||end>len(values) { return nil,false }\n\treturn values[start:end],true\n}\n",
+    "hints": [
+      "Верни подсрез values[start:end] с ёмкостью ровно end-start. Допустимо 0<=start<=end<=len(values). При неверных границах верни nil,false. Элементы могут разделять исходный массив, но append к результату не должен перезаписывать следующие элементы.",
+      "Контракт ограничивает окно длиной, не capacity.",
+      "Длина end-start, capacity также end-start.",
+      "Существующие элементы общие, следующий append требует места в новом массиве.",
+      "if start<0||end<start||end>len(values) { return nil,false }\nreturn values[start:end:end],true"
+    ],
+    "related": [
+      [
+        "core-append-pointer",
+        "Добавить число через указатель на срез"
+      ]
+    ],
+    "production": "Передача ограниченного окна буфера другому компоненту. Full slice expression защищает соседние элементы от append, но не обеспечивает полную независимость памяти.",
+    "interview": "Чем s[i:j:k] отличается от s[i:j]?"
   }
 };
