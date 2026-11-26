@@ -294,3 +294,11 @@ func SumIntTree(root *IntTree) int { return 0 }
 func EqualNames(a,b string) bool { return false }
 
 func LimitedWindow(values []int,start,end int) ([]int,bool) { return nil,false }
+
+func RepeatLabel(label string, n int) string { return "" }
+
+func TruncateUTF8Bytes(s string, max int) string { return s }
+
+func KeepPositiveInPlace(values []int) []int { return values }
+
+func DetachByteWindow(data []byte,start,end int) ([]byte,bool) { return nil,false }

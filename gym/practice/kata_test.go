@@ -686,3 +686,19 @@ func TestEqualNames(t *testing.T) {
 func TestLimitedWindow(t *testing.T) {
  in:=[]int{10,20,30,40,50};out,ok:=LimitedWindow(in,1,3);if !ok||!reflect.DeepEqual(out,[]int{20,30})||cap(out)!=2{t.Fatal(out,ok,cap(out))};out[0]=21;if in[1]!=21{t.Fatal("expected shared elements")};out=append(out,99);if in[3]!=40{t.Fatal("overwritten tail")};for _,p:=range [][2]int{{-1,2},{2,1},{0,6}}{v,ok:=LimitedWindow(in,p[0],p[1]);if ok||v!=nil{t.Fatal(p,v,ok)}};v,ok:=LimitedWindow(nil,0,0);if !ok||len(v)!=0||cap(v)!=0{t.Fatal(v,ok)}
 }
+
+func TestRepeatLabel(t *testing.T) {
+ for _,tc:=range []struct{s string;n int;want string}{{"go",3,"go,go,go"},{"я",2,"я,я"},{"x",1,"x"},{"",3,",,"},{"x",0,""},{"x",-2,""}}{if got:=RepeatLabel(tc.s,tc.n);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestTruncateUTF8Bytes(t *testing.T) {
+ for _,tc:=range []struct{s string;n int;want string}{{"AяB",2,"A"},{"AяB",3,"Aя"},{"🙂x",3,""},{"🙂x",4,"🙂"},{"abc",2,"ab"},{"я",1,""},{"",5,""},{"abc",0,""},{"abc",-1,""},{"я",100,"я"}}{if got:=TruncateUTF8Bytes(tc.s,tc.n);got!=tc.want{t.Fatalf("%q limit %d: %q != %q",tc.s,tc.n,got,tc.want)}}
+}
+
+func TestKeepPositiveInPlace(t *testing.T) {
+ in:=[]int{-1,3,0,5};out:=KeepPositiveInPlace(in);if !reflect.DeepEqual(out,[]int{3,5})||&out[0]!=&in[0]{t.Fatal(in,out)};out[0]=9;if in[0]!=9{t.Fatal("not shared")};if len(KeepPositiveInPlace(nil))!=0||len(KeepPositiveInPlace([]int{0,-1}))!=0{t.Fatal("empty")};if got:=KeepPositiveInPlace([]int{2,1,2});!reflect.DeepEqual(got,[]int{2,1,2}){t.Fatal(got)}
+}
+
+func TestDetachByteWindow(t *testing.T) {
+ in:=[]byte("ABCDEF");out,ok:=DetachByteWindow(in,2,4);if !ok||string(out)!="CD"||cap(out)!=2{t.Fatal(out,ok)};out[0]='X';if string(in)!="ABCDEF"{t.Fatal("alias",in)};in[3]='Y';if string(out)!="XD"{t.Fatal(out)};for _,p:=range [][2]int{{-1,2},{4,3},{0,7}}{v,ok:=DetachByteWindow(in,p[0],p[1]);if ok||v!=nil{t.Fatal(p,v,ok)}};v,ok:=DetachByteWindow(nil,0,0);if !ok||v==nil||len(v)!=0||cap(v)!=0{t.Fatal(v,ok)}
+}
