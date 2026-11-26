@@ -622,3 +622,99 @@ func TestCloneGroups(t *testing.T) {
 func TestSortedQuotaKeys(t *testing.T) {
  q:=map[string]int{"z":7,"a":2,"m":0,"":1};want:=[]string{"","a","m","z"};for i:=0;i<5;i++{if got:=SortedQuotaKeys(q);!reflect.DeepEqual(got,want){t.Fatal(got)}};if !reflect.DeepEqual(q,map[string]int{"z":7,"a":2,"m":0,"":1}){t.Fatal("modified")};if len(SortedQuotaKeys(nil))!=0{t.Fatal("nil")}
 }
+
+func TestRecursiveSum(t *testing.T) {
+ for _,tc:=range []struct{in []int;want int}{{nil,0},{[]int{4},4},{[]int{2,3,4},9},{[]int{-3,2},-1},{[]int{0,0},0}}{if got:=RecursiveSum(tc.in);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestDivideParts(t *testing.T) {
+ for _,tc:=range []struct{a,b,q,r int;ok bool}{{7,3,2,1,true},{-7,3,-2,-1,true},{7,-3,-2,1,true},{0,4,0,0,true},{7,0,0,0,false}}{q,r,ok:=DivideParts(tc.a,tc.b);if q!=tc.q||r!=tc.r||ok!=tc.ok{t.Fatal(tc,q,r,ok)}}
+}
+
+func TestFinalScore(t *testing.T) {
+ for _,tc:=range []struct{base,bonus,want int}{{10,3,13},{0,5,5},{3,-2,1},{2,0,2}}{if got:=FinalScore(tc.base,tc.bonus);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestAddToValue(t *testing.T) {
+ x:=10;if !AddToValue(&x,3)||x!=13{t.Fatal(x)};if !AddToValue(&x,-5)||x!=8{t.Fatal(x)};if AddToValue(nil,1){t.Fatal("nil")};if !AddToValue(&x,0)||x!=8{t.Fatal(x)}
+}
+
+func TestFindIntPointer(t *testing.T) {
+ in:=[]int{8,3,3};p:=FindIntPointer(in,3);if p!=&in[1]{t.Fatal("wrong address")};*p=99;if !reflect.DeepEqual(in,[]int{8,99,3}){t.Fatal(in)};if FindIntPointer(in,7)!=nil||FindIntPointer(nil,1)!=nil{t.Fatal("missing")}
+}
+
+func TestReverseRunes(t *testing.T) {
+ for _,tc:=range []struct{s,want string}{{"Aя🙂","🙂яA"},{"abc","cba"},{"",""},{"я","я"},{"e\u0301","\u0301e"},{string([]byte{0xff,65}),"A\uFFFD"}}{if got:=ReverseRunes(tc.s);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestIsRunePalindrome(t *testing.T) {
+ for _,tc:=range []struct{s string;want bool}{{"топот",true},{"🙂a🙂",true},{"Abba",false},{"abba",true},{"abc",false},{"",true},{"я",true},{"a a",true},{"a a ",false},{"\u00e9e\u0301",false}}{if got:=IsRunePalindrome(tc.s);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestCountOccurrences(t *testing.T) {
+ for _,tc:=range []struct{s,n string;want int}{{"aaaaa","aa",2},{"я-я-я","я",3},{"ababa","aba",1},{"abc","",0},{"abc","x",0},{"","a",0},{"Aaa","a",2},{"abc","abc",1}}{if got:=CountOccurrences(tc.s,tc.n);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestAppendInt(t *testing.T) {
+ s:=[]int{1,2};if !AppendInt(&s,3)||!reflect.DeepEqual(s,[]int{1,2,3}){t.Fatal(s)};var n []int;if !AppendInt(&n,5)||!reflect.DeepEqual(n,[]int{5}){t.Fatal(n)};if AppendInt(nil,1){t.Fatal("nil pointer")};spare:=make([]int,1,4);spare[0]=7;if !AppendInt(&spare,8)||!reflect.DeepEqual(spare,[]int{7,8}){t.Fatal(spare)}
+}
+
+func TestNormalizeSpaces(t *testing.T) {
+ for _,tc:=range []struct{s,want string}{{"  Go\t backend\n","Go backend"},{"a\u00a0b\u2003c","a b c"},{"\t \n",""},{"",""},{"Hello,  WORLD","Hello, WORLD"},{"one","one"}}{if got:=NormalizeSpaces(tc.s);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestRuneFrequency(t *testing.T) {
+ for _,tc:=range []struct{s string;want map[rune]int}{{"яAя🙂",map[rune]int{'я':2,'A':1,'🙂':1}},{"Aa ",map[rune]int{'A':1,'a':1,' ':1}},{"",map[rune]int{}},{string([]byte{0xff,0xfe}),map[rune]int{'\uFFFD':2}},{"e\u0301",map[rune]int{'e':1,'\u0301':1}}}{if got:=RuneFrequency(tc.s);!reflect.DeepEqual(got,tc.want){t.Fatal(tc,got)}}
+}
+
+func TestAreRuneAnagrams(t *testing.T) {
+ for _,tc:=range []struct{a,b string;want bool}{{"кот","ток",true},{"aab","abb",false},{"🙂я","я🙂",true},{"Ab","ba",false},{"","",true},{"a","",false},{"","a",false},{"aa","a",false},{"a b","ba ",true},{"\u00e9","e\u0301",false},{string([]byte{0xff}),"\uFFFD",true}}{if got:=AreRuneAnagrams(tc.a,tc.b);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestCloneQuotaConfig(t *testing.T) {
+ n:=10;in:=QuotaConfig{Name:"api",Limit:&n};out:=CloneQuotaConfig(in);if out.Name!="api"||out.Limit==nil||out.Limit==in.Limit||*out.Limit!=10{t.Fatal(out)};*out.Limit=99;if n!=10{t.Fatal("alias")};out=CloneQuotaConfig(QuotaConfig{Name:"empty"});if out.Name!="empty"||out.Limit!=nil{t.Fatal(out)}
+}
+
+func TestSumIntTree(t *testing.T) {
+ root:=&IntTree{Value:5,Left:&IntTree{Value:2,Right:&IntTree{Value:-1}},Right:&IntTree{Value:7}};if got:=SumIntTree(root);got!=13{t.Fatal(got)};if SumIntTree(nil)!=0||SumIntTree(&IntTree{Value:-4})!=-4{t.Fatal("base cases")};if root.Left.Right.Value!=-1||root.Right.Value!=7{t.Fatal("modified tree")}
+}
+
+func TestEqualNames(t *testing.T) {
+ for _,tc:=range []struct{a,b string;want bool}{{"Go","gO",true},{"Я","я",true},{"Σ","ς",true},{"K","K",true},{"Go"," Go",false},{"ß","SS",false},{"é","e\u0301",false},{"","",true},{"a","b",false}}{if got:=EqualNames(tc.a,tc.b);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestLimitedWindow(t *testing.T) {
+ in:=[]int{10,20,30,40,50};out,ok:=LimitedWindow(in,1,3);if !ok||!reflect.DeepEqual(out,[]int{20,30})||cap(out)!=2{t.Fatal(out,ok,cap(out))};out[0]=21;if in[1]!=21{t.Fatal("expected shared elements")};out=append(out,99);if in[3]!=40{t.Fatal("overwritten tail")};for _,p:=range [][2]int{{-1,2},{2,1},{0,6}}{v,ok:=LimitedWindow(in,p[0],p[1]);if ok||v!=nil{t.Fatal(p,v,ok)}};v,ok:=LimitedWindow(nil,0,0);if !ok||len(v)!=0||cap(v)!=0{t.Fatal(v,ok)}
+}
+
+func TestRepeatLabel(t *testing.T) {
+ for _,tc:=range []struct{s string;n int;want string}{{"go",3,"go,go,go"},{"я",2,"я,я"},{"x",1,"x"},{"",3,",,"},{"x",0,""},{"x",-2,""}}{if got:=RepeatLabel(tc.s,tc.n);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestTruncateUTF8Bytes(t *testing.T) {
+ for _,tc:=range []struct{s string;n int;want string}{{"AяB",2,"A"},{"AяB",3,"Aя"},{"🙂x",3,""},{"🙂x",4,"🙂"},{"abc",2,"ab"},{"я",1,""},{"",5,""},{"abc",0,""},{"abc",-1,""},{"я",100,"я"}}{if got:=TruncateUTF8Bytes(tc.s,tc.n);got!=tc.want{t.Fatalf("%q limit %d: %q != %q",tc.s,tc.n,got,tc.want)}}
+}
+
+func TestKeepPositiveInPlace(t *testing.T) {
+ in:=[]int{-1,3,0,5};out:=KeepPositiveInPlace(in);if !reflect.DeepEqual(out,[]int{3,5})||&out[0]!=&in[0]{t.Fatal(in,out)};out[0]=9;if in[0]!=9{t.Fatal("not shared")};if len(KeepPositiveInPlace(nil))!=0||len(KeepPositiveInPlace([]int{0,-1}))!=0{t.Fatal("empty")};if got:=KeepPositiveInPlace([]int{2,1,2});!reflect.DeepEqual(got,[]int{2,1,2}){t.Fatal(got)}
+}
+
+func TestDetachByteWindow(t *testing.T) {
+ in:=[]byte("ABCDEF");out,ok:=DetachByteWindow(in,2,4);if !ok||string(out)!="CD"||cap(out)!=2{t.Fatal(out,ok)};out[0]='X';if string(in)!="ABCDEF"{t.Fatal("alias",in)};in[3]='Y';if string(out)!="XD"{t.Fatal(out)};for _,p:=range [][2]int{{-1,2},{4,3},{0,7}}{v,ok:=DetachByteWindow(in,p[0],p[1]);if ok||v!=nil{t.Fatal(p,v,ok)}};v,ok:=DetachByteWindow(nil,0,0);if !ok||v==nil||len(v)!=0||cap(v)!=0{t.Fatal(v,ok)}
+}
+
+func TestTwoSumIndices(t *testing.T) {
+ for _,tc:=range []struct{v []int;target,i,j int;ok bool}{{[]int{3,1,4,2},5,1,2,true},{[]int{3,3},6,0,1,true},{[]int{3},6,-1,-1,false},{[]int{1,1,4},5,0,2,true},{[]int{-2,5,4},3,0,1,true},{nil,0,-1,-1,false},{[]int{0,0},0,0,1,true}}{i,j,ok:=TwoSumIndices(tc.v,tc.target);if i!=tc.i||j!=tc.j||ok!=tc.ok{t.Fatal(tc,i,j,ok)}}
+}
+
+func TestFirstUniqueRune(t *testing.T) {
+ for _,tc:=range []struct{s string;r rune;ok bool}{{"яAя🙂A",'🙂',true},{"aabb",0,false},{"",0,false},{"abac",'b',true},{"\x00aa",0,true},{"Aa",'A',true},{string([]byte{0xff,65,0xfe}),'A',true}}{r,ok:=FirstUniqueRune(tc.s);if r!=tc.r||ok!=tc.ok{t.Fatal(tc,r,ok)}}
+}
+
+func TestMaxWindowSum(t *testing.T) {
+ for _,tc:=range []struct{v []int;k,want int;ok bool}{{[]int{2,1,5,3,2},3,10,true},{[]int{-5,-2,-7},2,-7,true},{[]int{9,1,2},2,10,true},{[]int{2,3},2,5,true},{[]int{-5,-1},1,-1,true},{nil,1,0,false},{[]int{1},0,0,false},{[]int{1},2,0,false},{[]int{1},-1,0,false}}{got,ok:=MaxWindowSum(tc.v,tc.k);if got!=tc.want||ok!=tc.ok{t.Fatal(tc,got,ok)}}
+}
+
+func TestSummarizeEventStatuses(t *testing.T) {
+ in:=[]string{" Active ","cancelled","ACTIVE"," ","Pending"};order,counts:=SummarizeEventStatuses(in);if !reflect.DeepEqual(order,[]string{"active","cancelled","pending"})||!reflect.DeepEqual(counts,map[string]int{"active":2,"cancelled":1,"pending":1}){t.Fatal(order,counts)};if !reflect.DeepEqual(in,[]string{" Active ","cancelled","ACTIVE"," ","Pending"}){t.Fatal("modified input")};order[0]="x";if in[0]!=" Active "{t.Fatal("alias")};for _,v:=range [][]string{nil,{"","\t","\u00a0"}}{order,counts:=SummarizeEventStatuses(v);if order==nil||counts==nil||len(order)!=0||len(counts)!=0{t.Fatal(order,counts)}};order,counts=SummarizeEventStatuses([]string{" Я ","я","A","a"});if !reflect.DeepEqual(order,[]string{"я","a"})||!reflect.DeepEqual(counts,map[string]int{"я":2,"a":2}){t.Fatal(order,counts)}
+}

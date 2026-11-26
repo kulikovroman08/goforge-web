@@ -5620,5 +5620,2883 @@ window.GOFORGE_GUIDES = {
     ],
     "production": "Детерминированный вывод диагностических данных, стабильные обходы узлов и сравнимые отчёты. Лексикографический порядок Go не равен языковой сортировке для всех локалей.",
     "interview": "Как получить детерминированный порядок обхода map?"
+  },
+  "core-recursive-sum": {
+    "frames": [
+      [
+        "Первый вызов",
+        [
+          "2",
+          "3",
+          "4"
+        ],
+        "2 + RecursiveSum([3,4])",
+        "Оставляем первый элемент и уменьшаем задачу."
+      ],
+      [
+        "Второй вызов",
+        [
+          "3",
+          "4"
+        ],
+        "3 + RecursiveSum([4])",
+        "Предыдущий вызов ждёт результат."
+      ],
+      [
+        "Третий вызов",
+        [
+          "4"
+        ],
+        "4 + RecursiveSum([])",
+        "Хвост становится пустым."
+      ],
+      [
+        "Базовый случай",
+        [
+          "[]"
+        ],
+        "return 0",
+        "Рекурсия заканчивается."
+      ],
+      [
+        "Возврат",
+        [
+          "4",
+          "7",
+          "9"
+        ],
+        "4+0 → 3+4 → 2+7",
+        "Результаты возвращаются в обратном порядке."
+      ]
+    ],
+    "steps": [
+      [
+        "Описать базовый случай",
+        "if len(values)==0 { return 0 }",
+        "Останавливаем рекурсию до обращения по индексу."
+      ],
+      [
+        "Уменьшить задачу",
+        "values[1:]",
+        "Хвост короче входа на один элемент."
+      ],
+      [
+        "Объединить результаты",
+        "return values[0]+RecursiveSum(values[1:])",
+        "Сумма равна первому числу плюс сумма хвоста."
+      ]
+    ],
+    "blocks": [
+      "Объединить результаты",
+      "Описать базовый случай",
+      "Уменьшить задачу"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if len(values)==",
+        "after": " { return 0 }",
+        "options": [
+          "0",
+          "1",
+          "2"
+        ],
+        "correct": 0,
+        "explain": "Пустой срез завершает рекурсию."
+      },
+      {
+        "before": "RecursiveSum(values[",
+        "after": ":])",
+        "options": [
+          "0",
+          "1",
+          "2"
+        ],
+        "correct": 1,
+        "explain": "Убираем ровно первый элемент."
+      }
+    ],
+    "partial": "package practice\n\nfunc RecursiveSum(values []int) int {\n\tif len(values)==0 { return 0 }\n\t// TODO: сложи первый элемент и сумму хвоста\n\treturn values[0]\n}\n",
+    "bug": "package practice\n\nfunc RecursiveSum(values []int) int {\n\tif len(values)<=1 { return 0 }\n\treturn values[0]+RecursiveSum(values[1:])\n}\n",
+    "hints": [
+      "Верни сумму всех чисел рекурсивно, без циклов. Пустой срез даёт 0.",
+      "Останавливаем рекурсию до обращения по индексу.",
+      "Хвост короче входа на один элемент.",
+      "Сумма равна первому числу плюс сумма хвоста.",
+      "if len(values)==0 { return 0 }"
+    ],
+    "related": [
+      [
+        "core-sum",
+        "Сложить числа в списке"
+      ]
+    ],
+    "production": "Рекурсия удобна для деревьев; для обычного длинного среза итерация обычно экономнее по стеку. Не используй неограниченную глубину для внешнего ввода.",
+    "interview": "Какие условия нужны для завершения рекурсии?"
+  },
+  "core-named-results": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "a=7",
+          "b=3"
+        ],
+        "quotient=0, remainder=0, ok=false",
+        "Именованные результаты имеют нулевые значения."
+      ],
+      [
+        "Деление",
+        [
+          "2",
+          "0",
+          "false"
+        ],
+        "quotient=7/3=2",
+        "Целочисленное деление усекает к нулю."
+      ],
+      [
+        "Остаток",
+        [
+          "2",
+          "1",
+          "false"
+        ],
+        "remainder=7%3=1",
+        "Сохраняем остаток."
+      ],
+      [
+        "Успех",
+        [
+          "2",
+          "1",
+          "true"
+        ],
+        "ok=true; return",
+        "Пустой return возвращает текущие значения результатов."
+      ]
+    ],
+    "steps": [
+      [
+        "Защитить деление",
+        "if b==0 { return }",
+        "Нулевые именованные результаты уже соответствуют ошибке."
+      ],
+      [
+        "Вычислить частное",
+        "quotient=a/b",
+        "Целочисленное деление усекает к нулю."
+      ],
+      [
+        "Вычислить остаток",
+        "remainder=a%b",
+        "Остаток имеет знак делимого или равен нулю."
+      ],
+      [
+        "Отметить успех",
+        "ok=true\nreturn",
+        "Пустой return возвращает именованные результаты."
+      ]
+    ],
+    "blocks": [
+      "Отметить успех",
+      "Защитить деление",
+      "Вычислить частное",
+      "Вычислить остаток"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "remainder=a ",
+        "after": " b",
+        "options": [
+          "/",
+          "%",
+          "*"
+        ],
+        "correct": 1,
+        "explain": "Оператор % вычисляет остаток."
+      },
+      {
+        "before": "ok=",
+        "after": "",
+        "options": [
+          "true",
+          "false",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Отмечаем успешное деление."
+      }
+    ],
+    "partial": "package practice\n\nfunc DivideParts(a, b int) (quotient, remainder int, ok bool) {\n\tif b==0 { return }\n\tquotient=a/b\n\t// TODO: вычисли остаток и установи ok\n\treturn\n}\n",
+    "bug": "package practice\n\nfunc DivideParts(a, b int) (quotient, remainder int, ok bool) {\n\tif b==0 { return }\n\tquotient=a/b\n\tremainder=a%b\n\treturn\n}\n",
+    "hints": [
+      "Верни частное, остаток и true. При b==0 верни 0,0,false. Используй именованные результаты. Деление следует правилам Go.",
+      "Нулевые именованные результаты уже соответствуют ошибке.",
+      "Целочисленное деление усекает к нулю.",
+      "Пустой return возвращает именованные результаты.",
+      "if b==0 { return }"
+    ],
+    "related": [
+      [
+        "core-lookup",
+        "Проверить наличие квоты пользователя"
+      ]
+    ],
+    "production": "Именованные результаты помогают документировать несколько возвращаемых значений, но длинные функции с naked return сложнее читать.",
+    "interview": "Чем именованные результаты отличаются от обычных?"
+  },
+  "core-defer-result": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "base=10",
+          "bonus=3"
+        ],
+        "score=0",
+        "Именованный результат начинается с нуля."
+      ],
+      [
+        "Присваивание",
+        [
+          "score=10"
+        ],
+        "score=base",
+        "Подготовили результат."
+      ],
+      [
+        "Регистрация",
+        [
+          "defer"
+        ],
+        "func(){ score+=bonus }",
+        "Тело замыкания ещё не выполнено."
+      ],
+      [
+        "Return",
+        [
+          "score=10"
+        ],
+        "начинается выход",
+        "Отложенная функция выполняется до передачи результата."
+      ],
+      [
+        "Выход",
+        [
+          "score=13"
+        ],
+        "return 13",
+        "Замыкание изменило именованный результат."
+      ]
+    ],
+    "steps": [
+      [
+        "Установить результат",
+        "score=base",
+        "Записываем исходное значение."
+      ],
+      [
+        "Зарегистрировать замыкание",
+        "defer func(){ score+=bonus }()",
+        "Замыкание обращается к переменной результата."
+      ],
+      [
+        "Выйти из функции",
+        "return",
+        "Перед передачей результата выполняется defer."
+      ]
+    ],
+    "blocks": [
+      "Выйти из функции",
+      "Установить результат",
+      "Зарегистрировать замыкание"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "",
+        "after": " func(){ score+=bonus }()",
+        "options": [
+          "defer",
+          "go",
+          "return"
+        ],
+        "correct": 0,
+        "explain": "Отложенный вызов выполняется при выходе."
+      },
+      {
+        "before": "func(){ ",
+        "after": "+=bonus }",
+        "options": [
+          "base",
+          "score",
+          "bonus"
+        ],
+        "correct": 1,
+        "explain": "Изменяем переменную результата."
+      }
+    ],
+    "partial": "package practice\n\nfunc FinalScore(base, bonus int) (score int) {\n\tscore=base\n\tdefer func(){\n\t // TODO: обнови именованный результат\n\t}()\n\treturn\n}\n",
+    "bug": "package practice\n\nfunc FinalScore(base, bonus int) (score int) {\n\tscore=base\n\tdefer func(v int){ v+=bonus }(score)\n\treturn\n}\n",
+    "hints": [
+      "Присвой score значение base и зарегистрируй defer с замыканием, которое добавляет bonus к именованному результату перед выходом. Итог base+bonus.",
+      "Записываем исходное значение.",
+      "Замыкание обращается к переменной результата.",
+      "Перед передачей результата выполняется defer.",
+      "score=base"
+    ],
+    "related": [
+      [
+        "core-named-results",
+        "Вернуть частное и остаток"
+      ]
+    ],
+    "production": "Типичный полезный сценарий — присоединение ошибки Close к именованной error. Не скрывай бизнес-логику в defer без необходимости.",
+    "interview": "Когда выполняется defer относительно return?"
+  },
+  "core-pointer-update": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "x=10",
+          "delta=3"
+        ],
+        "value=&x",
+        "Указатель содержит адрес x."
+      ],
+      [
+        "Проверка",
+        [
+          "value != nil"
+        ],
+        "адрес допустим",
+        "Не разыменовываем nil."
+      ],
+      [
+        "Изменение",
+        [
+          "x=13"
+        ],
+        "*value += 3",
+        "Записываем в переменную вызывающего кода."
+      ],
+      [
+        "Выход",
+        [
+          "true"
+        ],
+        "x=13",
+        "Изменение видно снаружи функции."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить указатель",
+        "if value==nil { return false }",
+        "Разыменование nil вызывает panic."
+      ],
+      [
+        "Изменить значение",
+        "*value+=delta",
+        "Звёздочка обращается к числу по адресу."
+      ],
+      [
+        "Сообщить успех",
+        "return true",
+        "Изменение выполнено."
+      ]
+    ],
+    "blocks": [
+      "Сообщить успех",
+      "Проверить указатель",
+      "Изменить значение"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if value==",
+        "after": " { return false }",
+        "options": [
+          "0",
+          "nil",
+          "false"
+        ],
+        "correct": 1,
+        "explain": "Нулевое значение указателя — nil."
+      },
+      {
+        "before": "",
+        "after": "value+=delta",
+        "options": [
+          "&",
+          "*",
+          ""
+        ],
+        "correct": 1,
+        "explain": "Разыменование позволяет записать число."
+      }
+    ],
+    "partial": "package practice\n\nfunc AddToValue(value *int, delta int) bool {\n\tif value==nil { return false }\n\t// TODO: измени число по адресу\n\treturn true\n}\n",
+    "bug": "package practice\n\nfunc AddToValue(value *int, delta int) bool {\n\tif value==nil { return false }\n\tlocal:=*value\n\tlocal+=delta\n\treturn true\n}\n",
+    "hints": [
+      "Если value не nil, увеличь число по адресу на delta и верни true. Для nil верни false без panic.",
+      "Разыменование nil вызывает panic.",
+      "Звёздочка обращается к числу по адресу.",
+      "Изменение выполнено.",
+      "if value==nil { return false }"
+    ],
+    "related": [
+      [
+        "core-swap",
+        "Поменять числа через указатели"
+      ]
+    ],
+    "production": "Обновление небольшого mutable-состояния через указатель. При конкурентном доступе необходима синхронизация, а не просто указатель.",
+    "interview": "Передаются ли указатели по ссылке в Go?"
+  },
+  "core-element-pointer": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "8",
+          "3",
+          "3"
+        ],
+        "target=3",
+        "Нужен адрес элемента, а не копии числа."
+      ],
+      [
+        "Обход",
+        [
+          "8",
+          "3",
+          "3"
+        ],
+        "i=0, values[0]=8",
+        "Не совпало."
+      ],
+      [
+        "Совпадение",
+        [
+          "8",
+          "3",
+          "3"
+        ],
+        "i=1, &values[1]",
+        "Возвращаем адрес первого совпадения."
+      ],
+      [
+        "Запись через указатель",
+        [
+          "8",
+          "99",
+          "3"
+        ],
+        "*p=99",
+        "Исходный элемент с индексом 1 меняется."
+      ]
+    ],
+    "steps": [
+      [
+        "Перебирать индексы",
+        "for i:=range values {",
+        "Индекс позволяет обратиться к самому элементу."
+      ],
+      [
+        "Найти совпадение",
+        "if values[i]==target {",
+        "Сравниваем значение исходного элемента."
+      ],
+      [
+        "Вернуть адрес",
+        "return &values[i]\n}\n}",
+        "Адрес переменной v из range указывает на копию."
+      ],
+      [
+        "Вернуть отсутствие",
+        "return nil",
+        "Нет совпадений — нет адреса."
+      ]
+    ],
+    "blocks": [
+      "Вернуть отсутствие",
+      "Перебирать индексы",
+      "Найти совпадение",
+      "Вернуть адрес"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "return &",
+        "after": "[i]",
+        "options": [
+          "values",
+          "target",
+          "i"
+        ],
+        "correct": 0,
+        "explain": "Нужен адрес элемента массива."
+      },
+      {
+        "before": "return ",
+        "after": "",
+        "options": [
+          "0",
+          "nil",
+          "target"
+        ],
+        "correct": 1,
+        "explain": "Отсутствующий указатель — nil."
+      }
+    ],
+    "partial": "package practice\n\nfunc FindIntPointer(values []int, target int) *int {\n\tfor i:=range values {\n\t if values[i]==target {\n\t  // TODO: верни адрес элемента\n\t  return nil\n\t }\n\t}\n\treturn nil\n}\n",
+    "bug": "package practice\n\nfunc FindIntPointer(values []int, target int) *int {\n\tfor _,v:=range values { if v==target { return &v } }\n\treturn nil\n}\n",
+    "hints": [
+      "Верни указатель на первый элемент исходного среза, равный target, или nil. Изменение через возвращённый указатель должно менять именно элемент входного массива.",
+      "Индекс позволяет обратиться к самому элементу.",
+      "Сравниваем значение исходного элемента.",
+      "Нет совпадений — нет адреса.",
+      "for i:=range values {\nif values[i]==target {\nreturn &values[i]\n}\n}\nreturn nil"
+    ],
+    "related": [
+      [
+        "core-linear-search",
+        "Найти индекс первого совпадения"
+      ]
+    ],
+    "production": "Указатель на элемент может удерживать backing array. После append с перераспределением он продолжает указывать на старый массив, а не на новый элемент среза.",
+    "interview": "Почему &v из for _, v := range s не равен &s[i]?"
+  },
+  "core-reverse-runes": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "A",
+          "я",
+          "🙂"
+        ],
+        "s=\"Aя🙂\", len(s)=7",
+        "Байты и Unicode code points — разные единицы."
+      ],
+      [
+        "Декодирование",
+        [
+          "A",
+          "я",
+          "🙂"
+        ],
+        "[]rune(s), len=3",
+        "Получаем изменяемый срез code points."
+      ],
+      [
+        "Обмен",
+        [
+          "🙂",
+          "я",
+          "A"
+        ],
+        "i=0, j=2",
+        "Меняем крайние руны."
+      ],
+      [
+        "Выход",
+        [
+          "🙂",
+          "я",
+          "A"
+        ],
+        "string(runes)",
+        "Кодируем руны обратно в UTF-8."
+      ]
+    ],
+    "steps": [
+      [
+        "Декодировать строку",
+        "runes:=[]rune(s)",
+        "Индексы среза рун соответствуют code points."
+      ],
+      [
+        "Задать два индекса",
+        "for i,j:=0,len(runes)-1;i<j;i,j=i+1,j-1 {",
+        "Движемся навстречу от двух краёв."
+      ],
+      [
+        "Обменять элементы",
+        "runes[i],runes[j]=runes[j],runes[i]\n}",
+        "Меняем руны, а не байты."
+      ],
+      [
+        "Закодировать результат",
+        "return string(runes)",
+        "Преобразование восстанавливает UTF-8."
+      ]
+    ],
+    "blocks": [
+      "Закодировать результат",
+      "Декодировать строку",
+      "Задать два индекса",
+      "Обменять элементы"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "runes := []",
+        "after": "(s)",
+        "options": [
+          "byte",
+          "rune",
+          "int"
+        ],
+        "correct": 1,
+        "explain": "Нужно переставлять целые code points."
+      },
+      {
+        "before": "return ",
+        "after": "(runes)",
+        "options": [
+          "string",
+          "int",
+          "byte"
+        ],
+        "correct": 0,
+        "explain": "Строка создаётся из последовательности рун."
+      }
+    ],
+    "partial": "package practice\n\nfunc ReverseRunes(s string) string {\n\trunes:=[]rune(s)\n\tfor i,j:=0,len(runes)-1;i<j;i,j=i+1,j-1 {\n\t // TODO: поменяй элементы i и j\n\t}\n\treturn string(runes)\n}\n",
+    "bug": "package practice\n\nfunc ReverseRunes(s string) string {\n\tbytes:=[]byte(s)\n\tfor i,j:=0,len(bytes)-1;i<j;i,j=i+1,j-1 { bytes[i],bytes[j]=bytes[j],bytes[i] }\n\treturn string(bytes)\n}\n",
+    "hints": [
+      "Верни строку с обратным порядком Unicode code points. Вход интерпретируй как []rune(s), включая замену некорректного UTF-8 на U+FFFD. Не требуется сохранять графемные кластеры.",
+      "Индексы среза рун соответствуют code points.",
+      "Движемся навстречу от двух краёв.",
+      "Преобразование восстанавливает UTF-8.",
+      "runes:=[]rune(s)\nfor i,j:=0,len(runes)-1;i<j;i,j=i+1,j-1 {\nrunes[i],runes[j]=runes[j],runes[i]\n}\nreturn string(runes)"
+    ],
+    "related": [
+      [
+        "core-string-stats",
+        "Посчитать байты и руны строки"
+      ]
+    ],
+    "production": "Разворот code points полезен для изучения Unicode, но не подходит для корректного разворота всех видимых символов: emoji ZWJ и combining marks требуют сегментации графем.",
+    "interview": "Почему разворот []byte ломает UTF-8?"
+  },
+  "core-palindrome": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "т",
+          "о",
+          "п",
+          "о",
+          "т"
+        ],
+        "i=0, j=4",
+        "Сравниваем крайние code points."
+      ],
+      [
+        "Первая пара",
+        [
+          "т",
+          "о",
+          "п",
+          "о",
+          "т"
+        ],
+        "т == т",
+        "Оба индекса движутся внутрь."
+      ],
+      [
+        "Вторая пара",
+        [
+          "т",
+          "о",
+          "п",
+          "о",
+          "т"
+        ],
+        "о == о",
+        "Пары совпадают."
+      ],
+      [
+        "Центр",
+        [
+          "п"
+        ],
+        "i=j=2",
+        "Центральный элемент не требует сравнения."
+      ],
+      [
+        "Выход",
+        [
+          "true"
+        ],
+        "return true",
+        "Все зеркальные пары равны."
+      ]
+    ],
+    "steps": [
+      [
+        "Декодировать руны",
+        "runes:=[]rune(s)",
+        "Сравниваем code points, а не байты."
+      ],
+      [
+        "Перебирать зеркальные пары",
+        "for i,j:=0,len(runes)-1;i<j;i,j=i+1,j-1 {",
+        "Доходим до середины."
+      ],
+      [
+        "Остановиться при несовпадении",
+        "if runes[i]!=runes[j] { return false }\n}",
+        "Одного несовпадения достаточно."
+      ],
+      [
+        "Подтвердить результат",
+        "return true",
+        "Пустой ввод и одиночная руна тоже проходят."
+      ]
+    ],
+    "blocks": [
+      "Подтвердить результат",
+      "Декодировать руны",
+      "Перебирать зеркальные пары",
+      "Остановиться при несовпадении"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if runes[i] ",
+        "after": " runes[j]",
+        "options": [
+          "==",
+          "!=",
+          "<"
+        ],
+        "correct": 1,
+        "explain": "При несовпадении палиндром невозможен."
+      },
+      {
+        "before": "for i,j:=0,len(runes)-1; i ",
+        "after": " j",
+        "options": [
+          "<",
+          ">",
+          "=="
+        ],
+        "correct": 0,
+        "explain": "Сравниваем пары до середины."
+      }
+    ],
+    "partial": "package practice\n\nfunc IsRunePalindrome(s string) bool {\n\trunes:=[]rune(s)\n\tfor i,j:=0,len(runes)-1;i<j;i,j=i+1,j-1 {\n\t // TODO: сравни пару рун\n\t _,_=i,j\n\t}\n\treturn len(runes)==0\n}\n",
+    "bug": "package practice\n\nfunc IsRunePalindrome(s string) bool {\n\tfor i,j:=0,len(s)-1;i<j;i,j=i+1,j-1 { if s[i]!=s[j] { return false } }\n\treturn true\n}\n",
+    "hints": [
+      "Проверь, совпадает ли последовательность []rune(s) с обратной. Регистр, пробелы и знаки значимы. Пустая строка — палиндром. Нормализация Unicode не нужна.",
+      "Сравниваем code points, а не байты.",
+      "Доходим до середины.",
+      "Пустой ввод и одиночная руна тоже проходят.",
+      "runes:=[]rune(s)\nfor i,j:=0,len(runes)-1;i<j;i,j=i+1,j-1 {\nif runes[i]!=runes[j] { return false }\n}\nreturn true"
+    ],
+    "related": [
+      [
+        "core-reverse-runes",
+        "Развернуть строку по Unicode code points"
+      ]
+    ],
+    "production": "Сравнение строк требует явного контракта: учитываются ли регистр, пробелы, каноническая эквивалентность и графемы. Не нормализуй данные молча.",
+    "interview": "Можно ли проверить UTF-8 палиндром без выделения []rune?"
+  },
+  "core-count-substring": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "a",
+          "a",
+          "a",
+          "a",
+          "a"
+        ],
+        "needle=\"aa\", count=0",
+        "Считаем неперекрывающиеся вхождения."
+      ],
+      [
+        "Первое совпадение",
+        [
+          "a",
+          "a",
+          "a"
+        ],
+        "i=0, count=1",
+        "Отбрасываем найденные два байта."
+      ],
+      [
+        "Второе совпадение",
+        [
+          "a"
+        ],
+        "i=0, count=2",
+        "Следующий поиск начинается после предыдущего."
+      ],
+      [
+        "Выход",
+        [
+          "2"
+        ],
+        "strings.Index(\"a\",\"aa\")=-1",
+        "Больше совпадений нет."
+      ]
+    ],
+    "steps": [
+      [
+        "Обработать пустую подстроку",
+        "if needle==\"\" { return 0 }",
+        "Контракт исключает пустой шаблон и обеспечивает продвижение."
+      ],
+      [
+        "Искать первое вхождение",
+        "count:=0\nfor {\n i:=strings.Index(s,needle)",
+        "Index возвращает байтовый индекс."
+      ],
+      [
+        "Завершить при отсутствии",
+        "if i<0 { return count }",
+        "-1 означает, что совпадений больше нет."
+      ],
+      [
+        "Обновить счётчик и остаток",
+        "count++\ns=s[i+len(needle):]\n}",
+        "Пропускаем всю совпавшую подстроку."
+      ]
+    ],
+    "blocks": [
+      "Обновить счётчик и остаток",
+      "Обработать пустую подстроку",
+      "Искать первое вхождение",
+      "Завершить при отсутствии"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if i ",
+        "after": " 0 { return count }",
+        "options": [
+          "<",
+          ">",
+          "=="
+        ],
+        "correct": 0,
+        "explain": "-1 — признак отсутствия."
+      },
+      {
+        "before": "s=s[i+",
+        "after": ":]",
+        "options": [
+          "1",
+          "len(needle)",
+          "len(s)"
+        ],
+        "correct": 1,
+        "explain": "Продвигаемся за всё совпадение, а не один байт."
+      }
+    ],
+    "partial": "package practice\n\nfunc CountOccurrences(s, needle string) int {\n\tif needle==\"\" { return 0 }\n\tcount:=0\n\tfor {\n\t i:=strings.Index(s,needle)\n\t if i<0 { return count }\n\t count++\n\t // TODO: продолжи после найденного вхождения\n\t return count\n\t}\n}\n",
+    "bug": "package practice\n\nfunc CountOccurrences(s, needle string) int {\n\tif needle==\"\" { return 0 }\n\tcount:=0\n\tfor {\n\t i:=strings.Index(s,needle)\n\t if i<0 { return count }\n\t count++\n\t s=s[i+1:]\n\t}\n}\n",
+    "hints": [
+      "Верни число точных неперекрывающихся вхождений непустой needle в s. Для пустой needle верни 0. Используй strings.Index, сравнение байтовое и чувствительно к регистру.",
+      "Контракт исключает пустой шаблон и обеспечивает продвижение.",
+      "Index возвращает байтовый индекс.",
+      "Пропускаем всю совпавшую подстроку.",
+      "if needle==\"\" { return 0 }\ncount:=0\nfor {\n i:=strings.Index(s,needle)\nif i<0 { return count }\ncount++\ns=s[i+len(needle):]\n}"
+    ],
+    "related": [
+      [
+        "core-linear-search",
+        "Найти индекс первого совпадения"
+      ]
+    ],
+    "production": "Поиск маркеров в небольших текстовых данных. Для стандартного подсчёта подходит strings.Count, но его семантика пустой подстроки отличается от данного контракта.",
+    "interview": "Чем отличаются перекрывающиеся и неперекрывающиеся совпадения?"
+  },
+  "core-append-pointer": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "1",
+          "2"
+        ],
+        "dst=&s; len(s)=2, cap(s)=2",
+        "Указатель ведёт к дескриптору среза."
+      ],
+      [
+        "Проверка",
+        [
+          "dst != nil"
+        ],
+        "value=3",
+        "Указатель на nil-срез тоже допустим."
+      ],
+      [
+        "Append",
+        [
+          "1",
+          "2",
+          "3"
+        ],
+        "append(*dst,3)",
+        "Получаем новый дескриптор; backing array может измениться."
+      ],
+      [
+        "Присваивание",
+        [
+          "1",
+          "2",
+          "3"
+        ],
+        "*dst = новый дескриптор",
+        "Длина среза вызывающего кода теперь 3."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить адрес",
+        "if dst==nil { return false }",
+        "Nil-указатель нельзя разыменовывать, но сам срез может быть nil."
+      ],
+      [
+        "Добавить и сохранить дескриптор",
+        "*dst=append(*dst,value)",
+        "append возвращает новый slice header. Присваивание через указатель обновляет исходную переменную."
+      ],
+      [
+        "Сообщить успех",
+        "return true",
+        "Вызывающий код видит новую длину и данные."
+      ]
+    ],
+    "blocks": [
+      "Сообщить успех",
+      "Проверить адрес",
+      "Добавить и сохранить дескриптор"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "*dst = append(",
+        "after": " ,value)",
+        "options": [
+          "*dst",
+          "dst",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "append принимает срез, а не указатель."
+      },
+      {
+        "before": "",
+        "after": "dst = append(*dst,value)",
+        "options": [
+          "*",
+          "&",
+          ""
+        ],
+        "correct": 0,
+        "explain": "Записываем дескриптор по адресу."
+      }
+    ],
+    "partial": "package practice\n\nfunc AppendInt(dst *[]int, value int) bool {\n\tif dst==nil { return false }\n\t// TODO: обнови дескриптор среза через указатель\n\treturn true\n}\n",
+    "bug": "package practice\n\nfunc AppendInt(dst *[]int, value int) bool {\n\tif dst==nil { return false }\n\tlocal:=append(*dst,value)\n\t_ = local\n\treturn true\n}\n",
+    "hints": [
+      "Добавь value в срез, на который указывает dst, обновив сам дескриптор среза вызывающего кода. Если dst==nil, верни false. Указатель на nil-срез допустим; при успехе верни true.",
+      "Nil-указатель нельзя разыменовывать, но сам срез может быть nil.",
+      "append возвращает новый slice header. Присваивание через указатель обновляет исходную переменную.",
+      "Вызывающий код видит новую длину и данные.",
+      "if dst==nil { return false }\n*dst=append(*dst,value)\nreturn true"
+    ],
+    "related": [
+      [
+        "core-element-pointer",
+        "Найти указатель на первый элемент среза по значению"
+      ]
+    ],
+    "production": "Обычно API проще возвращать новый срез вместо *[]T. Указатель на срез нужен, если контракт требует обновить переменную вызывающего кода.",
+    "interview": "Почему append(s,v) внутри функции не меняет len(s) у вызывающего кода?"
+  },
+  "core-normalize-space": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "  Go",
+          "\\t",
+          "backend",
+          "\\n"
+        ],
+        "s=\"  Go\\t backend\\n\"",
+        "Вход содержит разные пробельные символы."
+      ],
+      [
+        "Разбиение",
+        [
+          "Go",
+          "backend"
+        ],
+        "strings.Fields(s)",
+        "Пустые элементы не появляются, Unicode whitespace учитывается."
+      ],
+      [
+        "Сборка",
+        [
+          "Go backend"
+        ],
+        "strings.Join(fields,\" \")",
+        "Вставляем один пробел между словами."
+      ],
+      [
+        "Выход",
+        [
+          "Go backend"
+        ],
+        "return result",
+        "Края и повторяющиеся пробелы нормализованы."
+      ]
+    ],
+    "steps": [
+      [
+        "Выделить непустые слова",
+        "fields:=strings.Fields(s)",
+        "Fields разделяет по Unicode whitespace и отбрасывает пустые группы."
+      ],
+      [
+        "Объединить слова",
+        "return strings.Join(fields,\" \")",
+        "Join добавляет разделитель только между элементами."
+      ]
+    ],
+    "blocks": [
+      "Объединить слова",
+      "Выделить непустые слова"
+    ],
+    "order": [
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "fields := strings.",
+        "after": "(s)",
+        "options": [
+          "Split",
+          "Fields",
+          "TrimSpace"
+        ],
+        "correct": 1,
+        "explain": "Fields принимает Unicode whitespace как разделители."
+      },
+      {
+        "before": "strings.Join(fields,",
+        "after": ")",
+        "options": [
+          "\" \"",
+          "\"\"",
+          "\"\\n\""
+        ],
+        "correct": 0,
+        "explain": "Между словами нужен один обычный пробел."
+      }
+    ],
+    "partial": "package practice\n\nfunc NormalizeSpaces(s string) string {\n\tfields:=strings.Fields(s)\n\t// TODO: соедини слова одним пробелом\n\treturn strings.Join(fields,\"\")\n}\n",
+    "bug": "package practice\n\nfunc NormalizeSpaces(s string) string {\n\treturn strings.TrimSpace(s)\n}\n",
+    "hints": [
+      "Удали пробельные символы по краям и замени каждую последовательность Unicode whitespace между словами одним ASCII-пробелом. Не меняй регистр и содержимое слов. Используй strings.Fields и strings.Join.",
+      "Fields разделяет по Unicode whitespace и отбрасывает пустые группы.",
+      "Join добавляет разделитель только между элементами.",
+      "Join добавляет разделитель только между элементами.",
+      "fields:=strings.Fields(s)\nreturn strings.Join(fields,\" \")"
+    ],
+    "related": [
+      [
+        "core-string-stats",
+        "Посчитать байты и руны строки"
+      ]
+    ],
+    "production": "Нормализация пользовательского текста и поисковых запросов. Не применяй её к паролям, подписи или данным, где пробелы значимы.",
+    "interview": "Чем strings.Fields отличается от strings.Split(s,\" \")?"
+  },
+  "core-rune-frequency": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "я",
+          "A",
+          "я",
+          "🙂"
+        ],
+        "s=\"яAя🙂\"",
+        "Строка содержит многобайтовые символы."
+      ],
+      [
+        "Первое чтение",
+        [
+          "я:1"
+        ],
+        "r='я'",
+        "range декодирует Unicode code point."
+      ],
+      [
+        "Следующие",
+        [
+          "я:2",
+          "A:1"
+        ],
+        "counts[r]++",
+        "Отсутствующий ключ даёт 0."
+      ],
+      [
+        "Выход",
+        [
+          "я:2",
+          "A:1",
+          "🙂:1"
+        ],
+        "return counts",
+        "Порядок ключей не задан."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать счётчики",
+        "counts:=make(map[rune]int)",
+        "Ключ — rune, значение — количество."
+      ],
+      [
+        "Перебрать code points",
+        "for _,r:=range s {",
+        "Второй результат range — rune, первый — байтовый индекс."
+      ],
+      [
+        "Увеличить частоту",
+        "counts[r]++\n}",
+        "Нулевое значение отсутствующей записи позволяет начать с 0."
+      ],
+      [
+        "Вернуть map",
+        "return counts",
+        "Для пустого ввода map остаётся инициализированной."
+      ]
+    ],
+    "blocks": [
+      "Вернуть map",
+      "Создать счётчики",
+      "Перебрать code points",
+      "Увеличить частоту"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "make(map[",
+        "after": "]int)",
+        "options": [
+          "rune",
+          "byte",
+          "string"
+        ],
+        "correct": 0,
+        "explain": "Храним Unicode code point."
+      },
+      {
+        "before": "counts[r]",
+        "after": "",
+        "options": [
+          "++",
+          "--",
+          "=0"
+        ],
+        "correct": 0,
+        "explain": "Каждое появление увеличивает частоту."
+      }
+    ],
+    "partial": "package practice\n\nfunc RuneFrequency(s string) map[rune]int {\n\tcounts:=make(map[rune]int)\n\tfor _,r:=range s {\n\t // TODO: увеличь счётчик руны\n\t _=r\n\t}\n\treturn counts\n}\n",
+    "bug": "package practice\n\nfunc RuneFrequency(s string) map[rune]int {\n\tcounts:=make(map[rune]int)\n\tfor i:=0;i<len(s);i++ { counts[rune(s[i])]++ }\n\treturn counts\n}\n",
+    "hints": [
+      "Верни новую map с количеством каждого code point в s. Используй range по строке; регистр значим, пробелы учитываются, некорректный UTF-8 декодируется как U+FFFD. Для пустой строки верни не nil map.",
+      "Ключ — rune, значение — количество.",
+      "Второй результат range — rune, первый — байтовый индекс.",
+      "Для пустого ввода map остаётся инициализированной.",
+      "counts:=make(map[rune]int)\nfor _,r:=range s { counts[r]++ }\nreturn counts"
+    ],
+    "related": [
+      [
+        "core-string-stats",
+        "Посчитать байты и руны строки"
+      ]
+    ],
+    "production": "Статистика символов требует определить, что считать: байты, code points или графемы. Для сравнения естественного языка также может понадобиться нормализация.",
+    "interview": "Что возвращает range по строке?"
+  },
+  "core-anagram": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "a: кот",
+          "b: ток"
+        ],
+        "counts={}",
+        "Порядок букв различается."
+      ],
+      [
+        "Считаем a",
+        [
+          "к:1",
+          "о:1",
+          "т:1"
+        ],
+        "counts={к:1,о:1,т:1}",
+        "Запоминаем количество каждой руны."
+      ],
+      [
+        "Читаем b",
+        [
+          "к:1",
+          "о:1"
+        ],
+        "т найден, вычитаем 1",
+        "Удаляем запись с нулевым остатком."
+      ],
+      [
+        "Следующие",
+        [
+          "к:1"
+        ],
+        "о найден, удаляем",
+        "Каждую руну используем только один раз."
+      ],
+      [
+        "Выход",
+        [
+          "{}"
+        ],
+        "len(counts)==0 → true",
+        "Все частоты взаимно компенсировались."
+      ]
+    ],
+    "steps": [
+      [
+        "Посчитать руны a",
+        "counts:=make(map[rune]int)\nfor _,r:=range a { counts[r]++ }",
+        "Важно количество, а не только присутствие."
+      ],
+      [
+        "Перебрать руны b",
+        "for _,r:=range b {",
+        "Для каждого элемента ищем доступный остаток."
+      ],
+      [
+        "Проверить доступность",
+        "if counts[r]==0 { return false }",
+        "Отсутствующий или исчерпанный ключ означает несовпадение."
+      ],
+      [
+        "Уменьшить и очистить",
+        "counts[r]--\nif counts[r]==0 { delete(counts,r) }\n}",
+        "Удаляем только полностью использованные записи."
+      ],
+      [
+        "Проверить остаток",
+        "return len(counts)==0",
+        "Если остались ключи, в a были лишние руны."
+      ]
+    ],
+    "blocks": [
+      "Проверить остаток",
+      "Посчитать руны a",
+      "Перебрать руны b",
+      "Проверить доступность",
+      "Уменьшить и очистить"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if counts[r]==",
+        "after": " { return false }",
+        "options": [
+          "0",
+          "1",
+          "-1"
+        ],
+        "correct": 0,
+        "explain": "Нет доступной руны для сопоставления."
+      },
+      {
+        "before": "return len(counts) ",
+        "after": " 0",
+        "options": [
+          "==",
+          "!=",
+          "<"
+        ],
+        "correct": 0,
+        "explain": "Все частоты должны быть исчерпаны."
+      }
+    ],
+    "partial": "package practice\n\nfunc AreRuneAnagrams(a, b string) bool {\n\tcounts:=make(map[rune]int)\n\tfor _,r:=range a { counts[r]++ }\n\tfor _,r:=range b {\n\t if counts[r]==0 { return false }\n\t // TODO: уменьши счётчик и удали нулевую запись\n\t}\n\treturn len(counts)==0\n}\n",
+    "bug": "package practice\n\nfunc AreRuneAnagrams(a, b string) bool {\n\tseen:=make(map[rune]bool)\n\tfor _,r:=range a { seen[r]=true }\n\tfor _,r:=range b { if !seen[r] { return false } }\n\treturn true\n}\n",
+    "hints": [
+      "Проверь, содержат ли []rune(a) и []rune(b) одинаковое количество каждого code point независимо от порядка. Регистр, пробелы и combining marks значимы. Unicode-нормализация не нужна. Используй map частот.",
+      "Важно количество, а не только присутствие.",
+      "Для каждого элемента ищем доступный остаток.",
+      "Если остались ключи, в a были лишние руны.",
+      "counts:=make(map[rune]int)\nfor _,r:=range a { counts[r]++ }\nfor _,r:=range b {\n if counts[r]==0 { return false }\n counts[r]--\n if counts[r]==0 { delete(counts,r) }\n}\nreturn len(counts)==0"
+    ],
+    "related": [
+      [
+        "core-rune-frequency",
+        "Посчитать частоту Unicode code points"
+      ]
+    ],
+    "production": "Сравнение мультимножеств полезно и для ID, токенов, событий. Для пользовательского текста явно решай, нужны ли case folding и Unicode-нормализация.",
+    "interview": "Почему множества рун недостаточно для проверки анаграмм?"
+  },
+  "core-clone-config": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "Name=api",
+          "Limit → 10"
+        ],
+        "cfg",
+        "Структура содержит указатель на число."
+      ],
+      [
+        "Поверхностная копия",
+        [
+          "cfg.Limit → 10",
+          "out.Limit → 10"
+        ],
+        "out:=cfg",
+        "Оба указателя ведут к одному числу."
+      ],
+      [
+        "Глубокая копия",
+        [
+          "cfg.Limit → 10",
+          "out.Limit → 10 (новое)"
+        ],
+        "n:=*cfg.Limit; out.Limit=&n",
+        "Создаём независимое число."
+      ],
+      [
+        "Проверка",
+        [
+          "cfg.Limit → 10",
+          "out.Limit → 99"
+        ],
+        "*out.Limit=99",
+        "Исходное число осталось прежним."
+      ]
+    ],
+    "steps": [
+      [
+        "Скопировать структуру",
+        "out:=cfg",
+        "Строка копируется как значение, указатель сохраняет адрес."
+      ],
+      [
+        "Проверить nil",
+        "if cfg.Limit!=nil {",
+        "Нельзя разыменовывать отсутствующий указатель."
+      ],
+      [
+        "Скопировать число",
+        "n:=*cfg.Limit\nout.Limit=&n\n}",
+        "Адрес новой переменной не совпадает с адресом оригинала."
+      ],
+      [
+        "Вернуть результат",
+        "return out",
+        "Оригинал и копия независимы по полю Limit."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Скопировать структуру",
+      "Проверить nil",
+      "Скопировать число"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "n := ",
+        "after": "cfg.Limit",
+        "options": [
+          "*",
+          "&",
+          ""
+        ],
+        "correct": 0,
+        "explain": "Разыменование читает число."
+      },
+      {
+        "before": "out.Limit = ",
+        "after": "n",
+        "options": [
+          "*",
+          "&",
+          ""
+        ],
+        "correct": 1,
+        "explain": "Нужен адрес новой переменной."
+      }
+    ],
+    "partial": "package practice\n\ntype QuotaConfig struct { Name string; Limit *int }\n\nfunc CloneQuotaConfig(cfg QuotaConfig) QuotaConfig {\n\tout:=cfg\n\tif cfg.Limit!=nil {\n\t // TODO: скопируй число и замени указатель\n\t}\n\treturn out\n}\n",
+    "bug": "package practice\n\ntype QuotaConfig struct { Name string; Limit *int }\n\nfunc CloneQuotaConfig(cfg QuotaConfig) QuotaConfig {\n\treturn cfg\n}\n",
+    "hints": [
+      "Верни копию QuotaConfig. Если Limit не nil, скопируй число в отдельную переменную и сохрани её адрес. Если Limit nil, оставь nil. Name сохраняется.",
+      "Строка копируется как значение, указатель сохраняет адрес.",
+      "Нельзя разыменовывать отсутствующий указатель.",
+      "Оригинал и копия независимы по полю Limit.",
+      "out:=cfg\nif cfg.Limit!=nil {\n n:=*cfg.Limit\n out.Limit=&n\n}\nreturn out"
+    ],
+    "related": [
+      [
+        "core-deep-map",
+        "Глубоко скопировать map со срезами"
+      ]
+    ],
+    "production": "Копирование конфигурации с optional-полями. Для сложных графов объектов заранее определяй, какие ссылки должны быть общими и какие независимыми.",
+    "interview": "Безопасно ли возвращать адрес локальной переменной в Go?"
+  },
+  "core-tree-sum": {
+    "frames": [
+      [
+        "Корень",
+        [
+          "5",
+          "↙ 2",
+          "↘ 7"
+        ],
+        "SumIntTree(root)",
+        "Корень имеет два поддерева."
+      ],
+      [
+        "Левый узел",
+        [
+          "2",
+          "nil",
+          "nil"
+        ],
+        "2+0+0=2",
+        "Nil завершает вызов."
+      ],
+      [
+        "Правый узел",
+        [
+          "7",
+          "nil",
+          "nil"
+        ],
+        "7+0+0=7",
+        "Обрабатываем и правую ветвь."
+      ],
+      [
+        "Возврат",
+        [
+          "5",
+          "2",
+          "7"
+        ],
+        "5+2+7=14",
+        "Складываем корень и обе суммы."
+      ]
+    ],
+    "steps": [
+      [
+        "Обработать пустой узел",
+        "if root==nil { return 0 }",
+        "Базовый случай предотвращает разыменование nil."
+      ],
+      [
+        "Обойти левую ветвь",
+        "SumIntTree(root.Left)",
+        "Рекурсивный вызов возвращает сумму левого поддерева."
+      ],
+      [
+        "Обойти правую ветвь",
+        "SumIntTree(root.Right)",
+        "Не пропускаем вторую ветвь."
+      ],
+      [
+        "Сложить результаты",
+        "return root.Value+SumIntTree(root.Left)+SumIntTree(root.Right)",
+        "Каждый узел учитывается один раз."
+      ]
+    ],
+    "blocks": [
+      "Сложить результаты",
+      "Обработать пустой узел",
+      "Обойти левую ветвь",
+      "Обойти правую ветвь"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if root==",
+        "after": " { return 0 }",
+        "options": [
+          "nil",
+          "0",
+          "false"
+        ],
+        "correct": 0,
+        "explain": "Пустое дерево завершает рекурсию."
+      },
+      {
+        "before": "root.Value+SumIntTree(root.Left)+",
+        "after": "",
+        "options": [
+          "SumIntTree(root.Right)",
+          "root.Value",
+          "0"
+        ],
+        "correct": 0,
+        "explain": "Нужна сумма правого поддерева."
+      }
+    ],
+    "partial": "package practice\n\ntype IntTree struct { Value int; Left, Right *IntTree }\n\nfunc SumIntTree(root *IntTree) int {\n\tif root==nil { return 0 }\n\t// TODO: добавь суммы обоих поддеревьев\n\treturn root.Value\n}\n",
+    "bug": "package practice\n\ntype IntTree struct { Value int; Left, Right *IntTree }\n\nfunc SumIntTree(root *IntTree) int {\n\tif root==nil { return 0 }\n\treturn root.Value+SumIntTree(root.Left)\n}\n",
+    "hints": [
+      "Верни сумму значений всех узлов конечного бинарного дерева без циклов и общих узлов. Nil-дерево даёт 0. Используй рекурсию, не меняй дерево.",
+      "Базовый случай предотвращает разыменование nil.",
+      "Рекурсивный вызов возвращает сумму левого поддерева.",
+      "Каждый узел учитывается один раз.",
+      "if root==nil { return 0 }\nreturn root.Value+SumIntTree(root.Left)+SumIntTree(root.Right)"
+    ],
+    "related": [
+      [
+        "core-recursive-sum",
+        "Рекурсивно сложить числа"
+      ]
+    ],
+    "production": "Обход иерархий категорий и деревьев выражений. Для произвольных графов нужна защита от циклов, для глубокой иерархии может потребоваться явный стек.",
+    "interview": "Какова память рекурсивного обхода дерева?"
+  },
+  "core-equal-fold": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "Go",
+          "gO"
+        ],
+        "a=\"Go\", b=\"gO\"",
+        "Обычное == чувствительно к регистру."
+      ],
+      [
+        "Сравнение",
+        [
+          "G ↔ g",
+          "o ↔ O"
+        ],
+        "strings.EqualFold(a,b)",
+        "Сравнение учитывает Unicode simple folding."
+      ],
+      [
+        "Греческий пример",
+        [
+          "Σ",
+          "ς"
+        ],
+        "EqualFold(\"Σ\",\"ς\") → true",
+        "Приведение обеих строк к нижнему регистру не всегда эквивалентно folding."
+      ],
+      [
+        "Граница контракта",
+        [
+          "Go",
+          " Go"
+        ],
+        "false",
+        "Пробелы не удаляем."
+      ]
+    ],
+    "steps": [
+      [
+        "Определить контракт",
+        "// Unicode simple case folding",
+        "Сравнение регистра не означает нормализацию или удаление пробелов."
+      ],
+      [
+        "Выбрать функцию",
+        "strings.EqualFold(a,b)",
+        "Стандартная библиотека выполняет нужное сравнение."
+      ],
+      [
+        "Вернуть результат",
+        "return strings.EqualFold(a,b)",
+        "Не создаём вручную строки в нижнем регистре."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Определить контракт",
+      "Выбрать функцию"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "return strings.",
+        "after": "(a,b)",
+        "options": [
+          "EqualFold",
+          "Contains",
+          "Compare"
+        ],
+        "correct": 0,
+        "explain": "EqualFold сравнивает без учёта регистра."
+      },
+      {
+        "before": "EqualNames(\"Go\", \" Go\") == ",
+        "after": "",
+        "options": [
+          "true",
+          "false",
+          "nil"
+        ],
+        "correct": 1,
+        "explain": "Пробелы значимы."
+      }
+    ],
+    "partial": "package practice\n\nfunc EqualNames(a,b string) bool {\n\t// TODO: используй Unicode-aware сравнение\n\treturn a==b\n}\n",
+    "bug": "package practice\n\nfunc EqualNames(a,b string) bool {\n\treturn strings.ToLower(a)==strings.ToLower(b)\n}\n",
+    "hints": [
+      "Сравни строки без учёта регистра по правилам Unicode simple case folding, используя strings.EqualFold. Пробелы и нормализация Unicode не изменяются.",
+      "Сравнение регистра не означает нормализацию или удаление пробелов.",
+      "Стандартная библиотека выполняет нужное сравнение.",
+      "Не создаём вручную строки в нижнем регистре.",
+      "return strings.EqualFold(a,b)"
+    ],
+    "related": [
+      [
+        "core-normalize-space",
+        "Нормализовать пробелы в строке"
+      ]
+    ],
+    "production": "Сравнение пользовательских имён по оговорённому контракту. Для идентификаторов и безопасности не выбирай правила эквивалентности без требований продукта.",
+    "interview": "Почему EqualFold не равно сравнению ToLower(a)==ToLower(b)?"
+  },
+  "core-cap-window": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "10",
+          "20",
+          "30",
+          "40",
+          "50"
+        ],
+        "start=1, end=3",
+        "Выбираем элементы 20 и 30."
+      ],
+      [
+        "Обычный подсрез",
+        [
+          "20",
+          "30",
+          "40",
+          "50"
+        ],
+        "len=2, cap=4",
+        "Append может перезаписать 40."
+      ],
+      [
+        "Полное выражение",
+        [
+          "20",
+          "30"
+        ],
+        "values[1:3:3], len=2, cap=2",
+        "Третий индекс ограничивает capacity."
+      ],
+      [
+        "Append",
+        [
+          "20",
+          "30",
+          "99"
+        ],
+        "новый backing array",
+        "Исходный элемент 40 сохраняется."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить границы",
+        "if start<0||end<start||end>len(values) { return nil,false }",
+        "Контракт ограничивает окно длиной, не capacity."
+      ],
+      [
+        "Выбрать полное выражение",
+        "values[start:end:end]",
+        "Длина end-start, capacity также end-start."
+      ],
+      [
+        "Вернуть окно",
+        "return values[start:end:end],true",
+        "Существующие элементы общие, следующий append требует места в новом массиве."
+      ]
+    ],
+    "blocks": [
+      "Вернуть окно",
+      "Проверить границы",
+      "Выбрать полное выражение"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "values[start:end:",
+        "after": "]",
+        "options": [
+          "end",
+          "start",
+          "len(values)"
+        ],
+        "correct": 0,
+        "explain": "Третий индекс определяет cap относительно start."
+      },
+      {
+        "before": "end>",
+        "after": "(values)",
+        "options": [
+          "cap",
+          "len",
+          "copy"
+        ],
+        "correct": 1,
+        "explain": "Контракт разрешает только видимые элементы входа."
+      }
+    ],
+    "partial": "package practice\n\nfunc LimitedWindow(values []int,start,end int) ([]int,bool) {\n\tif start<0||end<start||end>len(values) { return nil,false }\n\t// TODO: ограничь capacity третьим индексом\n\treturn values[start:end],true\n}\n",
+    "bug": "package practice\n\nfunc LimitedWindow(values []int,start,end int) ([]int,bool) {\n\tif start<0||end<start||end>len(values) { return nil,false }\n\treturn values[start:end],true\n}\n",
+    "hints": [
+      "Верни подсрез values[start:end] с ёмкостью ровно end-start. Допустимо 0<=start<=end<=len(values). При неверных границах верни nil,false. Элементы могут разделять исходный массив, но append к результату не должен перезаписывать следующие элементы.",
+      "Контракт ограничивает окно длиной, не capacity.",
+      "Длина end-start, capacity также end-start.",
+      "Существующие элементы общие, следующий append требует места в новом массиве.",
+      "if start<0||end<start||end>len(values) { return nil,false }\nreturn values[start:end:end],true"
+    ],
+    "related": [
+      [
+        "core-append-pointer",
+        "Добавить число через указатель на срез"
+      ]
+    ],
+    "production": "Передача ограниченного окна буфера другому компоненту. Full slice expression защищает соседние элементы от append, но не обеспечивает полную независимость памяти.",
+    "interview": "Чем s[i:j:k] отличается от s[i:j]?"
+  },
+  "core-builder-repeat": {
+    "frames": [
+      [
+        "Старт",
+        [
+          "go",
+          "go",
+          "go"
+        ],
+        "label=\"go\", n=3",
+        "Builder пока пустой."
+      ],
+      [
+        "Первый повтор",
+        [
+          "go"
+        ],
+        "i=0",
+        "Перед первым фрагментом разделитель не нужен."
+      ],
+      [
+        "Второй повтор",
+        [
+          "go,go"
+        ],
+        "i=1",
+        "Сначала запятая, потом фрагмент."
+      ],
+      [
+        "Третий повтор",
+        [
+          "go,go,go"
+        ],
+        "i=2",
+        "Не добавляем разделитель после последнего."
+      ],
+      [
+        "Результат",
+        [
+          "go,go,go"
+        ],
+        "b.String()",
+        "Получаем готовую строку."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать накопитель",
+        "var b strings.Builder",
+        "Нулевое значение Builder готово к использованию."
+      ],
+      [
+        "Перебрать повторения",
+        "for i:=0;i<n;i++ {",
+        "При n<=0 цикл не выполнится."
+      ],
+      [
+        "Добавить разделитель при необходимости",
+        "if i>0 { b.WriteByte(',') }",
+        "Разделитель стоит только между фрагментами."
+      ],
+      [
+        "Записать фрагмент",
+        "b.WriteString(label)\n}",
+        "Builder накапливает байты."
+      ],
+      [
+        "Вернуть строку",
+        "return b.String()",
+        "String возвращает накопленное содержимое."
+      ]
+    ],
+    "blocks": [
+      "Вернуть строку",
+      "Создать накопитель",
+      "Перебрать повторения",
+      "Добавить разделитель при необходимости",
+      "Записать фрагмент"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if i",
+        "after": "0 { b.WriteByte(',') }",
+        "options": [
+          ">",
+          "<",
+          "=="
+        ],
+        "correct": 0,
+        "explain": "Разделитель нужен после первого повторения."
+      },
+      {
+        "before": "return b.",
+        "after": "()",
+        "options": [
+          "String",
+          "Len",
+          "Cap"
+        ],
+        "correct": 0,
+        "explain": "Получаем строковое содержимое."
+      }
+    ],
+    "partial": "package practice\n\nfunc RepeatLabel(label string, n int) string {\n\tvar b strings.Builder\n\tfor i:=0;i<n;i++ {\n\t // TODO: добавь разделитель между повторениями\n\t b.WriteString(label)\n\t}\n\treturn b.String()\n}\n",
+    "bug": "package practice\n\nfunc RepeatLabel(label string, n int) string {\n\tvar b strings.Builder\n\tfor i:=0;i<n;i++ { b.WriteString(label);b.WriteByte(',') }\n\treturn b.String()\n}\n",
+    "hints": [
+      "Верни n повторений label, разделённых запятыми. При n<=0 верни пустую строку. Используй strings.Builder и не добавляй завершающую запятую. Входы небольшие, результат помещается в память.",
+      "Нулевое значение Builder готово к использованию.",
+      "При n<=0 цикл не выполнится.",
+      "String возвращает накопленное содержимое.",
+      "var b strings.Builder\nfor i:=0;i<n;i++ {\n if i>0 { b.WriteByte(',') }\n b.WriteString(label)\n}\nreturn b.String()"
+    ],
+    "related": [
+      [
+        "core-normalize-space",
+        "Нормализовать пробелы в строке"
+      ]
+    ],
+    "production": "Builder удобен при последовательной сборке строк. Не копируй уже использованный Builder по значению; оценивай размер результата и измеряй аллокации бенчмарками.",
+    "interview": "Почему Builder может быть лучше конкатенации в цикле?"
+  },
+  "core-utf8-byte-limit": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "41",
+          "D1",
+          "8F",
+          "42"
+        ],
+        "s=\"AяB\", max=2",
+        "A занимает 1 байт, я — 2, B — 1."
+      ],
+      [
+        "Граница",
+        [
+          "41",
+          "D1",
+          "| 8F",
+          "42"
+        ],
+        "s[2]=0x8F",
+        "Граница попала внутрь многобайтовой руны."
+      ],
+      [
+        "Сдвиг",
+        [
+          "41",
+          "| D1",
+          "8F",
+          "42"
+        ],
+        "max=1",
+        "Останавливаемся на начале руны."
+      ],
+      [
+        "Выход",
+        [
+          "A"
+        ],
+        "s[:1]",
+        "Префикс корректен и не длиннее лимита."
+      ]
+    ],
+    "steps": [
+      [
+        "Обработать крайние лимиты",
+        "if max<=0 { return \"\" }\nif max>=len(s) { return s }",
+        "После проверок индекс max находится внутри строки."
+      ],
+      [
+        "Распознать байт продолжения",
+        "(s[max]&0xC0)==0x80",
+        "Байты продолжения UTF-8 имеют старшие биты 10."
+      ],
+      [
+        "Сдвинуть границу назад",
+        "for max>0 && (s[max]&0xC0)==0x80 { max-- }",
+        "На корректном UTF-8 найдём начало code point."
+      ],
+      [
+        "Вернуть префикс",
+        "return s[:max]",
+        "Индекс max не включается в результат."
+      ]
+    ],
+    "blocks": [
+      "Вернуть префикс",
+      "Обработать крайние лимиты",
+      "Распознать байт продолжения",
+      "Сдвинуть границу назад"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if max>=len(s) { return ",
+        "after": " }",
+        "options": [
+          "s",
+          "\"\"",
+          "s[:0]"
+        ],
+        "correct": 0,
+        "explain": "Весь вход помещается в лимит."
+      },
+      {
+        "before": "for max>0 && (s[max]&0xC0)==0x80 { max",
+        "after": " }",
+        "options": [
+          "++",
+          "--",
+          "=0"
+        ],
+        "correct": 1,
+        "explain": "Границу двигаем назад до начала руны."
+      }
+    ],
+    "partial": "package practice\n\nfunc TruncateUTF8Bytes(s string, max int) string {\n\tif max<=0 { return \"\" }\n\tif max>=len(s) { return s }\n\t// TODO: сдвинь границу назад, пока s[max] — байт продолжения\n\treturn s[:max]\n}\n",
+    "bug": "package practice\n\nfunc TruncateUTF8Bytes(s string, max int) string {\n\tif max<=0 { return \"\" }\n\tif max>=len(s) { return s }\n\treturn s[:max]\n}\n",
+    "hints": [
+      "Вход s — корректная UTF-8 строка. Верни самый длинный её префикс не длиннее max байтов, не разрывая code point. При max<=0 верни пустую строку. Если max>=len(s), верни s.",
+      "После проверок индекс max находится внутри строки.",
+      "Байты продолжения UTF-8 имеют старшие биты 10.",
+      "Индекс max не включается в результат.",
+      "if max<=0 { return \"\" }\nif max>=len(s) { return s }\nfor max>0 && (s[max]&0xC0)==0x80 { max-- }\nreturn s[:max]"
+    ],
+    "related": [
+      [
+        "core-reverse-runes",
+        "Развернуть строку по Unicode code points"
+      ]
+    ],
+    "production": "Лимиты хранения и протоколов могут измеряться в байтах. Для произвольного ввода отдельно проверяй utf8.ValidString или определяй политику замены. Графемы могут состоять из нескольких code points.",
+    "interview": "Как распознать байт продолжения UTF-8?"
+  },
+  "core-reuse-buffer": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "-1",
+          "3",
+          "0",
+          "5"
+        ],
+        "out=values[:0], len=0",
+        "Массив общий, но результат пока пуст."
+      ],
+      [
+        "Первый выбор",
+        [
+          "3",
+          "3",
+          "0",
+          "5"
+        ],
+        "v=3, out=[3]",
+        "Записываем в уже прочитанную позицию."
+      ],
+      [
+        "Пропуск",
+        [
+          "3",
+          "3",
+          "0",
+          "5"
+        ],
+        "v=0",
+        "Ноль не положительный."
+      ],
+      [
+        "Выход",
+        [
+          "3",
+          "5",
+          "0",
+          "5"
+        ],
+        "out=[3,5], len=2",
+        "Хвост массива не является частью результата."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать пустое окно",
+        "out:=values[:0]",
+        "Сохраняем исходный backing array и capacity."
+      ],
+      [
+        "Перебрать исходные элементы",
+        "for _,v:=range values {",
+        "Читаем каждый элемент один раз."
+      ],
+      [
+        "Добавить подходящие",
+        "if v>0 { out=append(out,v) }\n}",
+        "Индекс записи не опережает индекс чтения."
+      ],
+      [
+        "Вернуть новую длину",
+        "return out",
+        "Вызывающий код должен использовать возвращённый срез."
+      ]
+    ],
+    "blocks": [
+      "Вернуть новую длину",
+      "Создать пустое окно",
+      "Перебрать исходные элементы",
+      "Добавить подходящие"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out:=values[:",
+        "after": "]",
+        "options": [
+          "0",
+          "1",
+          "len(values)"
+        ],
+        "correct": 0,
+        "explain": "Начинаем с нулевой длины без нового массива."
+      },
+      {
+        "before": "if v ",
+        "after": " 0",
+        "options": [
+          ">",
+          ">=",
+          "<"
+        ],
+        "correct": 0,
+        "explain": "Нужны строго положительные числа."
+      }
+    ],
+    "partial": "package practice\n\nfunc KeepPositiveInPlace(values []int) []int {\n\tout:=values[:0]\n\tfor _,v:=range values {\n\t // TODO: добавляй только положительные\n\t _=v\n\t}\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc KeepPositiveInPlace(values []int) []int {\n\tout:=values[:0]\n\tfor _,v:=range values { if v>=0 { out=append(out,v) } }\n\treturn out\n}\n",
+    "hints": [
+      "Оставь строго положительные числа в исходном порядке, переиспользуя backing array входного среза через values[:0]. Разрешено менять исходный массив. Не выделяй новый массив. Верни срез правильной длины.",
+      "Сохраняем исходный backing array и capacity.",
+      "Читаем каждый элемент один раз.",
+      "Вызывающий код должен использовать возвращённый срез.",
+      "out:=values[:0]\nfor _,v:=range values { if v>0 { out=append(out,v) } }\nreturn out"
+    ],
+    "related": [
+      [
+        "core-cap-window",
+        "Ограничить ёмкость подсреза"
+      ]
+    ],
+    "production": "In-place фильтрация снижает число выделений, если вход принадлежит текущему компоненту. Для срезов указателей или других ссылочных значений может потребоваться очистка неиспользуемого хвоста.",
+    "interview": "Почему фильтрация через s[:0] не уничтожает ещё не прочитанные элементы?"
+  },
+  "core-detach-window": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E",
+          "F"
+        ],
+        "start=2, end=4",
+        "Хотим сохранить только C,D."
+      ],
+      [
+        "Обычный view",
+        [
+          "C",
+          "D"
+        ],
+        "data[2:4:4]",
+        "Даже cap=2 не разрывает связь с большим массивом."
+      ],
+      [
+        "Выделение",
+        [
+          "0",
+          "0"
+        ],
+        "make([]byte,2)",
+        "Создаём независимую память."
+      ],
+      [
+        "Копирование",
+        [
+          "C",
+          "D"
+        ],
+        "copy(out,data[2:4])",
+        "Копируем только нужные байты."
+      ],
+      [
+        "Результат",
+        [
+          "C",
+          "D"
+        ],
+        "out, true",
+        "Фрагмент не удерживает исходный массив."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить границы",
+        "if start<0||end<start||end>len(data) { return nil,false }",
+        "Проверка выполняется до срезания."
+      ],
+      [
+        "Создать новый массив",
+        "out:=make([]byte,end-start)",
+        "Длина и capacity равны размеру окна."
+      ],
+      [
+        "Скопировать байты",
+        "copy(out,data[start:end])",
+        "Независимая память содержит только нужный фрагмент."
+      ],
+      [
+        "Вернуть результат",
+        "return out,true",
+        "Пустое окно тоже имеет корректный результат."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Проверить границы",
+      "Создать новый массив",
+      "Скопировать байты"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out:=make([]byte,",
+        "after": ")",
+        "options": [
+          "end-start",
+          "len(data)",
+          "start"
+        ],
+        "correct": 0,
+        "explain": "Выделяем ровно размер выбранного окна."
+      },
+      {
+        "before": "copy(out,data[start:",
+        "after": "])",
+        "options": [
+          "end",
+          "start",
+          "len(data)"
+        ],
+        "correct": 0,
+        "explain": "Копируем только требуемый диапазон."
+      }
+    ],
+    "partial": "package practice\n\nfunc DetachByteWindow(data []byte,start,end int) ([]byte,bool) {\n\tif start<0||end<start||end>len(data) { return nil,false }\n\tout:=make([]byte,end-start)\n\t// TODO: скопируй выбранное окно\n\treturn out,true\n}\n",
+    "bug": "package practice\n\nfunc DetachByteWindow(data []byte,start,end int) ([]byte,bool) {\n\tif start<0||end<start||end>len(data) { return nil,false }\n\treturn data[start:end:end],true\n}\n",
+    "hints": [
+      "Для 0<=start<=end<=len(data) верни независимую копию data[start:end] с len==cap==end-start и true. Пустой допустимый фрагмент — пустой не nil срез. Неверные границы — nil,false. Вход не меняй.",
+      "Проверка выполняется до срезания.",
+      "Длина и capacity равны размеру окна.",
+      "Пустое окно тоже имеет корректный результат.",
+      "if start<0||end<start||end>len(data) { return nil,false }\nout:=make([]byte,end-start)\ncopy(out,data[start:end])\nreturn out,true"
+    ],
+    "related": [
+      [
+        "core-cap-window",
+        "Ограничить ёмкость подсреза"
+      ]
+    ],
+    "production": "Кеширование небольших частей сетевых сообщений: копирование позволяет освободить большой буфер после исчезновения остальных ссылок. Тест проверяет независимость данных, а фактическое удержание памяти измеряют heap-профилем.",
+    "interview": "Почему s[i:j:j] не решает проблему удержания большого массива?"
+  },
+  "core-two-sum": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "3",
+          "1",
+          "4",
+          "2"
+        ],
+        "target=5, seen={}",
+        "Ищем дополнение до target."
+      ],
+      [
+        "Первый элемент",
+        [
+          "3"
+        ],
+        "j=0, need=2, seen={3:0}",
+        "Дополнения ещё нет; запоминаем индекс."
+      ],
+      [
+        "Второй элемент",
+        [
+          "3",
+          "1"
+        ],
+        "j=1, need=4, seen={3:0,1:1}",
+        "Дополнение отсутствует."
+      ],
+      [
+        "Третий элемент",
+        [
+          "1",
+          "4"
+        ],
+        "j=2, need=1, i=1",
+        "Ключ 1 уже встречался."
+      ],
+      [
+        "Выход",
+        [
+          "1",
+          "2"
+        ],
+        "return 1,2,true",
+        "Проверка до записи гарантирует разные индексы."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать map индексов",
+        "seen:=make(map[int]int)",
+        "Храним первый индекс каждого значения."
+      ],
+      [
+        "Перебрать числа",
+        "for j,v:=range values {",
+        "j — правый индекс потенциальной пары."
+      ],
+      [
+        "Найти дополнение",
+        "if i,ok:=seen[target-v];ok { return i,j,true }",
+        "Ищем только среди ранее прочитанных элементов."
+      ],
+      [
+        "Запомнить первое появление",
+        "if _,ok:=seen[v];!ok { seen[v]=j }\n}",
+        "Первый индекс нужен для детерминированного результата."
+      ],
+      [
+        "Обработать отсутствие пары",
+        "return -1,-1,false",
+        "Перебрали все варианты правого индекса."
+      ]
+    ],
+    "blocks": [
+      "Обработать отсутствие пары",
+      "Создать map индексов",
+      "Перебрать числа",
+      "Найти дополнение",
+      "Запомнить первое появление"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "seen[",
+        "after": "]",
+        "options": [
+          "target-v",
+          "target+v",
+          "j"
+        ],
+        "correct": 0,
+        "explain": "Дополнение равно target минус текущее число."
+      },
+      {
+        "before": "if _,ok:=seen[v];",
+        "after": " { seen[v]=j }",
+        "options": [
+          "!ok",
+          "ok",
+          "v"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем первое появление."
+      }
+    ],
+    "partial": "package practice\n\nfunc TwoSumIndices(values []int,target int) (int,int,bool) {\n\tseen:=make(map[int]int)\n\tfor j,v:=range values {\n\t // TODO: найди дополнение target-v среди ранее прочитанных чисел\n\t if _,ok:=seen[v];!ok { seen[v]=j }\n\t}\n\treturn -1,-1,false\n}\n",
+    "bug": "package practice\n\nfunc TwoSumIndices(values []int,target int) (int,int,bool) {\n\tseen:=make(map[int]int)\n\tfor j,v:=range values {\n\t seen[v]=j\n\t if i,ok:=seen[target-v];ok { return i,j,true }\n\t}\n\treturn -1,-1,false\n}\n",
+    "hints": [
+      "Верни индексы двух разных элементов с суммой target. Выбери пару с минимальным правым индексом, а при равенстве — минимальным левым. При отсутствии верни -1,-1,false. Вход не меняй. Все числа и target-value укладываются в int.",
+      "Храним первый индекс каждого значения.",
+      "j — правый индекс потенциальной пары.",
+      "Перебрали все варианты правого индекса.",
+      "seen:=make(map[int]int)\nfor j,v:=range values {\n if i,ok:=seen[target-v];ok { return i,j,true }\n if _,ok:=seen[v];!ok { seen[v]=j }\n}\nreturn -1,-1,false"
+    ],
+    "related": [
+      [
+        "core-first-repeat",
+        "Найти первый повторяющийся элемент"
+      ]
+    ],
+    "production": "Поиск пар по ключу или дополнению без квадратичного перебора. Для произвольных int отдельно контролируй переполнение при вычислении дополнения.",
+    "interview": "Как решить Two Sum за ожидаемое O(n) вместо O(n²)?"
+  },
+  "core-first-unique-rune": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "я",
+          "A",
+          "я",
+          "🙂",
+          "A"
+        ],
+        "s=\"яAя🙂A\"",
+        "Первое появление не обязательно уникально."
+      ],
+      [
+        "Первый проход",
+        [
+          "я:2",
+          "A:2",
+          "🙂:1"
+        ],
+        "counts",
+        "Считаем частоты всей строки."
+      ],
+      [
+        "Второй проход",
+        [
+          "я",
+          "A"
+        ],
+        "counts[я]=2, counts[A]=2",
+        "Пропускаем повторы."
+      ],
+      [
+        "Выход",
+        [
+          "🙂"
+        ],
+        "counts[🙂]=1",
+        "Это первая руна с частотой один."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать счётчики",
+        "counts:=make(map[rune]int)",
+        "Нужно знать полную кратность каждой руны."
+      ],
+      [
+        "Подсчитать частоты",
+        "for _,r:=range s { counts[r]++ }",
+        "Первый проход учитывает и будущие повторы."
+      ],
+      [
+        "Сохранить порядок входа",
+        "for _,r:=range s { if counts[r]==1 { return r,true } }",
+        "Второй проход по строке, а не по map, гарантирует первый уникальный элемент."
+      ],
+      [
+        "Обработать отсутствие",
+        "return 0,false",
+        "Нулевая руна может быть валидным результатом, поэтому нужен bool."
+      ]
+    ],
+    "blocks": [
+      "Обработать отсутствие",
+      "Создать счётчики",
+      "Подсчитать частоты",
+      "Сохранить порядок входа"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if counts[r]==",
+        "after": " { return r,true }",
+        "options": [
+          "1",
+          "0",
+          "2"
+        ],
+        "correct": 0,
+        "explain": "Уникальный элемент имеет частоту 1."
+      },
+      {
+        "before": "for _,r:=range ",
+        "after": " {",
+        "options": [
+          "s",
+          "counts",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Порядок исходной строки важен."
+      }
+    ],
+    "partial": "package practice\n\nfunc FirstUniqueRune(s string) (rune,bool) {\n\tcounts:=make(map[rune]int)\n\tfor _,r:=range s { counts[r]++ }\n\t// TODO: вторым проходом найди первую руну с частотой 1\n\treturn 0,false\n}\n",
+    "bug": "package practice\n\nfunc FirstUniqueRune(s string) (rune,bool) {\n\tseen:=make(map[rune]bool)\n\tfor _,r:=range s { if !seen[r] { return r,true };seen[r]=true }\n\treturn 0,false\n}\n",
+    "hints": [
+      "Верни первую руну, встречающуюся ровно один раз, в порядке исходной строки. Если такой руны нет, верни 0,false. Регистр значим; range по строке задаёт обработку невалидного UTF-8.",
+      "Нужно знать полную кратность каждой руны.",
+      "Первый проход учитывает и будущие повторы.",
+      "Нулевая руна может быть валидным результатом, поэтому нужен bool.",
+      "counts:=make(map[rune]int)\nfor _,r:=range s { counts[r]++ }\nfor _,r:=range s { if counts[r]==1 { return r,true } }\nreturn 0,false"
+    ],
+    "related": [
+      [
+        "core-rune-frequency",
+        "Посчитать частоту Unicode code points"
+      ]
+    ],
+    "production": "Поиск первого уникального идентификатора или символа по полной коллекции. В потоковой задаче без полного входа понятие уникальности требует отдельного контракта.",
+    "interview": "Почему нельзя просто вернуть первый ключ с частотой 1 при range по map?"
+  },
+  "core-sliding-window": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "2",
+          "1",
+          "5",
+          "3",
+          "2"
+        ],
+        "k=3",
+        "Окно фиксированной длины."
+      ],
+      [
+        "Первое окно",
+        [
+          "2",
+          "1",
+          "5"
+        ],
+        "sum=8, best=8",
+        "Суммируем первые k элементов."
+      ],
+      [
+        "Сдвиг вправо",
+        [
+          "1",
+          "5",
+          "3"
+        ],
+        "sum=8-2+3=9, best=9",
+        "Убираем левый и добавляем новый правый элемент."
+      ],
+      [
+        "Следующее окно",
+        [
+          "5",
+          "3",
+          "2"
+        ],
+        "sum=9-1+2=10, best=10",
+        "Обновление суммы O(1)."
+      ],
+      [
+        "Выход",
+        [
+          "10"
+        ],
+        "return 10,true",
+        "Максимум среди всех окон."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить размер",
+        "if k<=0||k>len(values) { return 0,false }",
+        "Нужно хотя бы одно полное окно."
+      ],
+      [
+        "Посчитать первое окно",
+        "sum:=0\nfor _,v:=range values[:k] { sum+=v }\nbest:=sum",
+        "Даже при всех отрицательных числах best — реальная сумма."
+      ],
+      [
+        "Сдвигать окно",
+        "for i:=k;i<len(values);i++ {",
+        "i — индекс нового правого элемента."
+      ],
+      [
+        "Обновить сумму и максимум",
+        "sum-=values[i-k]\nsum+=values[i]\nif sum>best { best=sum }\n}",
+        "Размер окна остаётся k, пересчитывать остальные элементы не нужно."
+      ],
+      [
+        "Вернуть максимум",
+        "return best,true",
+        "Все допустимые окна проверены."
+      ]
+    ],
+    "blocks": [
+      "Вернуть максимум",
+      "Проверить размер",
+      "Посчитать первое окно",
+      "Сдвигать окно",
+      "Обновить сумму и максимум"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "best := ",
+        "after": "",
+        "options": [
+          "sum",
+          "0",
+          "k"
+        ],
+        "correct": 0,
+        "explain": "Максимум должен начинаться с действительного окна."
+      },
+      {
+        "before": "sum -= values[",
+        "after": "]",
+        "options": [
+          "i-k",
+          "i",
+          "k"
+        ],
+        "correct": 0,
+        "explain": "Убираем вышедший слева элемент."
+      }
+    ],
+    "partial": "package practice\n\nfunc MaxWindowSum(values []int,k int) (int,bool) {\n\tif k<=0||k>len(values) { return 0,false }\n\tsum:=0\n\tfor _,v:=range values[:k] { sum+=v }\n\tbest:=sum\n\t// TODO: сдвигай окно и обновляй best\n\treturn best,true\n}\n",
+    "bug": "package practice\n\nfunc MaxWindowSum(values []int,k int) (int,bool) {\n\tif k<=0||k>len(values) { return 0,false }\n\tsum:=0\n\tfor _,v:=range values[:k] { sum+=v }\n\tbest:=0\n\tfor i:=k;i<len(values);i++ { sum-=values[i-k];sum+=values[i];if sum>best { best=sum } }\n\treturn best,true\n}\n",
+    "hints": [
+      "Верни максимальную сумму непрерывного окна ровно из k элементов. Если k<=0 или k>len(values), верни 0,false. Вход не меняй. Все промежуточные суммы укладываются в int. Используй скользящее окно O(n).",
+      "Нужно хотя бы одно полное окно.",
+      "Даже при всех отрицательных числах best — реальная сумма.",
+      "Все допустимые окна проверены.",
+      "if k<=0||k>len(values) { return 0,false }\nsum:=0\nfor _,v:=range values[:k] { sum+=v }\nbest:=sum\nfor i:=k;i<len(values);i++ {\n sum-=values[i-k]\n sum+=values[i]\n if sum>best { best=sum }\n}\nreturn best,true"
+    ],
+    "related": [
+      [
+        "core-batches",
+        "Разбить список на батчи"
+      ]
+    ],
+    "production": "Агрегация фиксированного числа последних измерений, rolling sum. Для окна по времени нужны timestamps и удаление устаревших событий, а не просто фиксированное k.",
+    "interview": "Как сократить перебор окон O(n*k) до O(n)?"
+  },
+  "core-event-summary": {
+    "frames": [
+      [
+        "Вход",
+        [
+          " Active ",
+          "cancelled",
+          "ACTIVE",
+          " ",
+          "Pending"
+        ],
+        "order=[], counts={}",
+        "Условия API определяют нормализацию."
+      ],
+      [
+        "Первый статус",
+        [
+          "active"
+        ],
+        "order=[active], counts={active:1}",
+        "TrimSpace и ToLower; первое появление."
+      ],
+      [
+        "Следующий статус",
+        [
+          "active",
+          "cancelled"
+        ],
+        "counts={active:1,cancelled:1}",
+        "Новый ключ добавляется в порядок."
+      ],
+      [
+        "Повтор и пустое значение",
+        [
+          "active",
+          "cancelled"
+        ],
+        "counts.active=2; пустой пропускаем",
+        "Счётчик растёт, порядок не дублируется."
+      ],
+      [
+        "Выход",
+        [
+          "active",
+          "cancelled",
+          "pending"
+        ],
+        "counts={active:2,cancelled:1,pending:1}",
+        "Два согласованных результата для API."
+      ]
+    ],
+    "steps": [
+      [
+        "Подготовить результаты",
+        "order:=make([]string,0)\ncounts:=make(map[string]int)",
+        "Срез хранит порядок, map — частоты."
+      ],
+      [
+        "Перебрать и нормализовать",
+        "for _,raw:=range statuses {\n status:=strings.ToLower(strings.TrimSpace(raw))",
+        "Правила нормализации заданы контрактом."
+      ],
+      [
+        "Пропустить пустой статус",
+        "if status==\"\" { continue }",
+        "Не создаём пустые группы."
+      ],
+      [
+        "Зафиксировать первое появление",
+        "if counts[status]==0 { order=append(order,status) }",
+        "Частота 0 до увеличения означает новый ключ."
+      ],
+      [
+        "Увеличить частоту",
+        "counts[status]++\n}",
+        "Повторы учитываются без добавления в order."
+      ],
+      [
+        "Вернуть сводку",
+        "return order,counts",
+        "Оба результата независимы от входной коллекции."
+      ]
+    ],
+    "blocks": [
+      "Вернуть сводку",
+      "Подготовить результаты",
+      "Перебрать и нормализовать",
+      "Пропустить пустой статус",
+      "Зафиксировать первое появление",
+      "Увеличить частоту"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if status==\"\" { ",
+        "after": " }",
+        "options": [
+          "continue",
+          "break",
+          "return nil,nil"
+        ],
+        "correct": 0,
+        "explain": "Пропускаем только текущий пустой элемент."
+      },
+      {
+        "before": "if counts[status]==",
+        "after": " { order=append(order,status) }",
+        "options": [
+          "0",
+          "1",
+          "-1"
+        ],
+        "correct": 0,
+        "explain": "До первого увеличения частота равна нулю."
+      }
+    ],
+    "partial": "package practice\n\nfunc SummarizeEventStatuses(statuses []string) ([]string,map[string]int) {\n\torder:=make([]string,0)\n\tcounts:=make(map[string]int)\n\tfor _,raw:=range statuses {\n\t status:=strings.ToLower(strings.TrimSpace(raw))\n\t if status==\"\" { continue }\n\t // TODO: обнови порядок при первом появлении и увеличь частоту\n\t _=status\n\t}\n\treturn order,counts\n}\n",
+    "bug": "package practice\n\nfunc SummarizeEventStatuses(statuses []string) ([]string,map[string]int) {\n\torder:=make([]string,0)\n\tcounts:=make(map[string]int)\n\tfor _,raw:=range statuses {\n\t status:=strings.ToLower(strings.TrimSpace(raw))\n\t if status==\"\" { continue }\n\t order=append(order,status)\n\t counts[status]++\n\t}\n\treturn order,counts\n}\n",
+    "hints": [
+      "Нормализуй каждый статус через strings.TrimSpace и strings.ToLower. Пропусти пустые статусы. Верни уникальные нормализованные статусы в порядке первого появления и map их частот. Вход не меняй. Для пустого результата верни инициализированные пустые срез и map.",
+      "Срез хранит порядок, map — частоты.",
+      "Правила нормализации заданы контрактом.",
+      "Оба результата независимы от входной коллекции.",
+      "order:=make([]string,0)\ncounts:=make(map[string]int)\nfor _,raw:=range statuses {\n status:=strings.ToLower(strings.TrimSpace(raw))\n if status==\"\" { continue }\n if counts[status]==0 { order=append(order,status) }\n counts[status]++\n}\nreturn order,counts"
+    ],
+    "related": [
+      [
+        "core-normalize-space",
+        "Нормализовать пробелы в строке"
+      ]
+    ],
+    "production": "Агрегация статусов для API, аналитики или UI. В реальном сервисе статусы обычно enum: неизвестные значения валидируются, а нормализация и порядок определяются продуктовым контрактом.",
+    "interview": "Почему для такого ответа используют и map, и slice?"
   }
 };
