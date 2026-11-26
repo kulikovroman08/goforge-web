@@ -61,3 +61,6 @@ jobs:
 
       - name: Run new Core reference solutions and negative fixtures
         run: node gym/core-solutions-check.cjs
+
+      - name: Verify versioned Gym offline assets
+        run: node gym/cache-check.cjs
