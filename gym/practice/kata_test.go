@@ -622,3 +622,19 @@ func TestCloneGroups(t *testing.T) {
 func TestSortedQuotaKeys(t *testing.T) {
  q:=map[string]int{"z":7,"a":2,"m":0,"":1};want:=[]string{"","a","m","z"};for i:=0;i<5;i++{if got:=SortedQuotaKeys(q);!reflect.DeepEqual(got,want){t.Fatal(got)}};if !reflect.DeepEqual(q,map[string]int{"z":7,"a":2,"m":0,"":1}){t.Fatal("modified")};if len(SortedQuotaKeys(nil))!=0{t.Fatal("nil")}
 }
+
+func TestRecursiveSum(t *testing.T) {
+ for _,tc:=range []struct{in []int;want int}{{nil,0},{[]int{4},4},{[]int{2,3,4},9},{[]int{-3,2},-1},{[]int{0,0},0}}{if got:=RecursiveSum(tc.in);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestDivideParts(t *testing.T) {
+ for _,tc:=range []struct{a,b,q,r int;ok bool}{{7,3,2,1,true},{-7,3,-2,-1,true},{7,-3,-2,1,true},{0,4,0,0,true},{7,0,0,0,false}}{q,r,ok:=DivideParts(tc.a,tc.b);if q!=tc.q||r!=tc.r||ok!=tc.ok{t.Fatal(tc,q,r,ok)}}
+}
+
+func TestFinalScore(t *testing.T) {
+ for _,tc:=range []struct{base,bonus,want int}{{10,3,13},{0,5,5},{3,-2,1},{2,0,2}}{if got:=FinalScore(tc.base,tc.bonus);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestAddToValue(t *testing.T) {
+ x:=10;if !AddToValue(&x,3)||x!=13{t.Fatal(x)};if !AddToValue(&x,-5)||x!=8{t.Fatal(x)};if AddToValue(nil,1){t.Fatal("nil")};if !AddToValue(&x,0)||x!=8{t.Fatal(x)}
+}

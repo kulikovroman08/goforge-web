@@ -260,3 +260,11 @@ func RemoveLowQuotas(quotas map[string]int, min int) int { return 0 }
 func CloneGroups(groups map[string][]int) map[string][]int { return nil }
 
 func SortedQuotaKeys(quotas map[string]int) []string { return nil }
+
+func RecursiveSum(values []int) int { return 0 }
+
+func DivideParts(a, b int) (quotient, remainder int, ok bool) { return }
+
+func FinalScore(base, bonus int) (score int) { return }
+
+func AddToValue(value *int, delta int) bool { return false }
