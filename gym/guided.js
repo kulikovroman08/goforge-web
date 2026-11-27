@@ -11,16 +11,36 @@ function compilerHint(output){
 }
 function mount(host,task,apply){
  const g=guides[task.id];if(!g)return;
- let stage=0,step=0,order=[],answers=[],hint=0;
+ let stage=-1,step=0,codeStep=0,order=[],answers=[],hint=0;
+ const plan={input:'',output:'',example:'',actions:''};
+ const attempts=g.steps.map(()=>''),revealed=g.steps.map(()=>false);
+ let startHint=false,showPlan=false;
  const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e};
  function btn(text,fn,parent=host){const b=el('button',text);b.type='button';b.onclick=fn;parent.append(b);return b}
+ function field(parent,label,value,onInput,options={}){
+  const wrap=el('label',undefined,'guide-field');
+  wrap.append(el('span',label));
+  const input=el('textarea');input.rows=options.rows||3;input.value=value;
+  input.placeholder=options.placeholder||'';
+  if(options.code){input.className='guide-code-input';input.spellcheck=false;input.setAttribute('autocapitalize','off');input.setAttribute('autocomplete','off');input.setAttribute('autocorrect','off');}
+  input.oninput=()=>onInput(input.value);wrap.append(input);parent.append(wrap);return input;
+ }
  function draft(code){if(apply(code)){stage=4;render();document.getElementById('editor')?.scrollIntoView({block:'center'});}}
  function render(){
   host.replaceChildren();
-  host.append(el('h2','Научи меня решать'),el('p','От понимания условия до самостоятельного кода. Можно пропустить любой этап.','muted'));
+  host.append(el('h2','Научи меня решать'),el('p','Сначала разбери условие и придумай первые действия, потом напиши код своими руками. Любой этап можно пропустить. Черновики шагов сохраняются при переключении этапов этого открытого упражнения.','muted'));
   const nav=el('div',undefined,'toolbar');host.append(nav);
-  ['Алгоритм','Мысль → Go','Собери план','Пропуски','Практика'].forEach((name,i)=>{const b=btn(name,()=>{stage=i;render()},nav);if(stage===i)b.classList.add('active')});
-  if(stage===0){
+  ['С чего начать','Алгоритм','Мысль → Go','Собери план','Пропуски','Практика'].forEach((name,i)=>{const index=i-1;const b=btn(name,()=>{stage=index;render()},nav);if(stage===index)b.classList.add('active')});
+  if(stage===-1){
+   host.append(el('h3','Разложи условие до написания кода'),el('p',task.role),el('pre',task.signature),el('p','Запиши своими словами. Не нужно знать идеальный алгоритм: начни с одного простого примера.'));
+   field(host,'1. Что приходит на вход?',plan.input,v=>plan.input=v,{placeholder:'Параметры, типы, ограничения'});
+   field(host,'2. Что должна вернуть функция?',plan.output,v=>plan.output=v,{placeholder:'Тип результата, пустой вход, ошибки'});
+   field(host,'3. Придумай маленький пример и ожидаемый результат',plan.example,v=>plan.example=v,{placeholder:'Вход → ожидаемый выход'});
+   field(host,'4. Какие действия нужны и что сделать первым?',plan.actions,v=>plan.actions=v,{placeholder:'Проверить вход, подготовить данные, пройти по ним…'});
+   btn(startHint?'Скрыть направление':'Не знаю первое действие — подскажи',()=>{startHint=!startHint;render()});
+   if(startHint&&g.steps[0])host.append(el('p','Первое действие: '+g.steps[0][0],'feedback'),el('p',g.steps[0][2]));
+   host.append(el('p','Это твой черновой план, не автоматическая проверка. Дальше сравни его с алгоритмом.','muted'));
+  }else if(stage===0){
    if(g.frames){
     const [title,cells,state,why]=g.frames[step];
     host.append(el('h3','Шаг '+(step+1)+' из '+g.frames.length+' · '+title));
@@ -34,7 +54,19 @@ function mount(host,task,apply){
    const row=el('div',undefined,'toolbar');host.append(row);btn('Назад',()=>{step--;render()},row).disabled=step===0;btn('Далее',()=>{step++;render()},row).disabled=step===g.example.length;
    }
   }else if(stage===1){
-   g.steps.forEach(([thought,code,why],i)=>{const d=el('details');d.append(el('summary',(i+1)+'. '+thought),el('pre',code),el('p',why));host.append(d)});
+   const [thought,code,why]=g.steps[codeStep];
+   host.append(el('h3','Действие '+(codeStep+1)+' из '+g.steps.length+' · '+thought),
+    el('p','Как записать это действие на Go? Напиши только нужный фрагмент, не всю функцию.'));
+   field(host,'Твой код для этого действия',attempts[codeStep],v=>attempts[codeStep]=v,{rows:5,code:true,placeholder:'Напиши Go-код здесь…'});
+   const controls=el('div',undefined,'toolbar');host.append(controls);
+   btn(revealed[codeStep]?'Скрыть пример':'Сравнить с примером',()=>{revealed[codeStep]=!revealed[codeStep];render()},controls);
+   if(revealed[codeStep]){
+    if(!attempts[codeStep].trim())host.append(el('p','Если пока не получилось, прочитай пример, затем скрой его и попробуй записать по памяти.','feedback'));
+    host.append(el('h3','Один из вариантов'),el('pre',code),el('p',why),el('p','Сравни смысл, типы и порядок действий. Другой код тоже может быть правильным; фрагменты здесь не компилируются отдельно. Полное решение проверяется Go-тестами.','muted'));
+   }
+   const stepsNav=el('div',undefined,'toolbar');host.append(stepsNav);
+   btn('Предыдущее действие',()=>{codeStep--;render()},stepsNav).disabled=codeStep===0;
+   btn('Следующее действие',()=>{codeStep++;render()},stepsNav).disabled=codeStep===g.steps.length-1;
    if(task.id==='dedupe')host.append(el('p','В учебном варианте используем bool; в production можно хранить только присутствие ключа через struct{}.','muted'));
   }else if(stage===2){
    host.append(el('p','Нажимай действия в правильном порядке.'));
@@ -45,10 +77,14 @@ function mount(host,task,apply){
   }else if(stage===3){
    g.blanks.forEach((x,i)=>{const box=el('div',undefined,'question');box.append(el('pre',x.before+'___'+x.after));x.options.forEach((v,j)=>btn(v,()=>{answers[i]=j;render()},box).classList.add('choice'));if(answers[i]!==undefined)box.append(el('p',(answers[i]===x.correct?'Верно. ':'Попробуй ещё. ')+x.explain,'feedback'));host.append(box)});
   }else{
-   host.append(el('p','Выбери объём помощи. Каждый вариант открывается в том же редакторе и проверяется настоящими тестами.'));
+   host.append(el('p','Теперь собери отдельные действия в полную функцию. Начни с заготовки без готового решения; если застрял, вернись к своему плану или выбери меньший шаг.'));
+   if(plan.actions.trim())host.append(el('h3','Твой план'),el('p',plan.actions));
+   btn(showPlan?'Скрыть план действий':'Показать план действий без кода',()=>{showPlan=!showPlan;render()});
+   if(showPlan){const list=el('ol');g.steps.forEach(([thought])=>list.append(el('li',thought)));host.append(list);}
+   host.append(el('p','После сборки запускай настоящие Go-тесты. Успех отдельных фрагментов не считается решённой задачей.','muted'));
    btn('Допиши часть функции',()=>draft(g.partial)).classList.add('choice');
    btn('Исправь баг в коде',()=>draft(g.bug)).classList.add('choice');
-   btn('Решай самостоятельно',()=>draft(task.starter)).classList.add('choice');
+   btn('Начать с заготовки самостоятельно',()=>draft(task.starter)).classList.add('choice');
    if(g.production)host.append(el('h3','В работе'),el('p',g.production));
    if(g.interview)host.append(el('h3','На собеседовании'),el('p',g.interview));
    host.append(el('p','После решения попробуй похожие задачи:'));
