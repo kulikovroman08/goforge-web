@@ -773,3 +773,24 @@ func TestCombineOperationErrors(t *testing.T) {
  if !errors.Is(got,operation)||!errors.Is(got,cleanup)||!errors.As(got,&typed)||typed!=cleanup { t.Fatal("lost cause",got) }
  joined,ok:=got.(interface{Unwrap() []error});if !ok { t.Fatal("expected multiple causes") }; causes:=joined.Unwrap();if len(causes)!=2||causes[0]!=operation||causes[1]!=cleanup { t.Fatal("cause order",causes) }
 }
+
+func TestDeferredReleaseOrder(t *testing.T) {
+ for _, tc := range []struct{ in, want []string }{
+  {[]string{"A","B","C"}, []string{"C","B","A"}},
+  {[]string{"A","A"}, []string{"A","A"}},
+  {nil, []string{}},
+  {[]string{}, []string{}},
+ } {
+  before := append([]string(nil), tc.in...)
+  got := DeferredReleaseOrder(tc.in)
+  if !reflect.DeepEqual(got, tc.want) { t.Fatal(tc.in, got, tc.want) }
+  if len(tc.in)>0 && !reflect.DeepEqual(tc.in,before) { t.Fatal("input changed") }
+ }
+}
+
+func TestDeferredStatusTrace(t *testing.T) {
+ for _, tc := range []struct{ initial, final string }{{"pending","done"},{"A","A"},{"","done"},{"start",""},{"",""}} {
+  got := DeferredStatusTrace(tc.initial,tc.final)
+  if !reflect.DeepEqual(got,[]string{tc.initial,tc.final}) { t.Fatal(tc,got) }
+ }
+}

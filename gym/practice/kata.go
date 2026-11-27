@@ -352,3 +352,7 @@ func LabelErrorStatus(err error) int { return 500 }
 func ReadStringValue(value any) (string,bool) { return "",false }
 
 func CombineOperationErrors(operation, cleanup error) error { return nil }
+
+func DeferredReleaseOrder(resources []string) (order []string) { return nil }
+
+func DeferredStatusTrace(initial, final string) (trace []string) { return nil }

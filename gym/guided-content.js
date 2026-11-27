@@ -10264,5 +10264,235 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "При записи файла или обработке транзакции ошибка очистки не должна скрывать исходную ошибку. В реальном сервисе правила логирования, повторов и ответа клиенту определяются отдельно.",
     "interview": "Почему errors.Unwrap не возвращает первую причину errors.Join?"
+  },
+  "advanced-defer-lifo": {
+    "frames": [
+      [
+        "Открытие A",
+        [
+          "resources=[A,B,C]",
+          "stack=[A]"
+        ],
+        "defer release(A)",
+        "Вызов зарегистрирован, но не выполнен."
+      ],
+      [
+        "Открытие B и C",
+        [
+          "stack=[A,B,C]",
+          "order=[]"
+        ],
+        "defer release(C)",
+        "Последний зарегистрированный вызов выполнится первым."
+      ],
+      [
+        "Возврат",
+        [
+          "stack=[A,B]",
+          "order=[C]"
+        ],
+        "release(C)",
+        "Начинается выполнение отложенных функций."
+      ],
+      [
+        "Завершение",
+        [
+          "stack=[]",
+          "order=[C,B,A]"
+        ],
+        "return",
+        "Именованный результат включает изменения defer."
+      ]
+    ],
+    "steps": [
+      [
+        "Подготовить результат",
+        "order = make([]string, 0, len(resources))",
+        "Именованный результат доступен отложенным функциям."
+      ],
+      [
+        "Зарегистрировать освобождение",
+        "defer func(resource string) { order = append(order, resource) }(name)",
+        "Аргумент вычисляется сразу, вызовы выполняются в обратном порядке."
+      ],
+      [
+        "Вернуть результат",
+        "return",
+        "После вычисления результата defer может изменить именованную переменную."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Зарегистрировать освобождение",
+      "Подготовить результат"
+    ],
+    "order": [
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "",
+        "after": "",
+        "options": [
+          "defer func(resource string) { order = append(order, resource) }(name)",
+          "order = append(order,name)",
+          "return nil"
+        ],
+        "correct": 0,
+        "explain": "Регистрируем вызов, сохраняющий текущее имя."
+      },
+      {
+        "before": "",
+        "after": "",
+        "options": [
+          "return nil",
+          "return",
+          "panic(nil)"
+        ],
+        "correct": 1,
+        "explain": "Сохраняем именованный результат."
+      }
+    ],
+    "partial": "package practice\n\nfunc DeferredReleaseOrder(resources []string) (order []string) {\n\torder = make([]string, 0, len(resources))\n\tfor _, name := range resources { order = append(order, name) }\n\treturn\n}\n",
+    "bug": "package practice\n\nfunc DeferredReleaseOrder(resources []string) (order []string) {\n\torder = make([]string, 0, len(resources))\n\tfor _, name := range resources { defer func(resource string) { order = append(order, resource) }(name) }\n\treturn nil\n}\n",
+    "hints": [
+      "В этой задаче освобождение моделируется добавлением имени в результат.",
+      "Используй именованный результат, который уже указан в сигнатуре.",
+      "В цикле зарегистрируй defer с параметром resource, передавая текущее name.",
+      "Не возвращай nil явно: это перезапишет именованный результат перед defer.",
+      "order = make([]string, 0, len(resources))\nfor _, name := range resources { defer func(resource string) { order = append(order, resource) }(name) }\nreturn"
+    ],
+    "related": [
+      [
+        "core-defer-result",
+        "Именованный результат"
+      ],
+      [
+        "defer-cleanup",
+        "Очистка ресурсов"
+      ]
+    ],
+    "production": "При последовательном захвате ресурсов обычно освобождают их в обратном порядке: например, сначала закрывают файл, затем удаляют временный каталог. Здесь моделируется только порядок, не ошибки реального I/O.",
+    "interview": "Когда выполняются defer и в каком порядке?"
+  },
+  "advanced-defer-capture": {
+    "frames": [
+      [
+        "Начало",
+        [
+          "status=pending",
+          "trace=[]"
+        ],
+        "status := initial",
+        "Одна переменная status."
+      ],
+      [
+        "Регистрация",
+        [
+          "closure → status",
+          "snapshot=pending"
+        ],
+        "defer ... (status)",
+        "Снимок сохраняет значение."
+      ],
+      [
+        "Изменение",
+        [
+          "status=done",
+          "snapshot=pending"
+        ],
+        "status = final",
+        "Снимок не меняется."
+      ],
+      [
+        "Возврат",
+        [
+          "trace=[pending,done]"
+        ],
+        "return",
+        "Сначала snapshot, затем чтение status."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать переменную",
+        "status := initial",
+        "Замыкания могут обращаться к этой переменной."
+      ],
+      [
+        "Зарегистрировать чтение позже",
+        "defer func() { trace = append(trace, status) }()",
+        "Тело замыкания читает status при выполнении."
+      ],
+      [
+        "Зарегистрировать снимок",
+        "defer func(snapshot string) { trace = append(trace, snapshot) }(status)",
+        "Аргумент вычисляется сейчас."
+      ],
+      [
+        "Изменить статус и вернуть",
+        "status = final\nreturn",
+        "Снимок выполняется первым, замыкание видит новое значение."
+      ]
+    ],
+    "blocks": [
+      "Изменить статус и вернуть",
+      "Зарегистрировать снимок",
+      "Зарегистрировать чтение позже",
+      "Создать переменную"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "defer func(snapshot string) { trace = append(trace, snapshot) }(",
+        "after": ")",
+        "options": [
+          "final",
+          "status",
+          "\"\""
+        ],
+        "correct": 1,
+        "explain": "Аргумент вычисляется при регистрации."
+      },
+      {
+        "before": "status = ",
+        "after": "",
+        "options": [
+          "initial",
+          "\"\"",
+          "final"
+        ],
+        "correct": 2,
+        "explain": "Замыкание прочитает final."
+      }
+    ],
+    "partial": "package practice\n\nfunc DeferredStatusTrace(initial, final string) (trace []string) {\n\tstatus := initial\n\ttrace = make([]string, 0, 2)\n\tdefer func() { trace = append(trace, status) }()\n\tstatus = final\n\treturn\n}\n",
+    "bug": "package practice\n\nfunc DeferredStatusTrace(initial, final string) (trace []string) {\n\tstatus := initial\n\ttrace = make([]string, 0, 2)\n\tdefer func() { trace = append(trace, status) }()\n\tdefer func() { trace = append(trace, status) }()\n\tstatus = final\n\treturn\n}\n",
+    "hints": [
+      "Различай значение аргумента и переменную, которую читает тело функции.",
+      "Зарегистрируй первым замыкание без параметров.",
+      "Второму defer передай status как аргумент snapshot.",
+      "После обоих defer измени status и используй именованный результат.",
+      "status := initial\ntrace = make([]string, 0, 2)\ndefer func(){trace=append(trace,status)}()\ndefer func(snapshot string){trace=append(trace,snapshot)}(status)\nstatus=final\nreturn"
+    ],
+    "related": [
+      [
+        "advanced-defer-lifo",
+        "Порядок LIFO"
+      ],
+      [
+        "core-defer-result",
+        "Именованный результат"
+      ]
+    ],
+    "production": "При журналировании завершения запроса важно осознанно выбирать начальные или итоговые значения. Для итогового результата часто подходит замыкание, для неизменного снимка — аргумент.",
+    "interview": "Почему defer log(x) и defer func(){log(x)}() могут вывести разные значения?"
   }
 };
