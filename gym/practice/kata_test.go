@@ -794,3 +794,18 @@ func TestDeferredStatusTrace(t *testing.T) {
   if !reflect.DeepEqual(got,[]string{tc.initial,tc.final}) { t.Fatal(tc,got) }
  }
 }
+
+func TestPanicUnwindTrace(t *testing.T) {
+ for i:=0;i<2;i++ { if got:=PanicUnwindTrace(); !reflect.DeepEqual(got,[]string{"inner","outer","recovered"}) { t.Fatal(got) } }
+}
+
+func TestRunProtectedWork(t *testing.T) {
+ cause:=errors.New("failed")
+ calls:=0
+ if got:=RunProtectedWork(func()error{calls++;return nil});got!=nil||calls!=1{t.Fatal(got,calls)}
+ if got:=RunProtectedWork(func()error{calls++;return cause});got!=cause||calls!=2{t.Fatal(got,calls)}
+ if got:=RunProtectedWork(func()error{calls++;panic("boom")});got==nil||got.Error()!="work panic: boom"||calls!=3{t.Fatal(got,calls)}
+ if got:=RunProtectedWork(func()error{calls++;panic(cause)});!errors.Is(got,cause)||calls!=4{t.Fatal(got,calls)}
+ if got:=RunProtectedWork(func()error{panic(42)});got==nil||got.Error()!="work panic: 42"{t.Fatal(got)}
+ if got:=RunProtectedWork(nil);got==nil{t.Fatal("nil callback panic lost")}
+}

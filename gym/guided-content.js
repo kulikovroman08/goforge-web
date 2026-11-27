@@ -10494,5 +10494,247 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "При журналировании завершения запроса важно осознанно выбирать начальные или итоговые значения. Для итогового результата часто подходит замыкание, для неизменного снимка — аргумент.",
     "interview": "Почему defer log(x) и defer func(){log(x)}() могут вывести разные значения?"
+  },
+  "advanced-panic-trace": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "outer frame",
+          "defer outer"
+        ],
+        "defer func() ...",
+        "Внешняя граница готова восстановиться."
+      ],
+      [
+        "Вложенный вызов",
+        [
+          "outer frame",
+          "inner frame",
+          "defer inner"
+        ],
+        "panic(\"failed\")",
+        "Обычное выполнение прекращается."
+      ],
+      [
+        "Раскрутка",
+        [
+          "trace=[inner]",
+          "outer frame"
+        ],
+        "defer inner",
+        "Вложенный defer выполняется первым."
+      ],
+      [
+        "Восстановление",
+        [
+          "trace=[inner,outer,recovered]"
+        ],
+        "recover()",
+        "Внешний defer останавливает панику; функция возвращается."
+      ]
+    ],
+    "steps": [
+      [
+        "Подготовить журнал",
+        "trace = make([]string, 0, 3)",
+        "Именованный результат доступен defer."
+      ],
+      [
+        "Зарегистрировать внешнее восстановление",
+        "defer func() { trace = append(trace, \"outer\"); if recover() != nil { trace = append(trace, \"recovered\") } }()",
+        "Recover вызывается непосредственно в отложенной функции."
+      ],
+      [
+        "Вызвать вложенную операцию",
+        "func() { defer func() { trace = append(trace, \"inner\") }(); panic(\"failed\") }()",
+        "Паника запускает отложенные вызовы вложенной функции."
+      ],
+      [
+        "Проследить возврат",
+        "trace = append(trace, \"after\")",
+        "Эта строка не выполняется: внешняя функция завершится после восстановления."
+      ]
+    ],
+    "blocks": [
+      "Проследить возврат",
+      "Вызвать вложенную операцию",
+      "Зарегистрировать внешнее восстановление",
+      "Подготовить журнал"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if ",
+        "after": " != nil",
+        "options": [
+          "recover()",
+          "panic(\"failed\")",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Recover вызывается непосредственно в defer."
+      },
+      {
+        "before": "",
+        "after": "(\"failed\")",
+        "options": [
+          "recover",
+          "panic",
+          "return"
+        ],
+        "correct": 1,
+        "explain": "Паника запускает раскрутку."
+      }
+    ],
+    "partial": "package practice\n\nfunc PanicUnwindTrace() (trace []string) {\n\ttrace = make([]string, 0, 3)\n\tdefer func() {\n\t trace = append(trace, \"outer\")\n\t if recover() != nil { trace = append(trace, \"recovered\") }\n\t}()\n\tfunc() { panic(\"failed\") }()\n\treturn\n}\n",
+    "bug": "package practice\n\nfunc PanicUnwindTrace() (trace []string) {\n\ttrace = make([]string, 0, 3)\n\tdefer func() {\n\t trace = append(trace, \"outer\")\n\t if recover() != nil { trace = append(trace, \"recovered\") }\n\t}()\n\tfunc() {\n\t defer func() { trace = append(trace, \"inner\") }()\n\t}()\n\ttrace = append(trace, \"after\")\n\treturn\n}\n",
+    "hints": [
+      "Нужны две функции в одной горутине.",
+      "Внешний defer зарегистрируй до вложенного вызова.",
+      "Во вложенной функции зарегистрируй inner до panic.",
+      "Вызови recover непосредственно во внешнем defer; не продолжай после panic.",
+      "defer func(){trace=append(trace,\"outer\"); if recover()!=nil {trace=append(trace,\"recovered\")}}(); func(){defer func(){trace=append(trace,\"inner\")}(); panic(\"failed\")}()"
+    ],
+    "related": [
+      [
+        "advanced-defer-lifo",
+        "Порядок defer"
+      ],
+      [
+        "advanced-defer-capture",
+        "Захват переменной"
+      ]
+    ],
+    "production": "На границе обработки запроса можно восстановиться после неожиданной паники, записать диагностические данные и завершить запрос. Не следует использовать panic для обычных доменных ошибок.",
+    "interview": "Продолжается ли выполнение после строки panic, если recover сработал?"
+  },
+  "advanced-recover-boundary": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "work callback",
+          "err=nil"
+        ],
+        "defer recovery",
+        "Граница регистрируется заранее."
+      ],
+      [
+        "Нормальный путь",
+        [
+          "work → original error"
+        ],
+        "return work()",
+        "Recover возвращает nil, результат сохраняется."
+      ],
+      [
+        "Путь panic",
+        [
+          "work → panic(error)"
+        ],
+        "recover()",
+        "Отложенная функция получает значение паники."
+      ],
+      [
+        "Результат",
+        [
+          "err=wrapped cause"
+        ],
+        "fmt.Errorf(... %w ...)",
+        "Вызывающий код получает ошибку вместо продолжения аварии."
+      ]
+    ],
+    "steps": [
+      [
+        "Зарегистрировать границу",
+        "defer func() { /* recover */ }()",
+        "Восстановление должно быть зарегистрировано до вызова work."
+      ],
+      [
+        "Получить значение паники",
+        "if value := recover(); value != nil",
+        "Непосредственный вызов recover внутри defer."
+      ],
+      [
+        "Сохранить error-причину",
+        "if cause, ok := value.(error); ok { err = fmt.Errorf(\"work panic: %w\", cause); return }",
+        "%w сохраняет исходную причину для errors.Is и As."
+      ],
+      [
+        "Обработать остальные значения",
+        "err = fmt.Errorf(\"work panic: %v\", value)",
+        "Паника может содержать не только error."
+      ],
+      [
+        "Вызвать операцию",
+        "return work()",
+        "Обычный результат возвращается без обёртки."
+      ]
+    ],
+    "blocks": [
+      "Вызвать операцию",
+      "Обработать остальные значения",
+      "Сохранить error-причину",
+      "Получить значение паники",
+      "Зарегистрировать границу"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if value := ",
+        "after": "; value != nil",
+        "options": [
+          "work()",
+          "recover()",
+          "nil"
+        ],
+        "correct": 1,
+        "explain": "Получаем значение паники."
+      },
+      {
+        "before": "fmt.Errorf(\"work panic: ",
+        "after": "\", cause)",
+        "options": [
+          "%v",
+          "%s",
+          "%w"
+        ],
+        "correct": 2,
+        "explain": "%w сохраняет error-причину."
+      }
+    ],
+    "partial": "package practice\n\nfunc RunProtectedWork(work func() error) (err error) {\n\tdefer func() {\n\t if value := recover(); value != nil { err = fmt.Errorf(\"work panic: %v\", value) }\n\t}()\n\treturn work()\n}\n",
+    "bug": "package practice\n\nfunc RunProtectedWork(work func() error) (err error) {\n\tdefer func() {\n\t if value := recover(); value != nil { err = nil }\n\t}()\n\treturn work()\n}\n",
+    "hints": [
+      "Используй именованный результат err.",
+      "Зарегистрируй defer перед work; recover вызывай непосредственно в нём.",
+      "Проверь ненулевое значение recover.",
+      "Для error используй %w, для других значений — %v.",
+      "defer func(){if v:=recover(); v!=nil {if e,ok:=v.(error);ok {err=fmt.Errorf(\"work panic: %w\",e);return};err=fmt.Errorf(\"work panic: %v\",v)}}(); return work()"
+    ],
+    "related": [
+      [
+        "advanced-panic-trace",
+        "Раскрутка стека"
+      ],
+      [
+        "advanced-join-errors",
+        "Сохранение причин ошибок"
+      ]
+    ],
+    "production": "Обёртка подходит как учебная модель границы worker или request handler. В production дополнительно нужны stack trace, политика логирования, корректная отмена и защита от повторной обработки. Нельзя считать recover гарантией целостности данных.",
+    "interview": "Почему recover лучше размещать на границе обработки, а не в каждой функции?"
   }
 };

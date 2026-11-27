@@ -356,3 +356,7 @@ func CombineOperationErrors(operation, cleanup error) error { return nil }
 func DeferredReleaseOrder(resources []string) (order []string) { return nil }
 
 func DeferredStatusTrace(initial, final string) (trace []string) { return nil }
+
+func PanicUnwindTrace() (trace []string) { return nil }
+
+func RunProtectedWork(work func() error) (err error) { return nil }
