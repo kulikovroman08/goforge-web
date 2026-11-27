@@ -9124,17 +9124,17 @@ window.GOFORGE_GUIDES ={
       [
         "Проверить лимит",
         "if limit>0 {",
-        "При невалидном входе возвращаем исходное значение."
+        "limit > 0 сравнивает аргумент с нулём; при false тело if пропускается."
       ],
       [
         "Обновить локальную копию",
         "q.Limit=limit\n}",
-        "Receiver q передан по значению."
+        "q — копия ServiceQuota. Присваивание меняет только её поле Limit, а не поле вызывающего объекта."
       ],
       [
         "Вернуть копию",
         "return q",
-        "Вызывающий код решает, присваивать ли результат оригиналу."
+        "return q возвращает всю структуру. Для изменения оригинала вызывающий код может присвоить результат обратно."
       ]
     ],
     "blocks": [
@@ -9174,10 +9174,10 @@ window.GOFORGE_GUIDES ={
     "partial": "package practice\n\ntype ServiceQuota struct { Limit int }\nfunc (q *ServiceQuota) SetLimit(limit int) { q.Limit=limit }\n\nfunc (q ServiceQuota) WithLimit(limit int) ServiceQuota {\n\tif limit<=0 { return q }\n\t// TODO: обнови локальную копию\n\treturn q\n}\n",
     "bug": "package practice\n\ntype ServiceQuota struct { Limit int }\nfunc (q *ServiceQuota) SetLimit(limit int) { q.Limit=limit }\n\nfunc (q ServiceQuota) WithLimit(limit int) ServiceQuota {\n\tq.Limit=limit\n\treturn q\n}\n",
     "hints": [
-      "Реализуй метод с value receiver: верни копию ServiceQuota с новым Limit, если limit>0. При некорректном лимите верни исходное значение. Не меняй исходную структуру. SetLimit уже реализован для сравнения поведения.",
-      "При невалидном входе возвращаем исходное значение.",
-      "Receiver q передан по значению.",
-      "Вызывающий код решает, присваивать ли результат оригиналу.",
+      "Начни: Проверить лимит.",
+      "limit > 0 сравнивает аргумент с нулём; при false тело if пропускается.",
+      "Следующее действие: Обновить локальную копию. q — копия ServiceQuota. Присваивание меняет только её поле Limit, а не поле вызывающего объекта.",
+      "Проверь план: Проверить лимит → Обновить локальную копию → Вернуть копию.",
       "if limit>0 { q.Limit=limit }\nreturn q"
     ],
     "related": [
@@ -9234,12 +9234,12 @@ window.GOFORGE_GUIDES ={
       [
         "Создать вложенное значение",
         "ProfileMeta{ID:id,Active:active}",
-        "В литерале нужно явно заполнить вложенное поле."
+        "Литерал ProfileMeta{ID: id, Active: active} создаёт значение вложенного типа; имена слева — поля, справа — аргументы."
       ],
       [
         "Собрать внешнюю структуру",
         "return ServiceProfile{ProfileMeta:ProfileMeta{ID:id,Active:active},Name:name}",
-        "Внешний тип содержит ProfileMeta и Name."
+        "ServiceProfile содержит embedded field ProfileMeta и обычное поле Name. В литерале нельзя писать promoted ID напрямую: заполняем ProfileMeta явно, затем Name."
       ]
     ],
     "blocks": [
@@ -9274,13 +9274,13 @@ window.GOFORGE_GUIDES ={
         "explain": "Метод вложенного типа продвигается во внешний тип."
       }
     ],
-    "partial": "package practice\n\ntype ProfileMeta struct { ID string; Active bool }\nfunc (m ProfileMeta) IsActive() bool { return m.Active }\ntype ServiceProfile struct { ProfileMeta; Name string }\n\nfunc NewServiceProfile(id,name string,active bool) ServiceProfile {\n\treturn ServiceProfile{Name:name}\n}\n",
+    "partial": "package practice\n\ntype ProfileMeta struct { ID string; Active bool }\nfunc (m ProfileMeta) IsActive() bool { return m.Active }\ntype ServiceProfile struct { ProfileMeta; Name string }\n\nfunc NewServiceProfile(id,name string,active bool) ServiceProfile {\n\t// TODO: заполни вложенный ProfileMeta полями ID и Active\n\treturn ServiceProfile{Name:name}\n}\n",
     "bug": "package practice\n\ntype ProfileMeta struct { ID string; Active bool }\nfunc (m ProfileMeta) IsActive() bool { return m.Active }\ntype ServiceProfile struct { ProfileMeta; Name string }\n\nfunc NewServiceProfile(id,name string,active bool) ServiceProfile {\n\treturn ServiceProfile{ProfileMeta:ProfileMeta{ID:id,Active:!active},Name:name}\n}\n",
     "hints": [
-      "Создай ServiceProfile с вложенной ProfileMeta: сохрани id и active во вложенной структуре, name — в собственном поле. Не меняй входные данные. Проверь, что ID и IsActive доступны через promotion.",
-      "В литерале нужно явно заполнить вложенное поле.",
-      "Внешний тип содержит ProfileMeta и Name.",
-      "Внешний тип содержит ProfileMeta и Name.",
+      "Начни с литерала вложенного ProfileMeta.",
+      "Заполни поля ID и Active аргументами id и active.",
+      "Внешний литерал принимает поле ProfileMeta, а не promoted ID.",
+      "Заполни также Name и верни ServiceProfile.",
       "return ServiceProfile{ProfileMeta:ProfileMeta{ID:id,Active:active},Name:name}"
     ],
     "related": [
@@ -9335,17 +9335,17 @@ window.GOFORGE_GUIDES ={
       [
         "Вызвать зависимость",
         "name,err:=repo.FindName(id)",
-        "Интерфейс задаёт необходимую операцию."
+        "repo имеет тип интерфейса NameRepository. := создаёт name и err из двух результатов FindName; передаём исходный id ровно один раз."
       ],
       [
         "Обработать ошибку",
         "if err!=nil { return \"\",fmt.Errorf(\"load user: %w\",err) }",
-        "Не возвращаем частичные данные при ошибке."
+        "err != nil означает сбой. fmt.Errorf с %w добавляет контекст и сохраняет причину для errors.Is; пустая строка исключает частичный результат."
       ],
       [
         "Вернуть имя",
         "return name,nil",
-        "Успешный результат не содержит ошибки."
+        "При отсутствии ошибки возвращаем имя и nil. Реальную БД можно заменить fake с тем же методом FindName."
       ]
     ],
     "blocks": [
@@ -9385,10 +9385,10 @@ window.GOFORGE_GUIDES ={
     "partial": "package practice\n\ntype NameRepository interface { FindName(id string) (string,error) }\n\nfunc LoadUserName(repo NameRepository,id string) (string,error) {\n\tname,err:=repo.FindName(id)\n\t// TODO: обработай ошибку с контекстом\n\treturn name,err\n}\n",
     "bug": "package practice\n\ntype NameRepository interface { FindName(id string) (string,error) }\n\nfunc LoadUserName(repo NameRepository,id string) (string,error) {\n\tname,err:=repo.FindName(id)\n\tif err!=nil { return \"\",fmt.Errorf(\"load user: %v\",err) }\n\treturn name,nil\n}\n",
     "hints": [
-      "Вызови repo.FindName(id) ровно один раз. При ошибке верни пустую строку и ошибку с контекстом load user, сохранив причину через %w. При успехе верни имя и nil. repo — корректная ненулевая реализация интерфейса.",
-      "Интерфейс задаёт необходимую операцию.",
-      "Не возвращаем частичные данные при ошибке.",
-      "Успешный результат не содержит ошибки.",
+      "Начни: Вызвать зависимость.",
+      "repo имеет тип интерфейса NameRepository. := создаёт name и err из двух результатов FindName; передаём исходный id ровно один раз.",
+      "Следующее действие: Обработать ошибку. err != nil означает сбой. fmt.Errorf с %w добавляет контекст и сохраняет причину для errors.Is; пустая строка исключает частичный результат.",
+      "Проверь план: Вызвать зависимость → Обработать ошибку → Вернуть имя.",
       "name,err:=repo.FindName(id)\nif err!=nil { return \"\",fmt.Errorf(\"load user: %w\",err) }\nreturn name,nil"
     ],
     "related": [
@@ -9442,17 +9442,17 @@ window.GOFORGE_GUIDES ={
       [
         "Начать type switch",
         "switch v.(type) {",
-        "Сравниваем динамические типы."
+        "v — интерфейс any; v.(type) допустимо в type switch и проверяет динамический тип, а не значение."
       ],
       [
         "Обработать известные типы",
         "case nil: return \"nil\"\ncase string: return \"string\"\ncase int: return \"int\"\ncase bool: return \"bool\"",
-        "Каждый case задаёт конкретный тип."
+        "case nil совпадает только с nil-интерфейсом. string, int и bool — точные типы; именованный UserID не совпадает с int."
       ],
       [
         "Обработать остальные",
         "default: return \"other\"\n}",
-        "Неизвестные значения не вызывают panic."
+        "default выполняется для всех остальных типов, включая typed nil указатель. return завершает функцию; break не нужен."
       ]
     ],
     "blocks": [
@@ -9492,10 +9492,10 @@ window.GOFORGE_GUIDES ={
     "partial": "package practice\n\nfunc ValueKind(v any) string {\n\tswitch v.(type) {\n\tcase nil: return \"nil\"\n\tcase string: return \"string\"\n\t// TODO: обработай int и bool\n\tdefault: return \"other\"\n\t}\n}\n",
     "bug": "package practice\n\nfunc ValueKind(v any) string {\n\tif v==nil { return \"nil\" }\n\tif _,ok:=v.(string);ok { return \"string\" }\n\tif _,ok:=v.(int);ok { return \"int\" }\n\treturn \"other\"\n}\n",
     "hints": [
-      "Верни \"nil\" для nil interface, \"string\" для встроенного string, \"int\" для встроенного int, \"bool\" для bool, \"other\" для остальных динамических типов. Именованные типы, например type UserID int, относятся к other. Используй type switch.",
-      "Сравниваем динамические типы.",
-      "Каждый case задаёт конкретный тип.",
-      "Неизвестные значения не вызывают panic.",
+      "Начни: Начать type switch.",
+      "v — интерфейс any; v.(type) допустимо в type switch и проверяет динамический тип, а не значение.",
+      "Следующее действие: Обработать известные типы. case nil совпадает только с nil-интерфейсом. string, int и bool — точные типы; именованный UserID не совпадает с int.",
+      "Проверь план: Начать type switch → Обработать известные типы → Обработать остальные.",
       "switch v.(type) {\ncase nil: return \"nil\"\ncase string: return \"string\"\ncase int: return \"int\"\ncase bool: return \"bool\"\ndefault: return \"other\"\n}"
     ],
     "related": [
@@ -9549,22 +9549,22 @@ window.GOFORGE_GUIDES ={
       [
         "Объявить целевой указатель",
         "var target *ServiceCodeError",
-        "Тип переменной соответствует искомой ошибке."
+        "var target *ServiceCodeError создаёт nil-указатель нужного типа."
       ],
       [
         "Найти ошибку",
         "if errors.As(err,&target)&&target!=nil {",
-        "Передаём адрес переменной; отдельно проверяем typed nil."
+        "errors.As(err, &target) получает **ServiceCodeError и записывает найденный указатель. && проверяет target только при успехе As; typed nil не разыменовываем."
       ],
       [
         "Вернуть код",
         "return target.Code,true\n}",
-        "Извлекаем структурированное поле."
+        "target.Code — поле найденной ошибки. true отличает найденный код 0 от отсутствия."
       ],
       [
         "Обработать отсутствие",
         "return 0,false",
-        "Не найденная ошибка не имеет кода."
+        "Если совпадения нет или первое совпадение typed nil, возвращаем 0,false."
       ]
     ],
     "blocks": [
@@ -9606,10 +9606,10 @@ window.GOFORGE_GUIDES ={
     "partial": "package practice\n\ntype ServiceCodeError struct { Code int }\nfunc (e *ServiceCodeError) Error() string { return fmt.Sprintf(\"service code %d\",e.Code) }\n\nfunc ExtractServiceCode(err error) (int,bool) {\n\tvar target *ServiceCodeError\n\tif errors.As(err,&target)&&target!=nil {\n\t // TODO: верни код\n\t return 0,true\n\t}\n\treturn 0,false\n}\n",
     "bug": "package practice\n\ntype ServiceCodeError struct { Code int }\nfunc (e *ServiceCodeError) Error() string { return fmt.Sprintf(\"service code %d\",e.Code) }\n\nfunc ExtractServiceCode(err error) (int,bool) {\n\ttarget,ok:=err.(*ServiceCodeError)\n\tif ok&&target!=nil {return target.Code,true}\n\treturn 0,false\n}\n",
     "hints": [
-      "Найди в цепочке или дереве ошибок ненулевую *ServiceCodeError с помощью errors.As. Верни её Code,true, иначе 0,false. Если первое найденное совпадение содержит typed nil, верни 0,false. Не сравнивай текст ошибки.",
-      "Тип переменной соответствует искомой ошибке.",
-      "Передаём адрес переменной; отдельно проверяем typed nil.",
-      "Не найденная ошибка не имеет кода.",
+      "Начни: Объявить целевой указатель.",
+      "var target *ServiceCodeError создаёт nil-указатель нужного типа.",
+      "Следующее действие: Найти ошибку. errors.As(err, &target) получает **ServiceCodeError и записывает найденный указатель. && проверяет target только при успехе As; typed nil не разыменовываем.",
+      "Проверь план: Объявить целевой указатель → Найти ошибку → Вернуть код → Обработать отсутствие.",
       "var target *ServiceCodeError\nif errors.As(err,&target)&&target!=nil { return target.Code,true }\nreturn 0,false"
     ],
     "related": [
@@ -9662,22 +9662,22 @@ window.GOFORGE_GUIDES ={
       [
         "Проверить вход",
         "if c==nil||c.Count==0 { return false }",
-        "Не разыменовываем nil и не сбрасываем уже пустой счётчик."
+        "|| вычисляется слева направо: при c == nil поле Count не читается. Нулевой счётчик не требует сброса."
       ],
       [
         "Присвоить интерфейсу",
         "var r Resettable=c",
-        "Method set *ResetCounter включает Reset."
+        "var r Resettable = c проверяет соответствие интерфейсу: Reset входит в method set *ResetCounter, но не ResetCounter."
       ],
       [
         "Вызвать метод",
         "r.Reset()",
-        "Динамический тип определяет реализацию."
+        "r.Reset() вызывает метод динамического типа и через указатель меняет исходный Count."
       ],
       [
         "Вернуть результат",
         "return true",
-        "Счётчик сброшен."
+        "true означает, что сброс действительно выполнен."
       ]
     ],
     "blocks": [
@@ -9719,10 +9719,10 @@ window.GOFORGE_GUIDES ={
     "partial": "package practice\n\ntype Resettable interface { Reset() }\ntype ResetCounter struct { Count int }\nfunc (c *ResetCounter) Reset() { c.Count=0 }\nvar _ Resettable = (*ResetCounter)(nil)\n\nfunc ResetIfNeeded(c *ResetCounter) bool {\n\tif c==nil||c.Count==0 { return false }\n\tvar r Resettable=c\n\t// TODO: вызови Reset через r\n\t_ = r\n\treturn true\n}\n",
     "bug": "package practice\n\ntype Resettable interface { Reset() }\ntype ResetCounter struct { Count int }\nfunc (c *ResetCounter) Reset() { c.Count=0 }\nvar _ Resettable = (*ResetCounter)(nil)\n\nfunc ResetIfNeeded(c *ResetCounter) bool {\n\tif c==nil||c.Count==0 { return false }\n\tcopyValue:=*c\n\tvar r Resettable=&copyValue\n\tr.Reset()\n\treturn true\n}\n",
     "hints": [
-      "Если c не nil и Count не равен 0, передай c в переменную типа Resettable, вызови Reset и верни true. При nil или Count==0 верни false. Reset уже реализован.",
-      "Не разыменовываем nil и не сбрасываем уже пустой счётчик.",
-      "Method set *ResetCounter включает Reset.",
-      "Счётчик сброшен.",
+      "Начни: Проверить вход.",
+      "|| вычисляется слева направо: при c == nil поле Count не читается. Нулевой счётчик не требует сброса.",
+      "Следующее действие: Присвоить интерфейсу. var r Resettable = c проверяет соответствие интерфейсу: Reset входит в method set *ResetCounter, но не ResetCounter.",
+      "Проверь план: Проверить вход → Присвоить интерфейсу → Вызвать метод → Вернуть результат.",
       "if c==nil||c.Count==0 { return false }\nvar r Resettable=c\nr.Reset()\nreturn true"
     ],
     "related": [
@@ -9774,17 +9774,17 @@ window.GOFORGE_GUIDES ={
       [
         "Прочитать данные",
         "label,err:=store.ReadLabel()",
-        "Встроенный интерфейс предоставляет ReadLabel."
+        "ReadLabel возвращает строку и error. := объявляет обе переменные; пустая строка сама по себе допустима."
       ],
       [
         "Проверить ошибку",
         "if err!=nil { return err }",
-        "Не выполняем запись после сбоя чтения."
+        "При err != nil return завершает функцию до записи и сохраняет исходную ошибку."
       ],
       [
         "Записать значение",
         "return store.WriteLabel(label)",
-        "Возвращаем ошибку записи без потери причины."
+        "WriteLabel получает ровно прочитанное значение; возвращаем его error без замены. Два вызова не становятся транзакцией автоматически."
       ]
     ],
     "blocks": [
@@ -9824,10 +9824,10 @@ window.GOFORGE_GUIDES ={
     "partial": "package practice\n\ntype LabelReader interface { ReadLabel() (string,error) }\ntype LabelWriter interface { WriteLabel(string) error }\ntype LabelStore interface { LabelReader; LabelWriter }\n\nfunc CopyLabel(store LabelStore) error {\n\tlabel,err:=store.ReadLabel()\n\tif err!=nil { return err }\n\t// TODO: запиши прочитанное значение\n\t_ = label\n\treturn nil\n}\n",
     "bug": "package practice\n\ntype LabelReader interface { ReadLabel() (string,error) }\ntype LabelWriter interface { WriteLabel(string) error }\ntype LabelStore interface { LabelReader; LabelWriter }\n\nfunc CopyLabel(store LabelStore) error {\n\tlabel,err:=store.ReadLabel()\n\t_ = err\n\treturn store.WriteLabel(label)\n}\n",
     "hints": [
-      "Вызови ReadLabel один раз. Если чтение успешно, передай прочитанную строку в WriteLabel один раз, включая пустую. Ошибки возвращай без замены. При ошибке чтения запись не выполняй. store — корректная реализация.",
-      "Встроенный интерфейс предоставляет ReadLabel.",
-      "Не выполняем запись после сбоя чтения.",
-      "Возвращаем ошибку записи без потери причины.",
+      "Начни: Прочитать данные.",
+      "ReadLabel возвращает строку и error. := объявляет обе переменные; пустая строка сама по себе допустима.",
+      "Следующее действие: Проверить ошибку. При err != nil return завершает функцию до записи и сохраняет исходную ошибку.",
+      "Проверь план: Прочитать данные → Проверить ошибку → Записать значение.",
       "label,err:=store.ReadLabel()\nif err!=nil { return err }\nreturn store.WriteLabel(label)"
     ],
     "related": [
@@ -9880,12 +9880,12 @@ window.GOFORGE_GUIDES ={
       [
         "Проверить nil",
         "if cause==nil { return nil }",
-        "Отсутствие ошибки не нужно оборачивать."
+        "Если cause == nil, нет причины для обёртки: возвращаем nil-интерфейс."
       ],
       [
         "Создать типизированную обёртку",
         "return &OperationError{Op:op,Cause:cause}",
-        "Сохраняем исходное error, а не новый объект с таким же текстом."
+        "&OperationError{Op: op, Cause: cause} создаёт указатель на структуру. Error формирует текст, Unwrap возвращает исходную причину; errors.As находит тип, errors.Is — причину."
       ]
     ],
     "blocks": [
@@ -9923,10 +9923,10 @@ window.GOFORGE_GUIDES ={
     "partial": "package practice\n\ntype OperationError struct { Op string; Cause error }\nfunc (e *OperationError) Error() string { return e.Op+\": \"+e.Cause.Error() }\nfunc (e *OperationError) Unwrap() error { return e.Cause }\n\nfunc WrapOperation(op string,cause error) error {\n\tif cause==nil { return nil }\n\t// TODO: верни типизированную ошибку\n\treturn cause\n}\n",
     "bug": "package practice\n\ntype OperationError struct { Op string; Cause error }\nfunc (e *OperationError) Error() string { return e.Op+\": \"+e.Cause.Error() }\nfunc (e *OperationError) Unwrap() error { return e.Cause }\n\nfunc WrapOperation(op string,cause error) error {\n\tif cause==nil { return nil }\n\treturn &OperationError{Op:op,Cause:errors.New(cause.Error())}\n}\n",
     "hints": [
-      "Если cause==nil, верни nil. Иначе верни *OperationError с исходными Op и Cause. Тип уже реализует Error и Unwrap. Ошибка должна находиться через errors.As, а причина через errors.Is.",
-      "Отсутствие ошибки не нужно оборачивать.",
-      "Сохраняем исходное error, а не новый объект с таким же текстом.",
-      "Сохраняем исходное error, а не новый объект с таким же текстом.",
+      "Сначала исключи отсутствие причины.",
+      "Создай указатель на OperationError.",
+      "Заполни Op исходным op, Cause исходным cause.",
+      "Не создавай errors.New из текста: Unwrap должен вернуть тот же объект.",
       "if cause==nil { return nil }\nreturn &OperationError{Op:op,Cause:cause}"
     ],
     "related": [
@@ -9978,22 +9978,22 @@ window.GOFORGE_GUIDES ={
       [
         "Обработать успех",
         "if err==nil { return 200 }",
-        "Нет ошибки — успешный статус."
+        "nil означает успех; 200 — статус по контракту этой задачи."
       ],
       [
         "Проверить отсутствие",
         "if errors.Is(err,ErrLabelMissing) { return 404 }",
-        "Эта причина имеет приоритет."
+        "errors.Is обходит обёртки и дерево ошибок. Проверяем ErrLabelMissing первым, поскольку 404 имеет приоритет."
       ],
       [
         "Проверить конфликт",
         "if errors.Is(err,ErrLabelConflict) { return 409 }",
-        "Учитываем и обёрнутые ошибки."
+        "Если missing не найден, ищем ErrLabelConflict и возвращаем 409."
       ],
       [
         "Вернуть общий статус",
         "return 500",
-        "Неизвестная ошибка — внутренний сбой по контракту."
+        "Ни одна известная причина не найдена: 500. Сравнение текста не используется."
       ]
     ],
     "blocks": [
@@ -10035,10 +10035,10 @@ window.GOFORGE_GUIDES ={
     "partial": "package practice\n\nfunc LabelErrorStatus(err error) int {\n\tif err==nil { return 200 }\n\tif errors.Is(err,ErrLabelMissing) { return 404 }\n\t// TODO: обработай конфликт\n\treturn 500\n}\n",
     "bug": "package practice\n\nfunc LabelErrorStatus(err error) int {\n\tif err==nil { return 200 }\n\tif err==ErrLabelMissing { return 404 }\n\tif err==ErrLabelConflict { return 409 }\n\treturn 500\n}\n",
     "hints": [
-      "Верни 200 для nil, 404 если errors.Is(err,ErrLabelMissing), 409 если errors.Is(err,ErrLabelConflict), иначе 500. Если обе причины есть в errors.Join, приоритет 404. Не сравнивай текст ошибки.",
-      "Нет ошибки — успешный статус.",
-      "Эта причина имеет приоритет.",
-      "Неизвестная ошибка — внутренний сбой по контракту.",
+      "Начни: Обработать успех.",
+      "nil означает успех; 200 — статус по контракту этой задачи.",
+      "Следующее действие: Проверить отсутствие. errors.Is обходит обёртки и дерево ошибок. Проверяем ErrLabelMissing первым, поскольку 404 имеет приоритет.",
+      "Проверь план: Обработать успех → Проверить отсутствие → Проверить конфликт → Вернуть общий статус.",
       "if err==nil { return 200 }\nif errors.Is(err,ErrLabelMissing) { return 404 }\nif errors.Is(err,ErrLabelConflict) { return 409 }\nreturn 500"
     ],
     "related": [
@@ -10095,12 +10095,12 @@ window.GOFORGE_GUIDES ={
       [
         "Проверить динамический тип",
         "s,ok:=value.(string)",
-        "Два результата защищают от panic при несовпадении."
+        "value.(string) с двумя результатами проверяет точный динамический тип. При несовпадении s — zero value строки, ok — false; panic нет."
       ],
       [
         "Вернуть оба результата",
         "return s,ok",
-        "Пустая строка при успехе отличается от отсутствия по bool."
+        "Возвращаем s и ok вместе: пустая строка может быть корректным результатом, если ok == true."
       ]
     ],
     "blocks": [
@@ -10138,10 +10138,10 @@ window.GOFORGE_GUIDES ={
     "partial": "package practice\n\nfunc ReadStringValue(value any) (string,bool) {\n\t// TODO: извлеки string через comma-ok\n\treturn \"\",false\n}\n",
     "bug": "package practice\n\nfunc ReadStringValue(value any) (string,bool) {\n\tif value==nil { return \"\",false }\n\treturn fmt.Sprint(value),true\n}\n",
     "hints": [
-      "Верни строку и true только если динамический тип value — встроенный string. Для остальных типов, включая nil, typed nil, определённые типы с underlying string и []byte, верни пустую строку,false без panic. Пустой string допустим.",
-      "Два результата защищают от panic при несовпадении.",
-      "Пустая строка при успехе отличается от отсутствия по bool.",
-      "Пустая строка при успехе отличается от отсутствия по bool.",
+      "Проверяй динамический тип, а не строковое представление.",
+      "Используй assertion к string с двумя результатами.",
+      "При несовпадении Go сам вернёт пустую строку и false.",
+      "Верни оба результата без дополнительной проверки пустой строки.",
       "s,ok:=value.(string)\nreturn s,ok"
     ],
     "related": [
@@ -10196,17 +10196,17 @@ window.GOFORGE_GUIDES ={
       [
         "Нет ошибки операции",
         "if operation == nil { return cleanup }",
-        "Сохраняем ошибку очистки или nil."
+        "Если operation == nil, возвращаем cleanup как есть, включая nil."
       ],
       [
         "Нет ошибки очистки",
         "if cleanup == nil { return operation }",
-        "Возвращаем исходную ошибку операции."
+        "Если cleanup == nil, возвращаем исходную operation, сохраняя идентичность объекта ошибки."
       ],
       [
         "Есть обе причины",
         "return errors.Join(operation, cleanup)",
-        "Обе причины остаются доступны через Is и As."
+        "При двух причинах errors.Join создаёт ошибку с Unwrap() []error; порядок причин сохраняется, Is и As обходят обе."
       ]
     ],
     "blocks": [
@@ -10246,10 +10246,10 @@ window.GOFORGE_GUIDES ={
     "partial": "package practice\n\nfunc CombineOperationErrors(operation, cleanup error) error {\n    if operation == nil { return cleanup }\n    if cleanup == nil { return operation }\n    // TODO: объедини обе причины, не потеряв ни одну\n    return operation\n}\n",
     "bug": "package practice\n\nfunc CombineOperationErrors(operation, cleanup error) error {\n\tif cleanup != nil { return cleanup }\n\treturn operation\n}\n",
     "hints": [
-      "Сначала разбери три случая: нет основной ошибки, нет ошибки очистки, есть обе.",
-      "При operation == nil верни cleanup, даже если cleanup тоже nil.",
-      "При cleanup == nil верни operation без дополнительной обёртки.",
-      "Когда обе ошибки ненулевые, используй errors.Join вместо выбора одной.",
+      "Начни: Нет ошибки операции.",
+      "Если operation == nil, возвращаем cleanup как есть, включая nil.",
+      "Следующее действие: Нет ошибки очистки. Если cleanup == nil, возвращаем исходную operation, сохраняя идентичность объекта ошибки.",
+      "Проверь план: Нет ошибки операции → Нет ошибки очистки → Есть обе причины.",
       "if operation == nil { return cleanup }\nif cleanup == nil { return operation }\nreturn errors.Join(operation, cleanup)"
     ],
     "related": [
@@ -12605,6 +12605,10 @@ window.GOFORGE_GUIDES ={
       [
         "advanced-join-errors",
         "Повторить базовую задачу"
+      ],
+      [
+        "advanced-generic-transform-error",
+        "Сравнить с fail-fast"
       ]
     ],
     "production": "Независимые операции доставки могут завершаться частично успешно. Повтор всего пакета требует идемпотентности.",
@@ -12732,6 +12736,10 @@ window.GOFORGE_GUIDES ={
       [
         "advanced-generic-map",
         "Повторить базовую задачу"
+      ],
+      [
+        "advanced-batch-partial-success",
+        "Сравнить с partial success"
       ]
     ],
     "production": "Для полностью валидного DTO или конфигурации нужен полный результат. Fail-fast не откатывает внешние действия.",
