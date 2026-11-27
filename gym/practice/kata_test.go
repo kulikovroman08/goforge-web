@@ -880,3 +880,26 @@ func TestDeliveryDependency(t *testing.T) {
  other:=NewDeliveryService(DeliverySenderFunc(func(text string)error{calls++;if text!="other"{t.Fatal(text)};return nil}))
  if other==nil||other.Deliver("other")!=nil||calls!=1||len(messages)!=2{t.Fatal("dependency not isolated")}
 }
+
+func TestAdaptEventHandler(t *testing.T) {
+ cause:=errors.New("callback failed");var received []string
+ h:=AdaptEventHandler(func(event string)error{received=append(received,event);return cause})
+ if h==nil||len(received)!=0{t.Fatal("adapter must not call callback")}
+ if err:=h.Handle("created");err!=cause{t.Fatal(err)}
+ if err:=h.Handle("");err!=cause{t.Fatal(err)}
+ if !reflect.DeepEqual(received,[]string{"created",""}){t.Fatal(received)}
+ var direct EventHandler=EventHandlerFunc(func(string)error{return nil})
+ if direct.Handle("ok")!=nil{t.Fatal("unexpected error")}
+}
+
+func TestSafeValueEqual(t *testing.T) {
+ type Box struct{ V any }
+ var p *int
+ for _,tc:=range []struct{a,b any; equal,ok bool}{
+ {nil,nil,true,true},{nil,[]int{},false,true},{7,7,true,true},{7,8,false,true},
+ {7,int64(7),false,true},{[]int{1},"1",false,true},{[]int{1},[]int{1},false,false},
+ {map[string]int{},map[string]int{},false,false},{func(){},func(){},false,false},
+ {Box{[]int{1}},Box{[]int{1}},false,false},{Box{7},Box{7},true,true},
+ {Box{7},Box{[]int{1}},false,false},{p,nil,false,true},{p,p,true,true},
+ }{equal,ok:=SafeValueEqual(tc.a,tc.b);if equal!=tc.equal||ok!=tc.ok{t.Fatal(tc,equal,ok)}}
+}

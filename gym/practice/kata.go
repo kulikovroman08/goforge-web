@@ -1,6 +1,7 @@
 package practice
 
 import (
+ "reflect"
  "context"
  "slices"
  "strconv"
@@ -381,3 +382,14 @@ func NewDeliveryService(sender DeliverySender) *DeliveryService { return nil }
 func (s *DeliveryService) Deliver(text string) error { return nil }
 type DeliverySenderFunc func(string) error
 func (f DeliverySenderFunc) Send(text string) error { return f(text) }
+
+type EventHandler interface { Handle(string) error }
+type EventHandlerFunc func(string) error
+
+func (f EventHandlerFunc) Handle(event string) error { return nil }
+
+func AdaptEventHandler(fn func(string) error) EventHandler { return nil }
+
+func SafeValueEqual(a, b any) (equal, ok bool) { return false, false }
+
+var _ = reflect.ValueOf

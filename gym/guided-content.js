@@ -11661,5 +11661,271 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "В main или composition root собирают сервис из репозиториев, HTTP-клиентов и publishers. В тестах подставляют fake. Это ручной DI без обязательного фреймворка.",
     "interview": "Зачем передавать интерфейс через конструктор?"
+  },
+  "advanced-interface-adapter": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "fn: func(string) error",
+          "calls=0"
+        ],
+        "AdaptEventHandler(fn)",
+        "Функция ещё не вызывается."
+      ],
+      [
+        "Адаптация",
+        [
+          "dynamic type=EventHandlerFunc",
+          "calls=0"
+        ],
+        "EventHandlerFunc(fn)",
+        "Преобразуем тип, помещаем значение в интерфейс."
+      ],
+      [
+        "Вызов",
+        [
+          "handler.Handle(\"created\")",
+          "f(\"created\")"
+        ],
+        "return f(event)",
+        "Метод делегирует вызов."
+      ],
+      [
+        "Выход",
+        [
+          "calls=1",
+          "err=original"
+        ],
+        "return error",
+        "Сохраняем результат callback."
+      ]
+    ],
+    "steps": [
+      [
+        "Описать нужный метод",
+        "type EventHandler interface {\n    Handle(string) error\n}",
+        "Потребителю нужен метод Handle. Обычная функция с такой сигнатурой ещё не имеет метода."
+      ],
+      [
+        "Объявить определённый тип функции",
+        "type EventHandlerFunc func(string) error",
+        "Это новый тип с underlying function type. В том же пакете к нему можно добавить метод."
+      ],
+      [
+        "Объявить метод",
+        "func (f EventHandlerFunc) Handle(event string) error {",
+        "f — receiver, значение нашего функционального типа. event — аргумент метода."
+      ],
+      [
+        "Вызвать функцию",
+        "    return f(event)\n}",
+        "f можно вызывать как обычную функцию. Передаём event и возвращаем исходный error."
+      ],
+      [
+        "Объявить адаптер",
+        "func AdaptEventHandler(fn func(string) error) EventHandler {",
+        "Принимаем обычную функцию. Результат — интерфейс, требующий Handle."
+      ],
+      [
+        "Преобразовать тип",
+        "    return EventHandlerFunc(fn)\n}",
+        "Это conversion, не вызов fn. Полученный тип имеет Handle и неявно реализует EventHandler."
+      ]
+    ],
+    "blocks": [
+      "Преобразовать тип",
+      "Объявить адаптер",
+      "Вызвать функцию",
+      "Объявить метод",
+      "Объявить определённый тип функции",
+      "Описать нужный метод"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "return ",
+        "after": "(event)",
+        "options": [
+          "f",
+          "Handle",
+          "EventHandler"
+        ],
+        "correct": 0,
+        "explain": "Receiver f — функция."
+      },
+      {
+        "before": "return ",
+        "after": "(fn)",
+        "options": [
+          "fn",
+          "EventHandlerFunc",
+          "Handle"
+        ],
+        "correct": 1,
+        "explain": "Преобразуем тип, не вызываем callback."
+      }
+    ],
+    "partial": "package practice\n\ntype EventHandler interface { Handle(string) error }\ntype EventHandlerFunc func(string) error\n\nfunc (f EventHandlerFunc) Handle(event string) error {\n    return f(event)\n}\n\nfunc AdaptEventHandler(fn func(string) error) EventHandler {\n    // TODO: преобразуй fn в EventHandlerFunc и верни результат\n    return nil\n}\n",
+    "bug": "package practice\n\ntype EventHandler interface { Handle(string) error }\ntype EventHandlerFunc func(string) error\n\nfunc (f EventHandlerFunc) Handle(event string) error {\n    _ = f(event)\n    return nil\n}\n\nfunc AdaptEventHandler(fn func(string) error) EventHandler {\n    return EventHandlerFunc(fn)\n}\n",
+    "hints": [
+      "Интерфейс требует метод Handle, а не просто функцию с такой сигнатурой.",
+      "Тип EventHandlerFunc уже объявлен. Receiver f сам является функцией.",
+      "В Handle напиши return f(event).",
+      "В AdaptEventHandler нужно преобразовать fn, не вызывать её.",
+      "return EventHandlerFunc(fn)"
+    ],
+    "related": [
+      [
+        "advanced-dependency-injection",
+        "Передача зависимости"
+      ],
+      [
+        "advanced-method-set",
+        "Method set"
+      ]
+    ],
+    "production": "net/http использует http.HandlerFunc для адаптации обычных функций к Handler. Этот приём подходит и для небольших обработчиков событий или тестовых зависимостей.",
+    "interview": "Почему http.HandlerFunc реализует http.Handler?"
+  },
+  "advanced-interface-equality": {
+    "frames": [
+      [
+        "Обычные значения",
+        [
+          "a=int(7)",
+          "b=int(7)"
+        ],
+        "equal=true,ok=true",
+        "Типы совпадают, значения сравнимы."
+      ],
+      [
+        "Разные типы",
+        [
+          "a=[]int{1}",
+          "b=string(\"1\")"
+        ],
+        "equal=false,ok=true",
+        "Разные динамические типы не равны."
+      ],
+      [
+        "Одинаковые срезы",
+        [
+          "a=[]int{1}",
+          "b=[]int{1}"
+        ],
+        "equal=false,ok=false",
+        "Срезы нельзя сравнивать через ==."
+      ],
+      [
+        "Вложенный интерфейс",
+        [
+          "a=struct{V any}{[]int{1}}",
+          "b=struct{V any}{[]int{1}}"
+        ],
+        "Value.Comparable=false",
+        "Type.Comparable недостаточно для конкретного значения."
+      ]
+    ],
+    "steps": [
+      [
+        "Обработать nil-интерфейс",
+        "if a == nil || b == nil {",
+        "Сравнить интерфейс с nil безопасно. ValueOf(nil) даёт невалидное reflect.Value, поэтому начинаем с этой проверки."
+      ],
+      [
+        "Вернуть результат для nil",
+        "    return a == nil && b == nil, true\n}",
+        "Оба nil равны. Если только один nil, значения не равны, но сравнение допустимо."
+      ],
+      [
+        "Сравнить динамические типы",
+        "if reflect.TypeOf(a) != reflect.TypeOf(b) {\n    return false, true\n}",
+        "Разные динамические типы интерфейсов не равны, даже если один содержит срез."
+      ],
+      [
+        "Проверить сравнимость значений",
+        "if !reflect.ValueOf(a).Comparable() || !reflect.ValueOf(b).Comparable() {",
+        "Value.Comparable проверяет конкретное значение, включая динамические значения вложенных интерфейсных полей."
+      ],
+      [
+        "Отклонить опасное сравнение",
+        "    return false, false\n}",
+        "ok=false сообщает, что безопасное сравнение через == не поддержано контрактом."
+      ],
+      [
+        "Сравнить значения",
+        "return a == b, true",
+        "После проверок сравнение безопасно. Не используем DeepEqual: у него другая семантика."
+      ]
+    ],
+    "blocks": [
+      "Сравнить значения",
+      "Отклонить опасное сравнение",
+      "Проверить сравнимость значений",
+      "Сравнить динамические типы",
+      "Вернуть результат для nil",
+      "Обработать nil-интерфейс"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if reflect.",
+        "after": "(a) != reflect.TypeOf(b) {",
+        "options": [
+          "ValueOf",
+          "TypeOf",
+          "DeepEqual"
+        ],
+        "correct": 1,
+        "explain": "Сравниваем динамические типы."
+      },
+      {
+        "before": "if !reflect.ValueOf(a).",
+        "after": "() {",
+        "options": [
+          "IsNil",
+          "Kind",
+          "Comparable"
+        ],
+        "correct": 2,
+        "explain": "Проверяем безопасную сравнимость конкретного значения."
+      }
+    ],
+    "partial": "package practice\n\nfunc SafeValueEqual(a, b any) (equal, ok bool) {\n    if a == nil || b == nil { return a == nil && b == nil, true }\n    if reflect.TypeOf(a) != reflect.TypeOf(b) { return false, true }\n    // TODO: проверь Comparable у обоих значений перед сравнением\n    return false, false\n}\n",
+    "bug": "package practice\n\nfunc SafeValueEqual(a, b any) (equal, ok bool) {\n    if a == nil || b == nil { return a == nil && b == nil, true }\n    if reflect.TypeOf(a) != reflect.TypeOf(b) { return false, true }\n    if !reflect.TypeOf(a).Comparable() { return false, false }\n    return a == b, true\n}\n",
+    "hints": [
+      "Сначала разберись с nil: reflect.ValueOf(nil) невалиден.",
+      "Если динамические типы различны, интерфейсы не равны.",
+      "Проверяй reflect.ValueOf(a).Comparable(), а не только TypeOf(a).Comparable().",
+      "Если хотя бы одно значение несравнимо, верни false,false.",
+      "После проверок напиши return a == b, true."
+    ],
+    "related": [
+      [
+        "typednil",
+        "Typed nil"
+      ],
+      [
+        "advanced-generic-set",
+        "Comparable в generics"
+      ]
+    ],
+    "production": "При работе с произвольными metadata или адаптерами не следует сравнивать any без контракта. Лучше ограничить типы заранее. Эта функция учебно показывает консервативную проверку безопасности ==, а не универсальное сравнение объектов.",
+    "interview": "Почему reflect.Type.Comparable может быть true, а сравнение всё равно вызвать panic?"
   }
 };
