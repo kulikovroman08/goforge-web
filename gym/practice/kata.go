@@ -360,3 +360,9 @@ func DeferredStatusTrace(initial, final string) (trace []string) { return nil }
 func PanicUnwindTrace() (trace []string) { return nil }
 
 func RunProtectedWork(work func() error) (err error) { return nil }
+
+func FilterValues[T any](values []T, keep func(T) bool) []T { return nil }
+
+func SumSigned[T ~int | ~int64](values []T) T { var total T; return total }
+
+func CloneNamedSlice[S ~[]E, E any](values S) S { return nil }

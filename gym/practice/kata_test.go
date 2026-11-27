@@ -809,3 +809,33 @@ func TestRunProtectedWork(t *testing.T) {
  if got:=RunProtectedWork(func()error{panic(42)});got==nil||got.Error()!="work panic: 42"{t.Fatal(got)}
  if got:=RunProtectedWork(nil);got==nil{t.Fatal("nil callback panic lost")}
 }
+
+func TestFilterValues(t *testing.T) {
+ in:=[]int{3,2,4,1}; var calls []int
+ got:=FilterValues(in,func(v int)bool{calls=append(calls,v);return v%2==0})
+ if !reflect.DeepEqual(got,[]int{2,4})||!reflect.DeepEqual(calls,[]int{3,2,4,1})||!reflect.DeepEqual(in,[]int{3,2,4,1}){t.Fatal(got,calls,in)}
+ got[0]=99;if in[1]!=2{t.Fatal("alias")}
+ if v:=FilterValues([]string(nil),nil);v==nil||len(v)!=0{t.Fatal(v)}
+ if v:=FilterValues([][]int{{1},{},{2,3}},func(x []int)bool{return len(x)>1});!reflect.DeepEqual(v,[][]int{{2,3}}){t.Fatal(v)}
+ if v:=FilterValues([]int{1},func(int)bool{return false});v==nil||len(v)!=0{t.Fatal(v)}
+}
+
+func TestSumSigned(t *testing.T) {
+ type Quantity int64
+ type Count int
+ if got:=SumSigned([]int{5,-2,4});got!=7{t.Fatal(got)}
+ if got:=SumSigned([]int64{-5,2});got!=-3{t.Fatal(got)}
+ if got:=SumSigned([]Quantity{5,-2});reflect.TypeOf(got)!=reflect.TypeOf(Quantity(0))||got!=3{t.Fatal(got)}
+ if got:=SumSigned([]Count{-2,-3});got!=-5{t.Fatal(got)}
+ if got:=SumSigned([]Quantity(nil));got!=0{t.Fatal(got)}
+}
+
+func TestCloneNamedSlice(t *testing.T) {
+ type Labels []string
+ in:=Labels{"go","api"};got:=CloneNamedSlice(in)
+ if reflect.TypeOf(got)!=reflect.TypeOf(in)||!reflect.DeepEqual(got,in){t.Fatal(got)}
+ got[0]="changed";if in[0]!="go"{t.Fatal("alias")}
+ if v:=CloneNamedSlice(Labels(nil));v!=nil{t.Fatal(v)}
+ if v:=CloneNamedSlice(Labels{});v==nil||len(v)!=0{t.Fatal(v)}
+ n:=7;ptrs:=[]*int{&n};cp:=CloneNamedSlice(ptrs);if cp[0]!=ptrs[0]{t.Fatal("not shallow")};cp[0]=nil;if ptrs[0]==nil{t.Fatal("alias")}
+}

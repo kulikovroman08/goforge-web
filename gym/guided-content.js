@@ -10736,5 +10736,360 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "Обёртка подходит как учебная модель границы worker или request handler. В production дополнительно нужны stack trace, политика логирования, корректная отмена и защита от повторной обработки. Нельзя считать recover гарантией целостности данных.",
     "interview": "Почему recover лучше размещать на границе обработки, а не в каждой функции?"
+  },
+  "advanced-generic-filter": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "values=[3,2,4]",
+          "out=[]"
+        ],
+        "keep: чётное число",
+        "Тип T выведен как int."
+      ],
+      [
+        "Первый элемент",
+        [
+          "v=3",
+          "out=[]"
+        ],
+        "keep(3)=false",
+        "Пропускаем."
+      ],
+      [
+        "Второй элемент",
+        [
+          "v=2",
+          "out=[2]"
+        ],
+        "keep(2)=true",
+        "Добавляем."
+      ],
+      [
+        "Завершение",
+        [
+          "values=[3,2,4]",
+          "out=[2,4]"
+        ],
+        "return out",
+        "Вход не изменён."
+      ]
+    ],
+    "steps": [
+      [
+        "Выделить результат",
+        "out := make([]T, 0, len(values))",
+        "Независимый срез с элементами T."
+      ],
+      [
+        "Перебрать элементы",
+        "for _, v := range values",
+        "Один проход в исходном порядке."
+      ],
+      [
+        "Применить предикат",
+        "if keep(v) { out = append(out, v) }",
+        "Условие определяет вызывающий код."
+      ],
+      [
+        "Вернуть результат",
+        "return out",
+        "Тип элементов сохраняется."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Применить предикат",
+      "Перебрать элементы",
+      "Выделить результат"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out := ",
+        "after": "",
+        "options": [
+          "values[:0]",
+          "make([]T,0,len(values))",
+          "values"
+        ],
+        "correct": 1,
+        "explain": "Отдельный backing array."
+      },
+      {
+        "before": "if ",
+        "after": " { out=append(out,v) }",
+        "options": [
+          "v==v",
+          "true",
+          "keep(v)"
+        ],
+        "correct": 2,
+        "explain": "Предикат определяет отбор."
+      }
+    ],
+    "partial": "package practice\n\nfunc FilterValues[T any](values []T, keep func(T) bool) []T {\n\tout := make([]T, 0, len(values))\n\tfor _, v := range values { _ = keep(v) }\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc FilterValues[T any](values []T, keep func(T) bool) []T {\n\tout := values[:0]\n\tfor _, v := range values { if keep(v) { out = append(out,v) } }\n\treturn out\n}\n",
+    "hints": [
+      "Алгоритм одинаков для любого типа элементов.",
+      "Используй make([]T,0,len(values)), чтобы не переиспользовать вход.",
+      "Перебери values через range.",
+      "Вызывай keep(v) один раз, добавляй только при true.",
+      "out:=make([]T,0,len(values)); for _,v:=range values {if keep(v){out=append(out,v)}}; return out"
+    ],
+    "related": [
+      [
+        "filter",
+        "Фильтрация конкретного типа"
+      ],
+      [
+        "generic-unique",
+        "Ограничение comparable"
+      ]
+    ],
+    "production": "Один алгоритм фильтрации подходит для DTO, событий и результатов запросов. Независимый backing array не означает глубокую копию вложенных ссылочных полей.",
+    "interview": "Зачем здесь any, а не comparable?"
+  },
+  "advanced-generic-sum": {
+    "frames": [
+      [
+        "Вызов",
+        [
+          "type Quantity int64",
+          "values=[5,-2,4]"
+        ],
+        "T=Quantity",
+        "~int64 включает Quantity."
+      ],
+      [
+        "Начало",
+        [
+          "total=0"
+        ],
+        "var total T",
+        "Нулевое значение."
+      ],
+      [
+        "Накопление",
+        [
+          "total=5",
+          "total=3"
+        ],
+        "total += v",
+        "Учитываем отрицательное значение."
+      ],
+      [
+        "Возврат",
+        [
+          "total=7",
+          "type=Quantity"
+        ],
+        "return total",
+        "Тип не потерян."
+      ]
+    ],
+    "steps": [
+      [
+        "Объявить накопитель",
+        "var total T",
+        "Zero value сохраняет тип T."
+      ],
+      [
+        "Пройти по значениям",
+        "for _, v := range values",
+        "Операция + допустима для обоих числовых семейств."
+      ],
+      [
+        "Накопить сумму",
+        "total += v",
+        "Отрицательные числа тоже входят в сумму."
+      ],
+      [
+        "Вернуть значение",
+        "return total",
+        "Результат имеет исходный тип."
+      ]
+    ],
+    "blocks": [
+      "Вернуть значение",
+      "Накопить сумму",
+      "Пройти по значениям",
+      "Объявить накопитель"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "var total ",
+        "after": "",
+        "options": [
+          "T",
+          "int64",
+          "any"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем тип."
+      },
+      {
+        "before": "total ",
+        "after": " v",
+        "options": [
+          "=",
+          "+=",
+          "-="
+        ],
+        "correct": 1,
+        "explain": "Накапливаем сумму."
+      }
+    ],
+    "partial": "package practice\n\nfunc SumSigned[T ~int | ~int64](values []T) T {\n\tvar total T\n\tif len(values)>0 { total=values[0] }\n\treturn total\n}\n",
+    "bug": "package practice\n\nfunc SumSigned[T ~int | ~int64](values []T) T {\n\tvar total T\n\tfor _,v:=range values { if v>0 { total+=v } }\n\treturn total\n}\n",
+    "hints": [
+      "Ограничение уже определяет допустимые числовые типы.",
+      "Объяви var total T.",
+      "Перебери все значения.",
+      "Не пропускай отрицательные и не преобразуй T в int.",
+      "var total T; for _,v:=range values {total+=v}; return total"
+    ],
+    "related": [
+      [
+        "generic-unique",
+        "Comparable"
+      ],
+      [
+        "advanced-generic-filter",
+        "Any и предикат"
+      ]
+    ],
+    "production": "Доменные числовые типы помогают не смешивать разные единицы измерения. Общий алгоритм может сохранить тип, но не заменяет проверку переполнения или бизнес-инвариантов.",
+    "interview": "Чем int64 отличается от ~int64 в constraint?"
+  },
+  "advanced-generic-named-slice": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "type Labels []string",
+          "values=[go,api]"
+        ],
+        "S=Labels, E=string",
+        "Компилятор выводит оба параметра."
+      ],
+      [
+        "Выделение",
+        [
+          "values → array A",
+          "out → array B"
+        ],
+        "make(S,2)",
+        "Хранилища различны."
+      ],
+      [
+        "Копирование",
+        [
+          "A=[go,api]",
+          "B=[go,api]"
+        ],
+        "copy(out,values)",
+        "Копируются значения элементов."
+      ],
+      [
+        "Возврат",
+        [
+          "out type=Labels"
+        ],
+        "return out",
+        "Именованный тип сохранён."
+      ]
+    ],
+    "steps": [
+      [
+        "Сохранить nil",
+        "if values == nil { return nil }",
+        "Отличаем nil от пустого инициализированного среза."
+      ],
+      [
+        "Создать S",
+        "out := make(S, len(values))",
+        "Сохраняем конкретный тип, а не только []E."
+      ],
+      [
+        "Скопировать элементы",
+        "copy(out, values)",
+        "Создаём независимое внешнее хранилище."
+      ],
+      [
+        "Вернуть S",
+        "return out",
+        "Методы именованного типа доступны вызывающему коду."
+      ]
+    ],
+    "blocks": [
+      "Вернуть S",
+      "Скопировать элементы",
+      "Создать S",
+      "Сохранить nil"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out := make(",
+        "after": ",len(values))",
+        "options": [
+          "[]any",
+          "S",
+          "E"
+        ],
+        "correct": 1,
+        "explain": "Тип всего среза."
+      },
+      {
+        "before": "",
+        "after": "(out,values)",
+        "options": [
+          "append",
+          "delete",
+          "copy"
+        ],
+        "correct": 2,
+        "explain": "Копируем элементы."
+      }
+    ],
+    "partial": "package practice\n\nfunc CloneNamedSlice[S ~[]E, E any](values S) S {\n\tif values == nil { return nil }\n\treturn make(S,len(values))\n}\n",
+    "bug": "package practice\n\nfunc CloneNamedSlice[S ~[]E, E any](values S) S {\n\treturn values\n}\n",
+    "hints": [
+      "Сначала различи nil и непустой по признаку nil вход.",
+      "Параметр S описывает тип всего среза.",
+      "Выдели make(S,len(values)), не []E.",
+      "Скопируй элементы встроенной copy.",
+      "if values==nil{return nil}; out:=make(S,len(values));copy(out,values);return out"
+    ],
+    "related": [
+      [
+        "slice-detach",
+        "Независимое хранилище"
+      ],
+      [
+        "advanced-generic-sum",
+        "Underlying types"
+      ]
+    ],
+    "production": "Подходит для копирования доменных коллекций перед изменением. В стандартной библиотеке есть slices.Clone; это упражнение изучает смысл сигнатуры, а не предлагает заменять библиотеку.",
+    "interview": "Почему возвращать S, а не []E?"
   }
 };
