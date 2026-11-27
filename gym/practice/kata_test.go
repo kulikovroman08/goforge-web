@@ -903,3 +903,22 @@ func TestSafeValueEqual(t *testing.T) {
  {Box{7},Box{[]int{1}},false,false},{p,nil,false,true},{p,p,true,true},
  }{equal,ok:=SafeValueEqual(tc.a,tc.b);if equal!=tc.equal||ok!=tc.ok{t.Fatal(tc,equal,ok)}}
 }
+
+func TestCaptureQuotaReaders(t *testing.T) {
+ q:=&MethodQuota{Limit:10};snapshot,live:=CaptureQuotaReaders(q)
+ if snapshot==nil||live==nil{t.Fatal("missing readers")}
+ if snapshot()!=10||live()!=10{t.Fatal("initial values")}
+ q.Limit=25;if snapshot()!=10||live()!=25{t.Fatal("receiver capture",snapshot(),live())}
+ other:=&MethodQuota{Limit:3};s2,l2:=CaptureQuotaReaders(other)
+ if s2==nil||l2==nil{t.Fatal("missing second readers")}
+ other.Limit=-2;if s2()!=3||l2()!=-2||live()!=25{t.Fatal("independent receivers")}
+}
+
+func TestApplyMetricDeltas(t *testing.T) {
+ c:=&MetricCounter{Value:10};in:=[]int{2,-3,5}
+ got:=ApplyMetricDeltas(c,in)
+ if !reflect.DeepEqual(got,[]int{12,9,14})||c.Value!=14||!reflect.DeepEqual(in,[]int{2,-3,5}){t.Fatal(got,c.Value,in)}
+ if v:=ApplyMetricDeltas(c,nil);v==nil||len(v)!=0||c.Value!=14{t.Fatal(v,c.Value)}
+ other:=&MetricCounter{Value:-2}
+ if v:=ApplyMetricDeltas(other,[]int{0,-4});!reflect.DeepEqual(v,[]int{-2,-6})||other.Value!=-6||c.Value!=14{t.Fatal(v,other.Value,c.Value)}
+}

@@ -11927,5 +11927,263 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "При работе с произвольными metadata или адаптерами не следует сравнивать any без контракта. Лучше ограничить типы заранее. Эта функция учебно показывает консервативную проверку безопасности ==, а не универсальное сравнение объектов.",
     "interview": "Почему reflect.Type.Comparable может быть true, а сравнение всё равно вызвать panic?"
+  },
+  "advanced-method-values": {
+    "frames": [
+      [
+        "Исходное состояние",
+        [
+          "q → Limit=10"
+        ],
+        "q.Current, q.Live",
+        "Оба метода доступны через указатель."
+      ],
+      [
+        "Создание функций",
+        [
+          "snapshot → copy{10}",
+          "live → q"
+        ],
+        "snapshot = q.Current; live = q.Live",
+        "Receiver вычисляется и сохраняется при создании method value."
+      ],
+      [
+        "Изменение",
+        [
+          "q → Limit=25",
+          "copy → Limit=10"
+        ],
+        "q.Limit = 25",
+        "Копия структуры не изменяется."
+      ],
+      [
+        "Вызов",
+        [
+          "snapshot()=10",
+          "live()=25"
+        ],
+        "return values",
+        "Pointer method читает изменённый объект."
+      ]
+    ],
+    "steps": [
+      [
+        "Разобрать структуру и методы",
+        "type MethodQuota struct { Limit int }\nfunc (q MethodQuota) Current() int { return q.Limit }\nfunc (q *MethodQuota) Live() int { return q.Limit }",
+        "Оба метода возвращают Limit, но Current получает копию структуры, а Live — указатель. Они уже даны в заготовке."
+      ],
+      [
+        "Разобрать сигнатуру",
+        "func CaptureQuotaReaders(q *MethodQuota) (snapshot, live func() int) {",
+        "Возвращаем две функции без аргументов. snapshot и live — именованные переменные результата, поэтому далее используем =, а не :=."
+      ],
+      [
+        "Сохранить value method",
+        "    snapshot = q.Current",
+        "Убираем круглые скобки: q.Current — значение функции, q.Current() — вызов с результатом int. Для value receiver Go сохраняет копию *q при создании method value."
+      ],
+      [
+        "Сохранить pointer method",
+        "    live = q.Live",
+        "Здесь сохраняется указатель q, а не копия структуры. При будущем вызове метод прочитает актуальное поле по этому адресу."
+      ],
+      [
+        "Вернуть функции",
+        "    return\n}",
+        "Именованные результаты уже заполнены. Вызовы snapshot() и live() произойдут позже у вызывающего кода."
+      ]
+    ],
+    "blocks": [
+      "Вернуть функции",
+      "Сохранить pointer method",
+      "Сохранить value method",
+      "Разобрать сигнатуру",
+      "Разобрать структуру и методы"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "snapshot = ",
+        "after": "",
+        "options": [
+          "q.Current()",
+          "q.Current",
+          "q.Live"
+        ],
+        "correct": 1,
+        "explain": "Сохраняем value method, не вызывая."
+      },
+      {
+        "before": "live = ",
+        "after": "",
+        "options": [
+          "q.Current",
+          "q.Live()",
+          "q.Live"
+        ],
+        "correct": 2,
+        "explain": "Связываем pointer receiver."
+      }
+    ],
+    "partial": "package practice\n\ntype MethodQuota struct { Limit int }\nfunc (q MethodQuota) Current() int { return q.Limit }\nfunc (q *MethodQuota) Live() int { return q.Limit }\n\nfunc CaptureQuotaReaders(q *MethodQuota) (snapshot, live func() int) {\n    snapshot = q.Current\n    // TODO: сохрани метод Live как функцию, не вызывая его\n    return\n}\n",
+    "bug": "package practice\n\ntype MethodQuota struct { Limit int }\nfunc (q MethodQuota) Current() int { return q.Limit }\nfunc (q *MethodQuota) Live() int { return q.Limit }\n\nfunc CaptureQuotaReaders(q *MethodQuota) (snapshot, live func() int) {\n    snapshot = q.Live\n    live = q.Live\n    return\n}\n",
+    "hints": [
+      "Нужно вернуть функции, а не результаты их вызовов.",
+      "Method value записывается как q.Method без круглых скобок.",
+      "snapshot = q.Current сохраняет value receiver.",
+      "live = q.Live сохраняет pointer receiver.",
+      "snapshot = q.Current\nlive = q.Live\nreturn"
+    ],
+    "related": [
+      [
+        "advanced-value-receiver",
+        "Value и pointer receiver"
+      ],
+      [
+        "core-closure",
+        "Функции и захват состояния"
+      ]
+    ],
+    "production": "Method values позволяют передать метод сервиса как callback с уже связанным экземпляром. Копия value receiver поверхностная: вложенные map, slices и указатели могут по-прежнему разделять данные. В этом упражнении поле int демонстрирует копирование без дополнительных ссылок.",
+    "interview": "Когда вычисляется receiver method value?"
+  },
+  "advanced-method-expressions": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "c.Value=10",
+          "deltas=[2,-3,5]"
+        ],
+        "add := (*MetricCounter).Add",
+        "Тип функции включает receiver."
+      ],
+      [
+        "Первое изменение",
+        [
+          "c.Value=12",
+          "out=[12]"
+        ],
+        "add(c,2)",
+        "Мутируем исходный объект."
+      ],
+      [
+        "Второе изменение",
+        [
+          "c.Value=9",
+          "out=[12,9]"
+        ],
+        "add(c,-3)",
+        "Отрицательное изменение тоже применяется."
+      ],
+      [
+        "Завершение",
+        [
+          "c.Value=14",
+          "out=[12,9,14]"
+        ],
+        "add(c,5)",
+        "Сохраняем последовательность результатов."
+      ]
+    ],
+    "steps": [
+      [
+        "Разобрать готовый метод",
+        "type MetricCounter struct { Value int }\nfunc (c *MetricCounter) Add(delta int) int { c.Value += delta; return c.Value }",
+        "Add изменяет поле конкретного счётчика через указатель. Возвращает значение после прибавления. Этот код уже дан."
+      ],
+      [
+        "Получить функцию с явным receiver",
+        "add := (*MetricCounter).Add",
+        "Используем тип (*MetricCounter), а не переменную c. Получаем func(*MetricCounter, int) int: receiver становится первым параметром."
+      ],
+      [
+        "Подготовить результат",
+        "out := make([]int, 0, len(deltas))",
+        "Длина пока 0, ёмкость резервируется для всех изменений."
+      ],
+      [
+        "Перебрать изменения",
+        "for _, delta := range deltas {",
+        "delta — очередное изменение. Индекс не нужен."
+      ],
+      [
+        "Вызвать функцию с receiver",
+        "    out = append(out, add(c, delta))\n}",
+        "Передаём c явно первым аргументом, delta вторым. Add меняет исходный счётчик и возвращает его новое значение, append сохраняет результат."
+      ],
+      [
+        "Вернуть журнал",
+        "return out",
+        "Все изменения применены по порядку. Пустой вход оставляет счётчик неизменным."
+      ]
+    ],
+    "blocks": [
+      "Вернуть журнал",
+      "Вызвать функцию с receiver",
+      "Перебрать изменения",
+      "Подготовить результат",
+      "Получить функцию с явным receiver",
+      "Разобрать готовый метод"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "add := ",
+        "after": "",
+        "options": [
+          "c.Add",
+          "(*MetricCounter).Add",
+          "MetricCounter.Add"
+        ],
+        "correct": 1,
+        "explain": "Выбираем метод у типа указателя."
+      },
+      {
+        "before": "out = append(out, ",
+        "after": ")",
+        "options": [
+          "add(delta)",
+          "add(delta,c)",
+          "add(c,delta)"
+        ],
+        "correct": 2,
+        "explain": "Явно передаём receiver."
+      }
+    ],
+    "partial": "package practice\n\ntype MetricCounter struct { Value int }\nfunc (c *MetricCounter) Add(delta int) int { c.Value += delta; return c.Value }\n\nfunc ApplyMetricDeltas(c *MetricCounter, deltas []int) []int {\n    add := (*MetricCounter).Add\n    out := make([]int, 0, len(deltas))\n    for _, delta := range deltas {\n        // TODO: передай receiver c и delta в add, добавь результат в out\n        _, _ = add, delta\n    }\n    return out\n}\n",
+    "bug": "package practice\n\ntype MetricCounter struct { Value int }\nfunc (c *MetricCounter) Add(delta int) int { c.Value += delta; return c.Value }\n\nfunc ApplyMetricDeltas(c *MetricCounter, deltas []int) []int {\n    add := (*MetricCounter).Add\n    out := make([]int, 0, len(deltas))\n    for _, delta := range deltas {\n        copyCounter := *c\n        out = append(out, add(&copyCounter, delta))\n    }\n    return out\n}\n",
+    "hints": [
+      "Method expression выбирается у типа, не у экземпляра.",
+      "Для pointer receiver запиши add := (*MetricCounter).Add.",
+      "Создай out и перебери deltas через range.",
+      "Функция add принимает c первым аргументом, delta вторым.",
+      "out = append(out, add(c, delta))"
+    ],
+    "related": [
+      [
+        "advanced-method-values",
+        "Method values"
+      ],
+      [
+        "advanced-method-set",
+        "Method set"
+      ]
+    ],
+    "production": "Method expressions удобны, когда одна функция должна работать с разными экземплярами, например в таблице обработчиков или generic-алгоритме. Обычный вызов метода часто проще; method expression полезен там, где действительно нужен явный receiver.",
+    "interview": "Чем c.Add отличается от (*MetricCounter).Add?"
   }
 };

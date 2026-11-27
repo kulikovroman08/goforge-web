@@ -393,3 +393,14 @@ func AdaptEventHandler(fn func(string) error) EventHandler { return nil }
 func SafeValueEqual(a, b any) (equal, ok bool) { return false, false }
 
 var _ = reflect.ValueOf
+
+type MethodQuota struct { Limit int }
+func (q MethodQuota) Current() int { return q.Limit }
+func (q *MethodQuota) Live() int { return q.Limit }
+
+func CaptureQuotaReaders(q *MethodQuota) (snapshot, live func() int) { return nil,nil }
+
+type MetricCounter struct { Value int }
+func (c *MetricCounter) Add(delta int) int { c.Value += delta; return c.Value }
+
+func ApplyMetricDeltas(c *MetricCounter, deltas []int) []int { return nil }
