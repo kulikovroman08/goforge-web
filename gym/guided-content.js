@@ -10243,7 +10243,7 @@ window.GOFORGE_GUIDES ={
         "explain": "Объединяем причины в заданном порядке."
       }
     ],
-    "partial": "package practice\n\nfunc CombineOperationErrors(operation, cleanup error) error {\n\tif operation == nil { return cleanup }\n\treturn operation\n}\n",
+    "partial": "package practice\n\nfunc CombineOperationErrors(operation, cleanup error) error {\n    if operation == nil { return cleanup }\n    if cleanup == nil { return operation }\n    // TODO: объедини обе причины, не потеряв ни одну\n    return operation\n}\n",
     "bug": "package practice\n\nfunc CombineOperationErrors(operation, cleanup error) error {\n\tif cleanup != nil { return cleanup }\n\treturn operation\n}\n",
     "hints": [
       "Сначала разбери три случая: нет основной ошибки, нет ошибки очистки, есть обе.",
@@ -10306,27 +10306,34 @@ window.GOFORGE_GUIDES ={
     ],
     "steps": [
       [
-        "Подготовить результат",
+        "Создать результат",
         "order = make([]string, 0, len(resources))",
-        "Именованный результат доступен отложенным функциям."
+        "order уже объявлен как именованный результат в сигнатуре. Поэтому используем =, а не :=."
+      ],
+      [
+        "Перебрать ресурсы",
+        "for _, name := range resources {",
+        "name — имя текущего ресурса в порядке открытия."
       ],
       [
         "Зарегистрировать освобождение",
-        "defer func(resource string) { order = append(order, resource) }(name)",
-        "Аргумент вычисляется сразу, вызовы выполняются в обратном порядке."
+        "    defer func(resource string) {\n        order = append(order, resource)\n    }(name)\n}",
+        "func(resource string) объявляет функцию с параметром. (name) передаёт текущее имя. defer откладывает вызов до выхода из функции."
       ],
       [
-        "Вернуть результат",
+        "Вернуть именованный результат",
         "return",
-        "После вычисления результата defer может изменить именованную переменную."
+        "После return выполняются defer в обратном порядке и дополняют order."
       ]
     ],
     "blocks": [
-      "Вернуть результат",
+      "Вернуть именованный результат",
       "Зарегистрировать освобождение",
-      "Подготовить результат"
+      "Перебрать ресурсы",
+      "Создать результат"
     ],
     "order": [
+      3,
       2,
       1,
       0
@@ -10355,14 +10362,14 @@ window.GOFORGE_GUIDES ={
         "explain": "Сохраняем именованный результат."
       }
     ],
-    "partial": "package practice\n\nfunc DeferredReleaseOrder(resources []string) (order []string) {\n\torder = make([]string, 0, len(resources))\n\tfor _, name := range resources { order = append(order, name) }\n\treturn\n}\n",
+    "partial": "package practice\n\nfunc DeferredReleaseOrder(resources []string) (order []string) {\n    order = make([]string, 0, len(resources))\n    for _, name := range resources {\n        defer func(resource string) {\n            // TODO: добавь resource в order\n            _ = resource\n        }(name)\n    }\n    return\n}\n",
     "bug": "package practice\n\nfunc DeferredReleaseOrder(resources []string) (order []string) {\n\torder = make([]string, 0, len(resources))\n\tfor _, name := range resources { defer func(resource string) { order = append(order, resource) }(name) }\n\treturn nil\n}\n",
     "hints": [
-      "В этой задаче освобождение моделируется добавлением имени в результат.",
-      "Используй именованный результат, который уже указан в сигнатуре.",
-      "В цикле зарегистрируй defer с параметром resource, передавая текущее name.",
-      "Не возвращай nil явно: это перезапишет именованный результат перед defer.",
-      "order = make([]string, 0, len(resources))\nfor _, name := range resources { defer func(resource string) { order = append(order, resource) }(name) }\nreturn"
+      "Первое действие: Создать результат. order уже объявлен как именованный результат в сигнатуре. Поэтому используем =, а не :=.",
+      "Начни с этой строки: order = make([]string, 0, len(resources))",
+      "Следующее действие: Перебрать ресурсы. name — имя текущего ресурса в порядке открытия.",
+      "Проверь оставшиеся действия: Зарегистрировать освобождение → Вернуть именованный результат.",
+      "order = make([]string, 0, len(resources))\nfor _, name := range resources {\n    defer func(resource string) {\n        order = append(order, resource)\n    }(name)\n}\nreturn"
     ],
     "related": [
       [
@@ -10417,33 +10424,47 @@ window.GOFORGE_GUIDES ={
     ],
     "steps": [
       [
-        "Создать переменную",
+        "Создать переменную статуса",
         "status := initial",
-        "Замыкания могут обращаться к этой переменной."
+        "status — переменная, которую позже изменим."
+      ],
+      [
+        "Создать журнал",
+        "trace = make([]string, 0, 2)",
+        "trace уже объявлен в сигнатуре; ожидаем две записи."
       ],
       [
         "Зарегистрировать чтение позже",
-        "defer func() { trace = append(trace, status) }()",
-        "Тело замыкания читает status при выполнении."
+        "defer func() {\n    trace = append(trace, status)\n}()",
+        "Функция без параметров прочитает переменную status при выполнении defer."
       ],
       [
         "Зарегистрировать снимок",
-        "defer func(snapshot string) { trace = append(trace, snapshot) }(status)",
-        "Аргумент вычисляется сейчас."
+        "defer func(snapshot string) {\n    trace = append(trace, snapshot)\n}(status)",
+        "status передаётся как аргумент прямо сейчас. snapshot хранит исходное значение."
       ],
       [
-        "Изменить статус и вернуть",
-        "status = final\nreturn",
-        "Снимок выполняется первым, замыкание видит новое значение."
+        "Изменить статус",
+        "status = final",
+        "Первое замыкание увидит final, снимок не изменится."
+      ],
+      [
+        "Вернуть журнал",
+        "return",
+        "Второй defer выполнится первым: initial, затем final."
       ]
     ],
     "blocks": [
-      "Изменить статус и вернуть",
+      "Вернуть журнал",
+      "Изменить статус",
       "Зарегистрировать снимок",
       "Зарегистрировать чтение позже",
-      "Создать переменную"
+      "Создать журнал",
+      "Создать переменную статуса"
     ],
     "order": [
+      5,
+      4,
       3,
       2,
       1,
@@ -10473,14 +10494,14 @@ window.GOFORGE_GUIDES ={
         "explain": "Замыкание прочитает final."
       }
     ],
-    "partial": "package practice\n\nfunc DeferredStatusTrace(initial, final string) (trace []string) {\n\tstatus := initial\n\ttrace = make([]string, 0, 2)\n\tdefer func() { trace = append(trace, status) }()\n\tstatus = final\n\treturn\n}\n",
+    "partial": "package practice\n\nfunc DeferredStatusTrace(initial, final string) (trace []string) {\n    status := initial\n    trace = make([]string, 0, 2)\n    defer func() { trace = append(trace, status) }()\n    defer func(snapshot string) {\n        // TODO: добавь snapshot в trace\n        _ = snapshot\n    }(status)\n    status = final\n    return\n}\n",
     "bug": "package practice\n\nfunc DeferredStatusTrace(initial, final string) (trace []string) {\n\tstatus := initial\n\ttrace = make([]string, 0, 2)\n\tdefer func() { trace = append(trace, status) }()\n\tdefer func() { trace = append(trace, status) }()\n\tstatus = final\n\treturn\n}\n",
     "hints": [
-      "Различай значение аргумента и переменную, которую читает тело функции.",
-      "Зарегистрируй первым замыкание без параметров.",
-      "Второму defer передай status как аргумент snapshot.",
-      "После обоих defer измени status и используй именованный результат.",
-      "status := initial\ntrace = make([]string, 0, 2)\ndefer func(){trace=append(trace,status)}()\ndefer func(snapshot string){trace=append(trace,snapshot)}(status)\nstatus=final\nreturn"
+      "Первое действие: Создать переменную статуса. status — переменная, которую позже изменим.",
+      "Начни с этой строки: status := initial",
+      "Следующее действие: Создать журнал. trace уже объявлен в сигнатуре; ожидаем две записи.",
+      "Проверь оставшиеся действия: Зарегистрировать чтение позже → Зарегистрировать снимок → Изменить статус → Вернуть журнал.",
+      "status := initial\ntrace = make([]string, 0, 2)\ndefer func() {\n    trace = append(trace, status)\n}()\ndefer func(snapshot string) {\n    trace = append(trace, snapshot)\n}(status)\nstatus = final\nreturn"
     ],
     "related": [
       [
@@ -10536,33 +10557,54 @@ window.GOFORGE_GUIDES ={
     ],
     "steps": [
       [
-        "Подготовить журнал",
+        "Создать журнал",
         "trace = make([]string, 0, 3)",
-        "Именованный результат доступен defer."
+        "Именованный результат trace доступен обеим вложенным функциям."
       ],
       [
-        "Зарегистрировать внешнее восстановление",
-        "defer func() { trace = append(trace, \"outer\"); if recover() != nil { trace = append(trace, \"recovered\") } }()",
-        "Recover вызывается непосредственно в отложенной функции."
+        "Зарегистрировать внешний defer",
+        "defer func() {\n    trace = append(trace, \"outer\")",
+        "Когда стек дойдёт до внешней функции, добавим outer."
       ],
       [
-        "Вызвать вложенную операцию",
-        "func() { defer func() { trace = append(trace, \"inner\") }(); panic(\"failed\") }()",
-        "Паника запускает отложенные вызовы вложенной функции."
+        "Восстановиться после паники",
+        "    if recover() != nil {\n        trace = append(trace, \"recovered\")\n    }\n}()",
+        "recover вызывается непосредственно в defer. При активной панике добавляем recovered."
       ],
       [
-        "Проследить возврат",
-        "trace = append(trace, \"after\")",
-        "Эта строка не выполняется: внешняя функция завершится после восстановления."
+        "Начать вложенную функцию",
+        "func() {",
+        "Анонимная функция создаёт отдельный вызов в той же горутине."
+      ],
+      [
+        "Зарегистрировать внутренний defer",
+        "    defer func() { trace = append(trace, \"inner\") }()",
+        "Этот defer выполнится раньше внешнего при раскрутке."
+      ],
+      [
+        "Вызвать panic",
+        "    panic(\"failed\")\n}()",
+        "Вызов вложенной функции запускает панику, затем выполняется inner."
+      ],
+      [
+        "Показать, что обычный путь не продолжается",
+        "trace = append(trace, \"after\")\nreturn",
+        "При панике эта запись не выполняется. Внешний defer остановит панику, и функция вернётся с журналом."
       ]
     ],
     "blocks": [
-      "Проследить возврат",
-      "Вызвать вложенную операцию",
-      "Зарегистрировать внешнее восстановление",
-      "Подготовить журнал"
+      "Показать, что обычный путь не продолжается",
+      "Вызвать panic",
+      "Зарегистрировать внутренний defer",
+      "Начать вложенную функцию",
+      "Восстановиться после паники",
+      "Зарегистрировать внешний defer",
+      "Создать журнал"
     ],
     "order": [
+      6,
+      5,
+      4,
       3,
       2,
       1,
@@ -10592,14 +10634,14 @@ window.GOFORGE_GUIDES ={
         "explain": "Паника запускает раскрутку."
       }
     ],
-    "partial": "package practice\n\nfunc PanicUnwindTrace() (trace []string) {\n\ttrace = make([]string, 0, 3)\n\tdefer func() {\n\t trace = append(trace, \"outer\")\n\t if recover() != nil { trace = append(trace, \"recovered\") }\n\t}()\n\tfunc() { panic(\"failed\") }()\n\treturn\n}\n",
+    "partial": "package practice\n\nfunc PanicUnwindTrace() (trace []string) {\n    trace = make([]string, 0, 3)\n    defer func() {\n        trace = append(trace, \"outer\")\n        if recover() != nil { trace = append(trace, \"recovered\") }\n    }()\n    func() {\n        defer func() {\n            // TODO: добавь \"inner\" в trace\n        }()\n        panic(\"failed\")\n    }()\n    return\n}\n",
     "bug": "package practice\n\nfunc PanicUnwindTrace() (trace []string) {\n\ttrace = make([]string, 0, 3)\n\tdefer func() {\n\t trace = append(trace, \"outer\")\n\t if recover() != nil { trace = append(trace, \"recovered\") }\n\t}()\n\tfunc() {\n\t defer func() { trace = append(trace, \"inner\") }()\n\t}()\n\ttrace = append(trace, \"after\")\n\treturn\n}\n",
     "hints": [
-      "Нужны две функции в одной горутине.",
-      "Внешний defer зарегистрируй до вложенного вызова.",
-      "Во вложенной функции зарегистрируй inner до panic.",
-      "Вызови recover непосредственно во внешнем defer; не продолжай после panic.",
-      "defer func(){trace=append(trace,\"outer\"); if recover()!=nil {trace=append(trace,\"recovered\")}}(); func(){defer func(){trace=append(trace,\"inner\")}(); panic(\"failed\")}()"
+      "Первое действие: Создать журнал. Именованный результат trace доступен обеим вложенным функциям.",
+      "Начни с этой строки: trace = make([]string, 0, 3)",
+      "Следующее действие: Зарегистрировать внешний defer. Когда стек дойдёт до внешней функции, добавим outer.",
+      "Проверь оставшиеся действия: Восстановиться после паники → Начать вложенную функцию → Зарегистрировать внутренний defer → Вызвать panic → Показать, что обычный путь не продолжается.",
+      "trace = make([]string, 0, 3)\ndefer func() {\n    trace = append(trace, \"outer\")\n    if recover() != nil {\n        trace = append(trace, \"recovered\")\n    }\n}()\nfunc() {\n    defer func() { trace = append(trace, \"inner\") }()\n    panic(\"failed\")\n}()\ntrace = append(trace, \"after\")\nreturn"
     ],
     "related": [
       [
@@ -10652,39 +10694,46 @@ window.GOFORGE_GUIDES ={
     ],
     "steps": [
       [
-        "Зарегистрировать границу",
-        "defer func() { /* recover */ }()",
-        "Восстановление должно быть зарегистрировано до вызова work."
+        "Зарегистрировать отложенную функцию",
+        "defer func() {",
+        "Граница восстановления должна быть зарегистрирована до вызова work. Именованный err доступен внутри замыкания."
       ],
       [
         "Получить значение паники",
-        "if value := recover(); value != nil",
-        "Непосредственный вызов recover внутри defer."
+        "    if value := recover(); value != nil {",
+        "recover вызываем непосредственно внутри defer. При обычном возврате он даст nil, и блок не выполнится."
       ],
       [
-        "Сохранить error-причину",
-        "if cause, ok := value.(error); ok { err = fmt.Errorf(\"work panic: %w\", cause); return }",
-        "%w сохраняет исходную причину для errors.Is и As."
+        "Проверить, является ли значение ошибкой",
+        "        if cause, ok := value.(error); ok {",
+        "Type assertion с двумя результатами не вызывает panic при несовпадении типа."
       ],
       [
-        "Обработать остальные значения",
-        "err = fmt.Errorf(\"work panic: %v\", value)",
-        "Паника может содержать не только error."
+        "Сохранить исходную ошибку",
+        "            err = fmt.Errorf(\"work panic: %w\", cause)\n            return\n        }",
+        "%w сохраняет причину. return здесь выходит только из отложенной функции."
       ],
       [
-        "Вызвать операцию",
+        "Обработать другое значение",
+        "        err = fmt.Errorf(\"work panic: %v\", value)\n    }\n}()",
+        "%v форматирует строку, число или другое значение. Закрываем блоки и объявление defer."
+      ],
+      [
+        "Вызвать основную операцию",
         "return work()",
-        "Обычный результат возвращается без обёртки."
+        "При обычном возврате сохраняется исходный error. При panic отложенная функция изменит err."
       ]
     ],
     "blocks": [
-      "Вызвать операцию",
-      "Обработать остальные значения",
-      "Сохранить error-причину",
+      "Вызвать основную операцию",
+      "Обработать другое значение",
+      "Сохранить исходную ошибку",
+      "Проверить, является ли значение ошибкой",
       "Получить значение паники",
-      "Зарегистрировать границу"
+      "Зарегистрировать отложенную функцию"
     ],
     "order": [
+      5,
       4,
       3,
       2,
@@ -10715,14 +10764,14 @@ window.GOFORGE_GUIDES ={
         "explain": "%w сохраняет error-причину."
       }
     ],
-    "partial": "package practice\n\nfunc RunProtectedWork(work func() error) (err error) {\n\tdefer func() {\n\t if value := recover(); value != nil { err = fmt.Errorf(\"work panic: %v\", value) }\n\t}()\n\treturn work()\n}\n",
+    "partial": "package practice\n\nfunc RunProtectedWork(work func() error) (err error) {\n    defer func() {\n        if value := recover(); value != nil {\n            if cause, ok := value.(error); ok {\n                // TODO: замени %v на формат, сохраняющий причину\n                err = fmt.Errorf(\"work panic: %v\", cause)\n                return\n            }\n            err = fmt.Errorf(\"work panic: %v\", value)\n        }\n    }()\n    return work()\n}\n",
     "bug": "package practice\n\nfunc RunProtectedWork(work func() error) (err error) {\n\tdefer func() {\n\t if value := recover(); value != nil { err = nil }\n\t}()\n\treturn work()\n}\n",
     "hints": [
-      "Используй именованный результат err.",
-      "Зарегистрируй defer перед work; recover вызывай непосредственно в нём.",
-      "Проверь ненулевое значение recover.",
-      "Для error используй %w, для других значений — %v.",
-      "defer func(){if v:=recover(); v!=nil {if e,ok:=v.(error);ok {err=fmt.Errorf(\"work panic: %w\",e);return};err=fmt.Errorf(\"work panic: %v\",v)}}(); return work()"
+      "Первое действие: Зарегистрировать отложенную функцию. Граница восстановления должна быть зарегистрирована до вызова work. Именованный err доступен внутри замыкания.",
+      "Начни с этой строки: defer func() {",
+      "Следующее действие: Получить значение паники. recover вызываем непосредственно внутри defer. При обычном возврате он даст nil, и блок не выполнится.",
+      "Проверь оставшиеся действия: Проверить, является ли значение ошибкой → Сохранить исходную ошибку → Обработать другое значение → Вызвать основную операцию.",
+      "defer func() {\n    if value := recover(); value != nil {\n        if cause, ok := value.(error); ok {\n            err = fmt.Errorf(\"work panic: %w\", cause)\n            return\n        }\n        err = fmt.Errorf(\"work panic: %v\", value)\n    }\n}()\nreturn work()"
     ],
     "related": [
       [
@@ -10780,31 +10829,38 @@ window.GOFORGE_GUIDES ={
       [
         "Выделить результат",
         "out := make([]T, 0, len(values))",
-        "Независимый срез с элементами T."
+        "T — тип элемента входного среза. Длина 0, потому что пока ничего не отобрали. Ёмкость len(values) резервирует память."
       ],
       [
         "Перебрать элементы",
-        "for _, v := range values",
-        "Один проход в исходном порядке."
+        "for _, v := range values {",
+        "range даёт индекс и элемент v. Индекс не нужен, поэтому _."
       ],
       [
-        "Применить предикат",
-        "if keep(v) { out = append(out, v) }",
-        "Условие определяет вызывающий код."
+        "Проверить условие отбора",
+        "    if keep(v) {",
+        "keep — функция из параметров, возвращающая bool. Если true, элемент подходит."
+      ],
+      [
+        "Добавить подходящий элемент",
+        "        out = append(out, v)\n    }\n}",
+        "append возвращает обновлённый срез. Закрываем условие и цикл."
       ],
       [
         "Вернуть результат",
         "return out",
-        "Тип элементов сохраняется."
+        "После цикла возвращаем только отобранные элементы."
       ]
     ],
     "blocks": [
       "Вернуть результат",
-      "Применить предикат",
+      "Добавить подходящий элемент",
+      "Проверить условие отбора",
       "Перебрать элементы",
       "Выделить результат"
     ],
     "order": [
+      4,
       3,
       2,
       1,
@@ -10834,14 +10890,14 @@ window.GOFORGE_GUIDES ={
         "explain": "Предикат определяет отбор."
       }
     ],
-    "partial": "package practice\n\nfunc FilterValues[T any](values []T, keep func(T) bool) []T {\n\tout := make([]T, 0, len(values))\n\tfor _, v := range values { _ = keep(v) }\n\treturn out\n}\n",
+    "partial": "package practice\n\nfunc FilterValues[T any](values []T, keep func(T) bool) []T {\n    out := make([]T, 0, len(values))\n    for _, v := range values {\n        if keep(v) {\n            // TODO: добавь v в out\n        }\n    }\n    return out\n}\n",
     "bug": "package practice\n\nfunc FilterValues[T any](values []T, keep func(T) bool) []T {\n\tout := values[:0]\n\tfor _, v := range values { if keep(v) { out = append(out,v) } }\n\treturn out\n}\n",
     "hints": [
-      "Алгоритм одинаков для любого типа элементов.",
-      "Используй make([]T,0,len(values)), чтобы не переиспользовать вход.",
-      "Перебери values через range.",
-      "Вызывай keep(v) один раз, добавляй только при true.",
-      "out:=make([]T,0,len(values)); for _,v:=range values {if keep(v){out=append(out,v)}}; return out"
+      "Первое действие: Выделить результат. T — тип элемента входного среза. Длина 0, потому что пока ничего не отобрали. Ёмкость len(values) резервирует память.",
+      "Начни с этой строки: out := make([]T, 0, len(values))",
+      "Следующее действие: Перебрать элементы. range даёт индекс и элемент v. Индекс не нужен, поэтому _.",
+      "Проверь оставшиеся действия: Проверить условие отбора → Добавить подходящий элемент → Вернуть результат.",
+      "out := make([]T, 0, len(values))\nfor _, v := range values {\n    if keep(v) {\n        out = append(out, v)\n    }\n}\nreturn out"
     ],
     "related": [
       [
@@ -10898,28 +10954,28 @@ window.GOFORGE_GUIDES ={
       [
         "Объявить накопитель",
         "var total T",
-        "Zero value сохраняет тип T."
+        "Сумма начинается с zero value типа T. Так сохраняем именованный числовой тип."
       ],
       [
-        "Пройти по значениям",
-        "for _, v := range values",
-        "Операция + допустима для обоих числовых семейств."
+        "Перебрать числа",
+        "for _, v := range values {",
+        "v — очередной элемент типа T, _ пропускает индекс."
       ],
       [
-        "Накопить сумму",
-        "total += v",
-        "Отрицательные числа тоже входят в сумму."
+        "Прибавить число",
+        "    total += v\n}",
+        "+= означает total = total + v. Constraint разрешает сложение для всех допустимых типов."
       ],
       [
-        "Вернуть значение",
+        "Вернуть сумму",
         "return total",
-        "Результат имеет исходный тип."
+        "Возвращаем T, а не преобразуем результат в int."
       ]
     ],
     "blocks": [
-      "Вернуть значение",
-      "Накопить сумму",
-      "Пройти по значениям",
+      "Вернуть сумму",
+      "Прибавить число",
+      "Перебрать числа",
       "Объявить накопитель"
     ],
     "order": [
@@ -10952,14 +11008,14 @@ window.GOFORGE_GUIDES ={
         "explain": "Накапливаем сумму."
       }
     ],
-    "partial": "package practice\n\nfunc SumSigned[T ~int | ~int64](values []T) T {\n\tvar total T\n\tif len(values)>0 { total=values[0] }\n\treturn total\n}\n",
+    "partial": "package practice\n\nfunc SumSigned[T ~int | ~int64](values []T) T {\n    var total T\n    for _, v := range values {\n        // TODO: прибавь v к total\n        _ = v\n    }\n    return total\n}\n",
     "bug": "package practice\n\nfunc SumSigned[T ~int | ~int64](values []T) T {\n\tvar total T\n\tfor _,v:=range values { if v>0 { total+=v } }\n\treturn total\n}\n",
     "hints": [
-      "Ограничение уже определяет допустимые числовые типы.",
-      "Объяви var total T.",
-      "Перебери все значения.",
-      "Не пропускай отрицательные и не преобразуй T в int.",
-      "var total T; for _,v:=range values {total+=v}; return total"
+      "Первое действие: Объявить накопитель. Сумма начинается с zero value типа T. Так сохраняем именованный числовой тип.",
+      "Начни с этой строки: var total T",
+      "Следующее действие: Перебрать числа. v — очередной элемент типа T, _ пропускает индекс.",
+      "Проверь оставшиеся действия: Прибавить число → Вернуть сумму.",
+      "var total T\nfor _, v := range values {\n    total += v\n}\nreturn total"
     ],
     "related": [
       [
@@ -11070,7 +11126,7 @@ window.GOFORGE_GUIDES ={
         "explain": "Копируем элементы."
       }
     ],
-    "partial": "package practice\n\nfunc CloneNamedSlice[S ~[]E, E any](values S) S {\n\tif values == nil { return nil }\n\treturn make(S,len(values))\n}\n",
+    "partial": "package practice\n\nfunc CloneNamedSlice[S ~[]E, E any](values S) S {\n    if values == nil { return nil }\n    out := make(S, len(values))\n    // TODO: скопируй элементы из values в out\n    return out\n}\n",
     "bug": "package practice\n\nfunc CloneNamedSlice[S ~[]E, E any](values S) S {\n\treturn values\n}\n",
     "hints": [
       "Сначала различи nil и непустой по признаку nil вход.",
@@ -11133,33 +11189,40 @@ window.GOFORGE_GUIDES ={
     ],
     "steps": [
       [
-        "Создать map",
+        "Создать map для групп",
         "out := make(map[K][]T)",
-        "Ключ K сравним, значения — срезы T."
+        "Нам нужно хранить несколько элементов для одного ключа. K — тип ключа, []T — список элементов этой группы."
       ],
       [
-        "Получить ключ",
-        "k := key(v)",
-        "Один вызов для каждого элемента."
+        "Перебрать вход",
+        "for _, v := range values {",
+        "range даёт индекс и элемент. Индекс не нужен, поэтому используем _. Переменная v — текущий элемент типа T."
       ],
       [
-        "Добавить в группу",
-        "out[k] = append(out[k], v)",
-        "Отсутствующая группа читается как nil срез, append работает и с nil."
+        "Получить ключ текущего элемента",
+        "    k := key(v)",
+        "key — функция из параметров GroupValues. Она принимает v и возвращает K. Например, key(\"go\") вернёт 2 при группировке по длине."
+      ],
+      [
+        "Добавить элемент в его группу",
+        "    out[k] = append(out[k], v)\n}",
+        "out[k] — текущий список группы. Для отсутствующего ключа это nil срез. append добавляет v и возвращает обновлённый срез, который записываем обратно."
       ],
       [
         "Вернуть группы",
         "return out",
-        "Порядок внутри группы сохранён."
+        "Цикл уже завершён, все элементы распределены."
       ]
     ],
     "blocks": [
       "Вернуть группы",
-      "Добавить в группу",
-      "Получить ключ",
-      "Создать map"
+      "Добавить элемент в его группу",
+      "Получить ключ текущего элемента",
+      "Перебрать вход",
+      "Создать map для групп"
     ],
     "order": [
+      4,
       3,
       2,
       1,
@@ -11189,14 +11252,14 @@ window.GOFORGE_GUIDES ={
         "explain": "Вычисляем ключ."
       }
     ],
-    "partial": "package practice\n\nfunc GroupValues[T any, K comparable](values []T, key func(T) K) map[K][]T {\n\tout := make(map[K][]T)\n\tfor _,v := range values { _ = key(v) }\n\treturn out\n}\n",
+    "partial": "package practice\n\nfunc GroupValues[T any, K comparable](values []T, key func(T) K) map[K][]T {\n    out := make(map[K][]T)\n    for _, v := range values {\n        k := key(v)\n        // TODO: добавь v в группу out[k]\n        _ = k\n    }\n    return out\n}\n",
     "bug": "package practice\n\nfunc GroupValues[T any, K comparable](values []T, key func(T) K) map[K][]T {\n\tout := make(map[K][]T)\n\tfor _,v := range values { k:=key(v); out[k]=[]T{v} }\n\treturn out\n}\n",
     "hints": [
-      "Тип элемента и тип ключа могут отличаться.",
-      "Инициализируй map[K][]T.",
-      "В цикле вычисли k := key(v) один раз.",
-      "Добавляй v в существующую группу через append, не заменяй её.",
-      "out:=make(map[K][]T); for _,v:=range values {k:=key(v);out[k]=append(out[k],v)};return out"
+      "Первое действие: Создать map для групп. Нам нужно хранить несколько элементов для одного ключа. K — тип ключа, []T — список элементов этой группы.",
+      "Начни с этой строки: out := make(map[K][]T)",
+      "Следующее действие: Перебрать вход. range даёт индекс и элемент. Индекс не нужен, поэтому используем _. Переменная v — текущий элемент типа T.",
+      "Проверь оставшиеся действия: Получить ключ текущего элемента → Добавить элемент в его группу → Вернуть группы.",
+      "out := make(map[K][]T)\nfor _, v := range values {\n    k := key(v)\n    out[k] = append(out[k], v)\n}\nreturn out"
     ],
     "related": [
       [
@@ -11250,31 +11313,31 @@ window.GOFORGE_GUIDES ={
     ],
     "steps": [
       [
-        "Выделить []R",
+        "Выделить результат",
         "out := make([]R, len(values))",
-        "Результат имеет другой тип элементов."
+        "R — выходной тип. Длина заранее известна: один выходной элемент на каждый входной."
       ],
       [
         "Перебрать с индексом",
-        "for i,v := range values",
-        "Сохраняем соответствие индексов."
+        "for i, v := range values {",
+        "i — позиция, v — элемент T. Индекс нужен для записи в готовый срез."
       ],
       [
-        "Преобразовать",
-        "out[i] = convert(v)",
-        "Один вызов на элемент."
+        "Преобразовать элемент",
+        "    out[i] = convert(v)\n}",
+        "convert принимает T и возвращает R. Записываем R по тому же индексу, не используем append к уже заполненной длине."
       ],
       [
-        "Вернуть",
+        "Вернуть результат",
         "return out",
-        "Длина и порядок сохраняются."
+        "Порядок и длина сохранены."
       ]
     ],
     "blocks": [
-      "Вернуть",
-      "Преобразовать",
+      "Вернуть результат",
+      "Преобразовать элемент",
       "Перебрать с индексом",
-      "Выделить []R"
+      "Выделить результат"
     ],
     "order": [
       3,
@@ -11306,14 +11369,14 @@ window.GOFORGE_GUIDES ={
         "explain": "Преобразуем элемент."
       }
     ],
-    "partial": "package practice\n\nfunc TransformValues[T any, R any](values []T, convert func(T) R) []R {\n\tout := make([]R,len(values))\n\tif len(values)>0 {out[0]=convert(values[0])}\n\treturn out\n}\n",
+    "partial": "package practice\n\nfunc TransformValues[T any, R any](values []T, convert func(T) R) []R {\n    out := make([]R, len(values))\n    for i, v := range values {\n        // TODO: запиши результат convert(v) в out[i]\n        _, _ = i, v\n    }\n    return out\n}\n",
     "bug": "package practice\n\nfunc TransformValues[T any, R any](values []T, convert func(T) R) []R {\n\tout := make([]R,0,len(values))\n\tfor i:=len(values)-1;i>=0;i-- {out=append(out,convert(values[i]))}\n\treturn out\n}\n",
     "hints": [
-      "Вход и выход могут иметь разные типы.",
-      "Выдели []R длины len(values).",
-      "Используй range с индексом.",
-      "Запиши convert(v) в out[i], не append поверх готовой длины.",
-      "out:=make([]R,len(values));for i,v:=range values {out[i]=convert(v)};return out"
+      "Первое действие: Выделить результат. R — выходной тип. Длина заранее известна: один выходной элемент на каждый входной.",
+      "Начни с этой строки: out := make([]R, len(values))",
+      "Следующее действие: Перебрать с индексом. i — позиция, v — элемент T. Индекс нужен для записи в готовый срез.",
+      "Проверь оставшиеся действия: Преобразовать элемент → Вернуть результат.",
+      "out := make([]R, len(values))\nfor i, v := range values {\n    out[i] = convert(v)\n}\nreturn out"
     ],
     "related": [
       [
@@ -11368,33 +11431,54 @@ window.GOFORGE_GUIDES ={
     ],
     "steps": [
       [
-        "Построить множество",
-        "remaining := make(map[T]struct{},len(second))",
-        "Запоминаем присутствие элементов второго среза."
+        "Создать множество",
+        "remaining := make(map[T]struct{}, len(second))",
+        "Ключ — элемент T. Пустая структура хранит только факт присутствия."
       ],
       [
-        "Перебрать второй",
-        "for _,v:=range second {remaining[v]=struct{}{}}",
-        "Дубликаты схлопываются по ключу."
+        "Заполнить множество",
+        "for _, v := range second {\n    remaining[v] = struct{}{}\n}",
+        "Перебираем второй срез. Одинаковые ключи записываются в одну ячейку map."
       ],
       [
-        "Найти совпадения",
-        "if _,ok:=remaining[v];ok {out=append(out,v);delete(remaining,v)}",
-        "Удаление исключает повторную выдачу."
+        "Создать результат",
+        "out := make([]T, 0)",
+        "Нужен отдельный срез, потому что map не сохраняет порядок."
+      ],
+      [
+        "Перебрать первый срез",
+        "for _, v := range first {",
+        "Именно этот обход задаёт порядок результата."
+      ],
+      [
+        "Проверить присутствие",
+        "    if _, ok := remaining[v]; ok {",
+        "ok показывает, есть ли ключ. Само пустое значение нам не нужно."
+      ],
+      [
+        "Добавить и исключить повтор",
+        "        out = append(out, v)\n        delete(remaining, v)\n    }\n}",
+        "Добавляем совпадение один раз. Удаляем ключ, чтобы повтор в first больше не прошёл проверку."
       ],
       [
         "Вернуть результат",
         "return out",
-        "Порядок задан первым срезом."
+        "Оба входных среза остаются неизменными."
       ]
     ],
     "blocks": [
       "Вернуть результат",
-      "Найти совпадения",
-      "Перебрать второй",
-      "Построить множество"
+      "Добавить и исключить повтор",
+      "Проверить присутствие",
+      "Перебрать первый срез",
+      "Создать результат",
+      "Заполнить множество",
+      "Создать множество"
     ],
     "order": [
+      6,
+      5,
+      4,
       3,
       2,
       1,
@@ -11424,14 +11508,14 @@ window.GOFORGE_GUIDES ={
         "explain": "Исключаем повтор."
       }
     ],
-    "partial": "package practice\n\nfunc CommonDistinct[T comparable](first, second []T) []T {\n\tremaining:=make(map[T]struct{})\n\tfor _,v:=range second {remaining[v]=struct{}{}}\n\tout:=make([]T,0)\n\tfor _,v:=range first {if _,ok:=remaining[v];ok {_=v}}\n\treturn out\n}\n",
+    "partial": "package practice\n\nfunc CommonDistinct[T comparable](first, second []T) []T {\n    remaining := make(map[T]struct{}, len(second))\n    for _, v := range second { remaining[v] = struct{}{} }\n    out := make([]T, 0)\n    for _, v := range first {\n        if _, ok := remaining[v]; ok {\n            // TODO: добавь v в out\n            delete(remaining, v)\n        }\n    }\n    return out\n}\n",
     "bug": "package practice\n\nfunc CommonDistinct[T comparable](first, second []T) []T {\n\tremaining:=make(map[T]struct{})\n\tfor _,v:=range second {remaining[v]=struct{}{}}\n\tout:=make([]T,0)\n\tfor _,v:=range first {if _,ok:=remaining[v];ok {out=append(out,v)}}\n\treturn out\n}\n",
     "hints": [
-      "Нужны проверка присутствия и исключение повторов.",
-      "Создай map[T]struct{} из второго среза.",
-      "Перебирай первый срез, не map.",
-      "После добавления удали ключ из множества, чтобы не вернуть его повторно.",
-      "remaining:=make(map[T]struct{},len(second));for _,v:=range second{remaining[v]=struct{}{}};out:=make([]T,0);for _,v:=range first{if _,ok:=remaining[v];ok{out=append(out,v);delete(remaining,v)}};return out"
+      "Первое действие: Создать множество. Ключ — элемент T. Пустая структура хранит только факт присутствия.",
+      "Начни с этой строки: remaining := make(map[T]struct{}, len(second))",
+      "Следующее действие: Заполнить множество. Перебираем второй срез. Одинаковые ключи записываются в одну ячейку map.",
+      "Проверь оставшиеся действия: Создать результат → Перебрать первый срез → Проверить присутствие → Добавить и исключить повтор → Вернуть результат.",
+      "remaining := make(map[T]struct{}, len(second))\nfor _, v := range second {\n    remaining[v] = struct{}{}\n}\nout := make([]T, 0)\nfor _, v := range first {\n    if _, ok := remaining[v]; ok {\n        out = append(out, v)\n        delete(remaining, v)\n    }\n}\nreturn out"
     ],
     "related": [
       [
