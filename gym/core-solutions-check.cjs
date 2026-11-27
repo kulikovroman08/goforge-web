@@ -6,7 +6,7 @@ const names=JSON.parse(read('app.js').match(/const testNames=([^\n]+);/)[1]);
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'goforge-solutions-'));
 let failed=0;
 try {
- for(const task of ctx.window.GOFORGE_GYM_CATALOG.filter(t=>t.id.startsWith('core-'))){
+ for(const task of ctx.window.GOFORGE_GYM_CATALOG.filter(t=>t.id.startsWith('core-') || ['errors','typednil','activity-methods','defer-cleanup','generic-unique'].includes(t.id))){
   const guide=ctx.window.GOFORGE_GUIDES[task.id];
   for(const [kind,draft] of [['solution',task.solution],['partial',guide.partial],['bug',guide.bug]]){
    try{

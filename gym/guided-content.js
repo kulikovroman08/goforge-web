@@ -8498,5 +8498,587 @@ window.GOFORGE_GUIDES = {
     ],
     "production": "Агрегация статусов для API, аналитики или UI. В реальном сервисе статусы обычно enum: неизвестные значения валидируются, а нормализация и порядок определяются продуктовым контрактом.",
     "interview": "Почему для такого ответа используют и map, и slice?"
+  },
+  "errors": {
+    "frames": [
+      [
+        "Причина",
+        [
+          "repository → not found"
+        ],
+        "err = cause",
+        "Исходная ошибка имеет собственную идентичность."
+      ],
+      [
+        "Проверка",
+        [
+          "err != nil"
+        ],
+        "if err == nil { return nil }",
+        "Не создаём ошибку при успехе."
+      ],
+      [
+        "Оборачивание",
+        [
+          "load event → cause"
+        ],
+        "fmt.Errorf(\"load event: %w\", err)",
+        "Добавляем контекст и сохраняем связь."
+      ],
+      [
+        "Проверка вызывающим кодом",
+        [
+          "errors.Is → true"
+        ],
+        "errors.Is(wrapped,cause)",
+        "Причина доступна через цепочку."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить отсутствие ошибки",
+        "if err == nil { return nil }",
+        "nil означает успех."
+      ],
+      [
+        "Добавить контекст",
+        "return fmt.Errorf(\"load event: %w\", err)",
+        "%w сохраняет исходную причину."
+      ]
+    ],
+    "blocks": [
+      "Добавить контекст",
+      "Проверить отсутствие ошибки"
+    ],
+    "order": [
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "fmt.Errorf(\"load event: ",
+        "after": "\", err)",
+        "options": [
+          "%v",
+          "%w",
+          "%s"
+        ],
+        "correct": 1,
+        "explain": "Для оборачивания нужна %w."
+      },
+      {
+        "before": "if err == nil { return ",
+        "after": " }",
+        "options": [
+          "nil",
+          "err.Error()",
+          "errors.New(\"nil\")"
+        ],
+        "correct": 0,
+        "explain": "Успех остаётся успехом."
+      }
+    ],
+    "partial": "package practice\nfunc WithContext(err error) error {\n if err==nil {return nil}\n // TODO: оберни ошибку с контекстом\n return err\n}\n",
+    "bug": "package practice\nfunc WithContext(err error) error {\n if err==nil {return nil}\n return fmt.Errorf(\"load event: %v\",err)\n}\n",
+    "hints": [
+      "Вначале обработай err == nil.",
+      "Используй fmt.Errorf.",
+      "Строка: \"load event: %w\".",
+      "%w сохраняет исходную причину.",
+      "package practice\n\nimport \"fmt\"\nfunc WithContext(err error) error {\n\tif err == nil { return nil }\n\treturn fmt.Errorf(\"load event: %w\", err)\n}\n"
+    ],
+    "related": [
+      [
+        "defer-cleanup",
+        "Сохранить ошибку при закрытии ресурса"
+      ]
+    ],
+    "production": "На границе repository/service добавляй контекст операции, не раскрывая внутренние детали клиенту. Используй errors.Is для классификации, а не сравнение текста.",
+    "interview": "Чем отличаются errors.Is и errors.As?"
+  },
+  "typednil": {
+    "frames": [
+      [
+        "Указатель",
+        [
+          "*MyError",
+          "nil"
+        ],
+        "var e *MyError",
+        "Указатель равен nil."
+      ],
+      [
+        "Преобразование",
+        [
+          "type: *MyError",
+          "value: nil"
+        ],
+        "var err error = e",
+        "Интерфейс получил динамический тип."
+      ],
+      [
+        "Сравнение",
+        [
+          "err != nil"
+        ],
+        "true",
+        "Интерфейс с динамическим типом не является nil."
+      ],
+      [
+        "Исправление",
+        [
+          "type: отсутствует",
+          "value: отсутствует"
+        ],
+        "return nil",
+        "Возвращаем nil interface напрямую."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить флаг",
+        "if !fail {",
+        "При успехе не нужен объект ошибки."
+      ],
+      [
+        "Вернуть настоящий nil",
+        "return nil\n}",
+        "Не преобразуем nil-указатель в интерфейс."
+      ],
+      [
+        "Создать ошибку при сбое",
+        "return &MyError{}",
+        "При fail=true возвращаем ненулевую ошибку."
+      ]
+    ],
+    "blocks": [
+      "Создать ошибку при сбое",
+      "Проверить флаг",
+      "Вернуть настоящий nil"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if !fail { return ",
+        "after": " }",
+        "options": [
+          "nil",
+          "(*MyError)(nil)",
+          "&MyError{}"
+        ],
+        "correct": 0,
+        "explain": "Возвращаем nil интерфейс."
+      },
+      {
+        "before": "return ",
+        "after": "",
+        "options": [
+          "&MyError{}",
+          "nil",
+          "\"failed\""
+        ],
+        "correct": 0,
+        "explain": "Ненулевая ошибка при сбое."
+      }
+    ],
+    "partial": "package practice\ntype MyError struct{}\nfunc (*MyError) Error() string{return \"failed\"}\nfunc MaybeError(fail bool) error {\n // TODO: верни nil при успехе\n return &MyError{}\n}\n",
+    "bug": "package practice\ntype MyError struct{}\nfunc (*MyError) Error() string{return \"failed\"}\nfunc MaybeError(fail bool) error {\n var e *MyError\n if fail {e=&MyError{}}\n return e\n}\n",
+    "hints": [
+      "Проверь значение e перед возвратом.",
+      "error — интерфейс; *MyError(nil) не равен nil-interface.",
+      "При e==nil возвращай nil напрямую.",
+      "При fail=true возвращаем ненулевую ошибку.",
+      "package practice\ntype MyError struct{}\nfunc (*MyError) Error() string{return \"failed\"}\nfunc MaybeError(fail bool)error{if !fail{return nil};return &MyError{}}\n"
+    ],
+    "related": [
+      [
+        "errors",
+        "Оборачивать ошибки сервиса"
+      ]
+    ],
+    "production": "Не возвращай nil-указатель конкретного типа как error. Проверяй контракт на границе сервиса; не используй reflect как универсальный обход проблемы.",
+    "interview": "Почему `var err error = (*MyError)(nil)` не равен nil?"
+  },
+  "activity-methods": {
+    "frames": [
+      [
+        "Начальное состояние",
+        [
+          "LastMessageAt=0",
+          "Unread=0"
+        ],
+        "at=10",
+        "Нулевое значение структуры пригодно к работе."
+      ],
+      [
+        "Новое событие",
+        [
+          "LastMessageAt=10",
+          "Unread=1"
+        ],
+        "return true",
+        "Обновляем оба поля."
+      ],
+      [
+        "Повтор",
+        [
+          "LastMessageAt=10",
+          "Unread=1"
+        ],
+        "at=10 → false",
+        "Повторный timestamp не изменяет состояние."
+      ],
+      [
+        "Старое событие",
+        [
+          "LastMessageAt=10",
+          "Unread=1"
+        ],
+        "at=9 → false",
+        "Не допускаем движение времени назад."
+      ],
+      [
+        "Следующее событие",
+        [
+          "LastMessageAt=11",
+          "Unread=2"
+        ],
+        "at=11 → true",
+        "Инварианты сохранены."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить receiver и timestamp",
+        "if a==nil || at<=0 || at<=a.LastMessageAt { return false }",
+        "Проверка nil должна предшествовать чтению поля."
+      ],
+      [
+        "Обновить активность",
+        "a.LastMessageAt=at",
+        "Pointer receiver меняет исходный объект."
+      ],
+      [
+        "Увеличить счётчик",
+        "a.Unread++",
+        "Только принятые события изменяют счётчик."
+      ],
+      [
+        "Сообщить результат",
+        "return true",
+        "Вызывающий код знает, была ли мутация."
+      ]
+    ],
+    "blocks": [
+      "Сообщить результат",
+      "Проверить receiver и timestamp",
+      "Обновить активность",
+      "Увеличить счётчик"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "func (a ",
+        "after": "ChatActivity) ApplyMessage",
+        "options": [
+          "*",
+          "",
+          "&"
+        ],
+        "correct": 0,
+        "explain": "Нужен pointer receiver."
+      },
+      {
+        "before": "at ",
+        "after": " a.LastMessageAt",
+        "options": [
+          "<=",
+          "<",
+          ">="
+        ],
+        "correct": 0,
+        "explain": "Отклоняем повтор и старое событие."
+      }
+    ],
+    "partial": "package practice\ntype ChatActivity struct { LastMessageAt int64; Unread int }\nfunc (a *ChatActivity) ApplyMessage(at int64) bool {\n if a==nil||at<=0||at<=a.LastMessageAt{return false}\n a.LastMessageAt=at\n // TODO: обнови счётчик\n return true\n}\n",
+    "bug": "package practice\ntype ChatActivity struct { LastMessageAt int64; Unread int }\nfunc (a *ChatActivity) ApplyMessage(at int64) bool {\n if a==nil||at<=0||at<a.LastMessageAt{return false}\n a.LastMessageAt=at;a.Unread++;return true\n}\n",
+    "hints": [
+      "Проверь a==nil, at<=0 и at<=a.LastMessageAt.",
+      "Если проверка прошла — обнови LastMessageAt.",
+      "Увеличь Unread и верни true.",
+      "Вызывающий код знает, была ли мутация.",
+      "type ChatActivity struct { LastMessageAt int64; Unread int }\nfunc (a *ChatActivity) ApplyMessage(at int64) bool {\n\tif a==nil || at<=0 || at<=a.LastMessageAt { return false }\n\ta.LastMessageAt=at\n\ta.Unread++\n\treturn true\n}\n"
+    ],
+    "related": [
+      [
+        "core-clone-config",
+        "Скопировать структуру с указателем"
+      ]
+    ],
+    "production": "Монотонное обновление активности — пример доменного инварианта. В реальном конкурентном сервисе необходима атомарная операция в хранилище или синхронизация; timestamp сам по себе не уникальный ID события.",
+    "interview": "Когда использовать value receiver, а когда pointer receiver? Как это влияет на method set?"
+  },
+  "defer-cleanup": {
+    "frames": [
+      [
+        "Результат работы",
+        [
+          "workErr = write failed"
+        ],
+        "err пока nil",
+        "Основная операция завершилась ошибкой."
+      ],
+      [
+        "Регистрация",
+        [
+          "defer Close"
+        ],
+        "defer func(){...}()",
+        "Ресурс нужно закрыть независимо от результата работы."
+      ],
+      [
+        "Return",
+        [
+          "err = workErr"
+        ],
+        "return workErr",
+        "Именованный результат установлен до defer."
+      ],
+      [
+        "Закрытие",
+        [
+          "Close → flush failed"
+        ],
+        "errors.Join(err, closer.Close())",
+        "Объединяем обе причины."
+      ],
+      [
+        "Выход",
+        [
+          "write failed",
+          "flush failed"
+        ],
+        "errors.Is → true для обеих",
+        "Ни одна ошибка не потеряна."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить отсутствие ресурса",
+        "if closer==nil { return workErr }",
+        "Nil-интерфейс не вызываем."
+      ],
+      [
+        "Зарегистрировать закрытие",
+        "defer func(){ err=errors.Join(err,closer.Close()) }()",
+        "Замыкание обновит именованный результат при выходе."
+      ],
+      [
+        "Вернуть основную ошибку",
+        "return workErr",
+        "До передачи результата выполнится defer."
+      ]
+    ],
+    "blocks": [
+      "Вернуть основную ошибку",
+      "Проверить отсутствие ресурса",
+      "Зарегистрировать закрытие"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "err = errors.",
+        "after": "(err,closer.Close())",
+        "options": [
+          "Join",
+          "New",
+          "Is"
+        ],
+        "correct": 0,
+        "explain": "Join сохраняет обе причины."
+      },
+      {
+        "before": "defer ",
+        "after": "(){ err=errors.Join(err,closer.Close()) }()",
+        "options": [
+          "func",
+          "go",
+          "return"
+        ],
+        "correct": 0,
+        "explain": "Тело замыкания выполнится при выходе."
+      }
+    ],
+    "partial": "package practice\nfunc CloseWithError(workErr error,closer io.Closer)(err error){\n if closer==nil{return workErr}\n defer func(){ _=closer.Close() }()\n // TODO: сохрани ошибку Close\n return workErr\n}\n",
+    "bug": "package practice\nfunc CloseWithError(workErr error,closer io.Closer)(err error){\n if closer==nil{return workErr}\n defer func(){err=closer.Close()}()\n return workErr\n}\n",
+    "hints": [
+      "Если closer==nil, возвращай workErr.",
+      "Зарегистрируй defer с замыканием, чтобы закрытие произошло при выходе из функции.",
+      "В defer выполни err = errors.Join(err, closer.Close()).",
+      "До передачи результата выполнится defer.",
+      "func CloseWithError(workErr error, closer io.Closer) (err error) {\n\tif closer == nil { return workErr }\n\tdefer func() { err = errors.Join(err, closer.Close()) }()\n\treturn workErr\n}\n"
+    ],
+    "related": [
+      [
+        "core-defer-result",
+        "Изменить результат через defer"
+      ]
+    ],
+    "production": "Закрытие файла или flush ресурса может быть значимой частью операции. Сохраняй обе причины; учитывай, что nil-интерфейс и typed nil различаются.",
+    "interview": "В каком порядке выполняются defer и как сохранить ошибку Close, не потеряв основную ошибку?"
+  },
+  "generic-unique": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "2",
+          "1",
+          "2",
+          "3"
+        ],
+        "T=int",
+        "Тип выводится из аргумента."
+      ],
+      [
+        "Первый элемент",
+        [
+          "seen: 2",
+          "out: 2"
+        ],
+        "map[T]struct{}",
+        "Constraint comparable разрешает ключи map."
+      ],
+      [
+        "Второй элемент",
+        [
+          "seen: 2,1",
+          "out: 2,1"
+        ],
+        "v=1",
+        "Сохраняем первое появление."
+      ],
+      [
+        "Повтор",
+        [
+          "seen: 2,1",
+          "out: 2,1"
+        ],
+        "v=2 → continue",
+        "Не добавляем повтор."
+      ],
+      [
+        "Выход",
+        [
+          "2",
+          "1",
+          "3"
+        ],
+        "return out",
+        "Тот же алгоритм работает для string."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать множество",
+        "seen:=make(map[T]struct{},len(values))",
+        "T ограничен comparable."
+      ],
+      [
+        "Создать выход",
+        "out:=make([]T,0,len(values))",
+        "Тип элементов сохраняется."
+      ],
+      [
+        "Обойти значения",
+        "for _,v:=range values {",
+        "Работаем с T без type assertions."
+      ],
+      [
+        "Проверить повтор",
+        "if _,ok:=seen[v];ok{continue}",
+        "Повторные значения пропускаем."
+      ],
+      [
+        "Запомнить и добавить",
+        "seen[v]=struct{}{}\nout=append(out,v)\n}",
+        "Порядок задаёт вход, не map."
+      ],
+      [
+        "Вернуть результат",
+        "return out",
+        "Результат имеет тип []T."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Создать множество",
+      "Создать выход",
+      "Обойти значения",
+      "Проверить повтор",
+      "Запомнить и добавить"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "func UniqueValues[T ",
+        "after": "](values []T) []T",
+        "options": [
+          "any",
+          "comparable",
+          "string"
+        ],
+        "correct": 1,
+        "explain": "Для ключа map нужен comparable."
+      },
+      {
+        "before": "seen[v] = ",
+        "after": "",
+        "options": [
+          "struct{}{}",
+          "true",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Пустая структура хранит факт присутствия."
+      }
+    ],
+    "partial": "package practice\nfunc UniqueValues[T comparable](values []T) []T {\n seen:=make(map[T]struct{})\n out:=make([]T,0,len(values))\n for _,v:=range values {seen[v]=struct{}{};out=append(out,v)}\n // TODO: пропускай повторы\n return out\n}\n",
+    "bug": "package practice\nfunc UniqueValues[T comparable](values []T) []T {\n seen:=make(map[T]struct{})\n for _,v:=range values {seen[v]=struct{}{}}\n out:=make([]T,0,len(seen))\n // BUG: идём по входу в обратном порядке\n for i:=len(values)-1;i>=0;i-- {v:=values[i];if _,ok:=seen[v];ok{out=append(out,v);delete(seen,v)}}\n return out\n}\n",
+    "hints": [
+      "Создай seen := make(map[T]struct{},len(values)).",
+      "Перебери values через range; если значение уже встречалось, пропусти.",
+      "Иначе добавь в seen и append в result.",
+      "Результат имеет тип []T.",
+      "func UniqueValues[T comparable](values []T) []T {\n seen:=make(map[T]struct{},len(values))\n out:=make([]T,0,len(values))\n for _,v:=range values {if _,ok:=seen[v];ok{continue};seen[v]=struct{}{};out=append(out,v)}\n return out\n}\n"
+    ],
+    "related": [
+      [
+        "dedupe",
+        "Убрать дубли получателей"
+      ]
+    ],
+    "production": "Обобщай действительно одинаковые алгоритмы для нескольких типов. Comparable не гарантирует отсутствие panic для interface-ключей с динамически несравнимым значением; для обычных int/string такой проблемы нет.",
+    "interview": "Что такое type parameters и constraint comparable, чем generics отличаются от interface{}?"
   }
 };
