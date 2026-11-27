@@ -9080,5 +9080,545 @@ window.GOFORGE_GUIDES = {
     ],
     "production": "Обобщай действительно одинаковые алгоритмы для нескольких типов. Comparable не гарантирует отсутствие panic для interface-ключей с динамически несравнимым значением; для обычных int/string такой проблемы нет.",
     "interview": "Что такое type parameters и constraint comparable, чем generics отличаются от interface{}?"
+  },
+  "advanced-value-receiver": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "original.Limit=10",
+          "limit=20"
+        ],
+        "original.WithLimit(20)",
+        "Value receiver получает копию структуры."
+      ],
+      [
+        "Локальная копия",
+        [
+          "original=10",
+          "q=10"
+        ],
+        "q.Limit=20",
+        "Меняем только поле копии."
+      ],
+      [
+        "Возврат",
+        [
+          "original=10",
+          "result=20"
+        ],
+        "return q",
+        "Оригинал остаётся неизменным."
+      ],
+      [
+        "Неверный лимит",
+        [
+          "original=10",
+          "result=10"
+        ],
+        "limit=0",
+        "Не допускаем некорректное состояние."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить лимит",
+        "if limit>0 {",
+        "При невалидном входе возвращаем исходное значение."
+      ],
+      [
+        "Обновить локальную копию",
+        "q.Limit=limit\n}",
+        "Receiver q передан по значению."
+      ],
+      [
+        "Вернуть копию",
+        "return q",
+        "Вызывающий код решает, присваивать ли результат оригиналу."
+      ]
+    ],
+    "blocks": [
+      "Вернуть копию",
+      "Проверить лимит",
+      "Обновить локальную копию"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "func (q ",
+        "after": "ServiceQuota) WithLimit",
+        "options": [
+          "",
+          "*",
+          "&"
+        ],
+        "correct": 0,
+        "explain": "Для этого контракта нужен value receiver."
+      },
+      {
+        "before": "if limit ",
+        "after": " 0",
+        "options": [
+          ">",
+          ">=",
+          "<"
+        ],
+        "correct": 0,
+        "explain": "Допускаем строго положительное значение."
+      }
+    ],
+    "partial": "package practice\n\ntype ServiceQuota struct { Limit int }\nfunc (q *ServiceQuota) SetLimit(limit int) { q.Limit=limit }\n\nfunc (q ServiceQuota) WithLimit(limit int) ServiceQuota {\n\tif limit<=0 { return q }\n\t// TODO: обнови локальную копию\n\treturn q\n}\n",
+    "bug": "package practice\n\ntype ServiceQuota struct { Limit int }\nfunc (q *ServiceQuota) SetLimit(limit int) { q.Limit=limit }\n\nfunc (q ServiceQuota) WithLimit(limit int) ServiceQuota {\n\tq.Limit=limit\n\treturn q\n}\n",
+    "hints": [
+      "Реализуй метод с value receiver: верни копию ServiceQuota с новым Limit, если limit>0. При некорректном лимите верни исходное значение. Не меняй исходную структуру. SetLimit уже реализован для сравнения поведения.",
+      "При невалидном входе возвращаем исходное значение.",
+      "Receiver q передан по значению.",
+      "Вызывающий код решает, присваивать ли результат оригиналу.",
+      "if limit>0 { q.Limit=limit }\nreturn q"
+    ],
+    "related": [
+      [
+        "activity-methods",
+        "Метод обновления активности чата"
+      ]
+    ],
+    "production": "Value receiver удобен для небольших value objects. Копирование структуры с map, slice или pointer не обеспечивает глубокую независимость; структуры с mutex нельзя копировать после использования.",
+    "interview": "Когда value receiver не гарантирует отсутствие мутации исходных данных?"
+  },
+  "advanced-embedding": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "id=u1",
+          "name=Go",
+          "active=true"
+        ],
+        "NewServiceProfile(...)",
+        "Поля относятся к двум структурам."
+      ],
+      [
+        "Композиция",
+        [
+          "ProfileMeta",
+          "ID=u1",
+          "Active=true"
+        ],
+        "ProfileMeta{ID:id,Active:active}",
+        "Вложенное значение создаётся явно."
+      ],
+      [
+        "Сборка",
+        [
+          "ProfileMeta",
+          "Name=Go"
+        ],
+        "ServiceProfile{ProfileMeta:...,Name:name}",
+        "Embedding включает поле типа ProfileMeta."
+      ],
+      [
+        "Доступ",
+        [
+          "p.ID=u1",
+          "p.IsActive()=true"
+        ],
+        "promoted field / method",
+        "Поля и методы доступны через внешнюю структуру."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать вложенное значение",
+        "ProfileMeta{ID:id,Active:active}",
+        "В литерале нужно явно заполнить вложенное поле."
+      ],
+      [
+        "Собрать внешнюю структуру",
+        "return ServiceProfile{ProfileMeta:ProfileMeta{ID:id,Active:active},Name:name}",
+        "Внешний тип содержит ProfileMeta и Name."
+      ]
+    ],
+    "blocks": [
+      "Собрать внешнюю структуру",
+      "Создать вложенное значение"
+    ],
+    "order": [
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "ServiceProfile{",
+        "after": " :ProfileMeta{ID:id,Active:active},Name:name}",
+        "options": [
+          "ProfileMeta",
+          "ID",
+          "Active"
+        ],
+        "correct": 0,
+        "explain": "В литерале указывается имя непосредственного поля."
+      },
+      {
+        "before": "p.",
+        "after": "()",
+        "options": [
+          "IsActive",
+          "Active",
+          "ID"
+        ],
+        "correct": 0,
+        "explain": "Метод вложенного типа продвигается во внешний тип."
+      }
+    ],
+    "partial": "package practice\n\ntype ProfileMeta struct { ID string; Active bool }\nfunc (m ProfileMeta) IsActive() bool { return m.Active }\ntype ServiceProfile struct { ProfileMeta; Name string }\n\nfunc NewServiceProfile(id,name string,active bool) ServiceProfile {\n\treturn ServiceProfile{Name:name}\n}\n",
+    "bug": "package practice\n\ntype ProfileMeta struct { ID string; Active bool }\nfunc (m ProfileMeta) IsActive() bool { return m.Active }\ntype ServiceProfile struct { ProfileMeta; Name string }\n\nfunc NewServiceProfile(id,name string,active bool) ServiceProfile {\n\treturn ServiceProfile{ProfileMeta:ProfileMeta{ID:id,Active:!active},Name:name}\n}\n",
+    "hints": [
+      "Создай ServiceProfile с вложенной ProfileMeta: сохрани id и active во вложенной структуре, name — в собственном поле. Не меняй входные данные. Проверь, что ID и IsActive доступны через promotion.",
+      "В литерале нужно явно заполнить вложенное поле.",
+      "Внешний тип содержит ProfileMeta и Name.",
+      "Внешний тип содержит ProfileMeta и Name.",
+      "return ServiceProfile{ProfileMeta:ProfileMeta{ID:id,Active:active},Name:name}"
+    ],
+    "related": [
+      [
+        "advanced-value-receiver",
+        "Обновить конфигурацию без изменения оригинала"
+      ]
+    ],
+    "production": "Embedding помогает переиспользовать поведение, но создаёт часть публичного API внешнего типа. При конфликте имён или необходимости строгой инкапсуляции лучше использовать именованное поле и явные методы.",
+    "interview": "Является ли embedding наследованием?"
+  },
+  "advanced-repository": {
+    "frames": [
+      [
+        "Зависимость",
+        [
+          "service",
+          "NameRepository",
+          "fake / real"
+        ],
+        "LoadUserName(repo,\"42\")",
+        "Сервис зависит от контракта, а не конкретного хранилища."
+      ],
+      [
+        "Вызов",
+        [
+          "FindName(\"42\")"
+        ],
+        "name,err:=repo.FindName(id)",
+        "Один вызов репозитория."
+      ],
+      [
+        "Успех",
+        [
+          "name=Alice",
+          "err=nil"
+        ],
+        "return name,nil",
+        "Возвращаем данные."
+      ],
+      [
+        "Ошибка",
+        [
+          "load user",
+          "cause"
+        ],
+        "fmt.Errorf(\"load user: %w\",err)",
+        "Причина остаётся доступной через errors.Is."
+      ]
+    ],
+    "steps": [
+      [
+        "Вызвать зависимость",
+        "name,err:=repo.FindName(id)",
+        "Интерфейс задаёт необходимую операцию."
+      ],
+      [
+        "Обработать ошибку",
+        "if err!=nil { return \"\",fmt.Errorf(\"load user: %w\",err) }",
+        "Не возвращаем частичные данные при ошибке."
+      ],
+      [
+        "Вернуть имя",
+        "return name,nil",
+        "Успешный результат не содержит ошибки."
+      ]
+    ],
+    "blocks": [
+      "Вернуть имя",
+      "Вызвать зависимость",
+      "Обработать ошибку"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "name,err:=repo.",
+        "after": "(id)",
+        "options": [
+          "FindName",
+          "LoadUserName",
+          "Error"
+        ],
+        "correct": 0,
+        "explain": "Вызываем метод интерфейса."
+      },
+      {
+        "before": "fmt.Errorf(\"load user: ",
+        "after": "\",err)",
+        "options": [
+          "%w",
+          "%v",
+          "%s"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем причину ошибки."
+      }
+    ],
+    "partial": "package practice\n\ntype NameRepository interface { FindName(id string) (string,error) }\n\nfunc LoadUserName(repo NameRepository,id string) (string,error) {\n\tname,err:=repo.FindName(id)\n\t// TODO: обработай ошибку с контекстом\n\treturn name,err\n}\n",
+    "bug": "package practice\n\ntype NameRepository interface { FindName(id string) (string,error) }\n\nfunc LoadUserName(repo NameRepository,id string) (string,error) {\n\tname,err:=repo.FindName(id)\n\tif err!=nil { return \"\",fmt.Errorf(\"load user: %v\",err) }\n\treturn name,nil\n}\n",
+    "hints": [
+      "Вызови repo.FindName(id) ровно один раз. При ошибке верни пустую строку и ошибку с контекстом load user, сохранив причину через %w. При успехе верни имя и nil. repo — корректная ненулевая реализация интерфейса.",
+      "Интерфейс задаёт необходимую операцию.",
+      "Не возвращаем частичные данные при ошибке.",
+      "Успешный результат не содержит ошибки.",
+      "name,err:=repo.FindName(id)\nif err!=nil { return \"\",fmt.Errorf(\"load user: %w\",err) }\nreturn name,nil"
+    ],
+    "related": [
+      [
+        "errors",
+        "Оборачивать ошибки сервиса"
+      ]
+    ],
+    "production": "Небольшие интерфейсы на стороне потребителя упрощают тестирование сервисов без БД. Реальный репозиторий обычно принимает context.Context для отмены и дедлайнов.",
+    "interview": "Почему интерфейс часто объявляют на стороне потребителя?"
+  },
+  "advanced-type-switch": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "any",
+          "dynamic type=int",
+          "value=42"
+        ],
+        "ValueKind(42)",
+        "any — alias interface{}."
+      ],
+      [
+        "Проверка",
+        [
+          "case int"
+        ],
+        "switch v.(type)",
+        "Выбираем ветку по динамическому типу."
+      ],
+      [
+        "Именованный тип",
+        [
+          "type UserID int",
+          "dynamic type=UserID"
+        ],
+        "case int не совпадает",
+        "Определённый тип отличается от int."
+      ],
+      [
+        "Nil",
+        [
+          "type отсутствует"
+        ],
+        "case nil",
+        "Typed nil указатель относится к other."
+      ]
+    ],
+    "steps": [
+      [
+        "Начать type switch",
+        "switch v.(type) {",
+        "Сравниваем динамические типы."
+      ],
+      [
+        "Обработать известные типы",
+        "case nil: return \"nil\"\ncase string: return \"string\"\ncase int: return \"int\"\ncase bool: return \"bool\"",
+        "Каждый case задаёт конкретный тип."
+      ],
+      [
+        "Обработать остальные",
+        "default: return \"other\"\n}",
+        "Неизвестные значения не вызывают panic."
+      ]
+    ],
+    "blocks": [
+      "Обработать остальные",
+      "Начать type switch",
+      "Обработать известные типы"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "switch v.(",
+        "after": ")",
+        "options": [
+          "type",
+          "int",
+          "any"
+        ],
+        "correct": 0,
+        "explain": "Type switch использует специальную форму .(type)."
+      },
+      {
+        "before": "case ",
+        "after": " : return \"nil\"",
+        "options": [
+          "nil",
+          "any",
+          "string"
+        ],
+        "correct": 0,
+        "explain": "Nil interface обрабатывается отдельным case."
+      }
+    ],
+    "partial": "package practice\n\nfunc ValueKind(v any) string {\n\tswitch v.(type) {\n\tcase nil: return \"nil\"\n\tcase string: return \"string\"\n\t// TODO: обработай int и bool\n\tdefault: return \"other\"\n\t}\n}\n",
+    "bug": "package practice\n\nfunc ValueKind(v any) string {\n\tif v==nil { return \"nil\" }\n\tif _,ok:=v.(string);ok { return \"string\" }\n\tif _,ok:=v.(int);ok { return \"int\" }\n\treturn \"other\"\n}\n",
+    "hints": [
+      "Верни \"nil\" для nil interface, \"string\" для встроенного string, \"int\" для встроенного int, \"bool\" для bool, \"other\" для остальных динамических типов. Именованные типы, например type UserID int, относятся к other. Используй type switch.",
+      "Сравниваем динамические типы.",
+      "Каждый case задаёт конкретный тип.",
+      "Неизвестные значения не вызывают panic.",
+      "switch v.(type) {\ncase nil: return \"nil\"\ncase string: return \"string\"\ncase int: return \"int\"\ncase bool: return \"bool\"\ndefault: return \"other\"\n}"
+    ],
+    "related": [
+      [
+        "typednil",
+        "Починить typed nil error"
+      ]
+    ],
+    "production": "Type switch полезен для ограниченных наборов входных форматов и адаптеров. Для доменной логики предпочитай типизированные контракты и не превращай всё в any без необходимости.",
+    "interview": "Чем отличается v.(T) от v.(type)?"
+  },
+  "advanced-errors-as": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "load user",
+          "ServiceCodeError{Code:404}"
+        ],
+        "err = wrapped",
+        "Типизированная ошибка находится внутри обёртки."
+      ],
+      [
+        "Целевая переменная",
+        [
+          "target: *ServiceCodeError",
+          "nil"
+        ],
+        "var target *ServiceCodeError",
+        "As нужен адрес переменной, в которую записать найденное значение."
+      ],
+      [
+        "Поиск",
+        [
+          "errors.As(err,&target) → true"
+        ],
+        "target → {Code:404}",
+        "As проходит цепочку или дерево ошибок."
+      ],
+      [
+        "Результат",
+        [
+          "404",
+          "true"
+        ],
+        "target.Code,true",
+        "Читаем поле только у ненулевого указателя."
+      ]
+    ],
+    "steps": [
+      [
+        "Объявить целевой указатель",
+        "var target *ServiceCodeError",
+        "Тип переменной соответствует искомой ошибке."
+      ],
+      [
+        "Найти ошибку",
+        "if errors.As(err,&target)&&target!=nil {",
+        "Передаём адрес переменной; отдельно проверяем typed nil."
+      ],
+      [
+        "Вернуть код",
+        "return target.Code,true\n}",
+        "Извлекаем структурированное поле."
+      ],
+      [
+        "Обработать отсутствие",
+        "return 0,false",
+        "Не найденная ошибка не имеет кода."
+      ]
+    ],
+    "blocks": [
+      "Обработать отсутствие",
+      "Объявить целевой указатель",
+      "Найти ошибку",
+      "Вернуть код"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "errors.As(err,",
+        "after": "target)",
+        "options": [
+          "&",
+          "*",
+          ""
+        ],
+        "correct": 0,
+        "explain": "As должен записать найденное значение в target."
+      },
+      {
+        "before": "&& target ",
+        "after": " nil",
+        "options": [
+          "!=",
+          "==",
+          "<"
+        ],
+        "correct": 0,
+        "explain": "Защищаемся от typed nil."
+      }
+    ],
+    "partial": "package practice\n\ntype ServiceCodeError struct { Code int }\nfunc (e *ServiceCodeError) Error() string { return fmt.Sprintf(\"service code %d\",e.Code) }\n\nfunc ExtractServiceCode(err error) (int,bool) {\n\tvar target *ServiceCodeError\n\tif errors.As(err,&target)&&target!=nil {\n\t // TODO: верни код\n\t return 0,true\n\t}\n\treturn 0,false\n}\n",
+    "bug": "package practice\n\ntype ServiceCodeError struct { Code int }\nfunc (e *ServiceCodeError) Error() string { return fmt.Sprintf(\"service code %d\",e.Code) }\n\nfunc ExtractServiceCode(err error) (int,bool) {\n\ttarget,ok:=err.(*ServiceCodeError)\n\tif ok&&target!=nil {return target.Code,true}\n\treturn 0,false\n}\n",
+    "hints": [
+      "Найди в цепочке или дереве ошибок ненулевую *ServiceCodeError с помощью errors.As. Верни её Code,true, иначе 0,false. Если первое найденное совпадение содержит typed nil, верни 0,false. Не сравнивай текст ошибки.",
+      "Тип переменной соответствует искомой ошибке.",
+      "Передаём адрес переменной; отдельно проверяем typed nil.",
+      "Не найденная ошибка не имеет кода.",
+      "var target *ServiceCodeError\nif errors.As(err,&target)&&target!=nil { return target.Code,true }\nreturn 0,false"
+    ],
+    "related": [
+      [
+        "errors",
+        "Оборачивать ошибки сервиса"
+      ]
+    ],
+    "production": "Типизированные доменные ошибки могут хранить код, retryability или сведения о нарушенном ограничении. На границе API преобразуй их в публичный ответ, не раскрывая внутренние данные.",
+    "interview": "Почему для поиска *MyError в errors.As передают &target, где target имеет тип *MyError?"
   }
 };

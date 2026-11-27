@@ -718,3 +718,25 @@ func TestMaxWindowSum(t *testing.T) {
 func TestSummarizeEventStatuses(t *testing.T) {
  in:=[]string{" Active ","cancelled","ACTIVE"," ","Pending"};order,counts:=SummarizeEventStatuses(in);if !reflect.DeepEqual(order,[]string{"active","cancelled","pending"})||!reflect.DeepEqual(counts,map[string]int{"active":2,"cancelled":1,"pending":1}){t.Fatal(order,counts)};if !reflect.DeepEqual(in,[]string{" Active ","cancelled","ACTIVE"," ","Pending"}){t.Fatal("modified input")};order[0]="x";if in[0]!=" Active "{t.Fatal("alias")};for _,v:=range [][]string{nil,{"","\t","\u00a0"}}{order,counts:=SummarizeEventStatuses(v);if order==nil||counts==nil||len(order)!=0||len(counts)!=0{t.Fatal(order,counts)}};order,counts=SummarizeEventStatuses([]string{" Я ","я","A","a"});if !reflect.DeepEqual(order,[]string{"я","a"})||!reflect.DeepEqual(counts,map[string]int{"я":2,"a":2}){t.Fatal(order,counts)}
 }
+
+func TestServiceQuotaWithLimit(t *testing.T) {
+ q:=ServiceQuota{Limit:10};r:=q.WithLimit(20);if r.Limit!=20||q.Limit!=10{t.Fatal(q,r)};for _,n:=range []int{0,-1}{if got:=q.WithLimit(n);got!=q{t.Fatal(got)}};q.SetLimit(30);if q.Limit!=30{t.Fatal(q)}
+}
+
+func TestNewServiceProfile(t *testing.T) {
+ p:=NewServiceProfile("u1","Go",true);if p.ID!="u1"||p.Name!="Go"||!p.IsActive()||!p.ProfileMeta.Active{t.Fatal(p)};q:=NewServiceProfile("","",false);if q.ID!=""||q.Name!=""||q.IsActive(){t.Fatal(q)}
+}
+
+type gymNameRepo struct { name string; err error; calls int; id string }
+func (r *gymNameRepo) FindName(id string)(string,error){r.calls++;r.id=id;return r.name,r.err}
+func TestLoadUserName(t *testing.T) {
+ cause:=errors.New("missing");r:=&gymNameRepo{name:"Alice"};name,err:=LoadUserName(r,"42");if name!="Alice"||err!=nil||r.calls!=1||r.id!="42"{t.Fatal(name,err,r)};r=&gymNameRepo{name:"partial",err:cause};name,err=LoadUserName(r,"99");if name!=""||err==nil||err==cause||!errors.Is(err,cause)||r.calls!=1||r.id!="99"||!strings.Contains(err.Error(),"load user"){t.Fatal(name,err,r)}
+}
+
+func TestValueKind(t *testing.T) {
+ type UserID int;var p *int;for _,tc:=range []struct{v any;want string}{{nil,"nil"},{"hi","string"},{42,"int"},{true,"bool"},{UserID(42),"other"},{p,"other"},{[]int{1},"other"},{int64(2),"other"}}{if got:=ValueKind(tc.v);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestExtractServiceCode(t *testing.T) {
+ e:=&ServiceCodeError{Code:404};var nilErr *ServiceCodeError;for _,tc:=range []struct{err error;code int;ok bool}{{e,404,true},{fmt.Errorf("load: %w",e),404,true},{errors.Join(errors.New("other"),e),404,true},{&ServiceCodeError{Code:0},0,true},{errors.New("service code 404"),0,false},{nil,0,false},{nilErr,0,false}}{code,ok:=ExtractServiceCode(tc.err);if code!=tc.code||ok!=tc.ok{t.Fatal(code,ok,tc.code,tc.ok)}}
+}

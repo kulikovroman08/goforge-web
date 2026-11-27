@@ -310,3 +310,21 @@ func FirstUniqueRune(s string) (rune,bool) { return 0,false }
 func MaxWindowSum(values []int,k int) (int,bool) { return 0,false }
 
 func SummarizeEventStatuses(statuses []string) ([]string,map[string]int) { return nil,nil }
+
+type ServiceQuota struct { Limit int }
+func (q *ServiceQuota) SetLimit(limit int) { q.Limit=limit }
+func (q ServiceQuota) WithLimit(limit int) ServiceQuota { return q }
+
+type ProfileMeta struct { ID string; Active bool }
+func (m ProfileMeta) IsActive() bool { return m.Active }
+type ServiceProfile struct { ProfileMeta; Name string }
+func NewServiceProfile(id,name string,active bool) ServiceProfile { return ServiceProfile{} }
+
+type NameRepository interface { FindName(id string) (string,error) }
+func LoadUserName(repo NameRepository,id string) (string,error) { return "",nil }
+
+func ValueKind(v any) string { return "other" }
+
+type ServiceCodeError struct { Code int }
+func (e *ServiceCodeError) Error() string { return fmt.Sprintf("service code %d",e.Code) }
+func ExtractServiceCode(err error) (int,bool) { return 0,false }
