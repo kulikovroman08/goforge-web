@@ -366,3 +366,9 @@ func FilterValues[T any](values []T, keep func(T) bool) []T { return nil }
 func SumSigned[T ~int | ~int64](values []T) T { var total T; return total }
 
 func CloneNamedSlice[S ~[]E, E any](values S) S { return nil }
+
+func GroupValues[T any, K comparable](values []T, key func(T) K) map[K][]T { return nil }
+
+func TransformValues[T any, R any](values []T, convert func(T) R) []R { return nil }
+
+func CommonDistinct[T comparable](first, second []T) []T { return nil }

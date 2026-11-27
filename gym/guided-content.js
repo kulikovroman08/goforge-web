@@ -11091,5 +11091,359 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "Подходит для копирования доменных коллекций перед изменением. В стандартной библиотеке есть slices.Clone; это упражнение изучает смысл сигнатуры, а не предлагает заменять библиотеку.",
     "interview": "Почему возвращать S, а не []E?"
+  },
+  "advanced-generic-group": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "values=[go,api,db]",
+          "key=len"
+        ],
+        "out={}",
+        "K=int, T=string."
+      ],
+      [
+        "Первый элемент",
+        [
+          "k=2",
+          "out={2:[go]}"
+        ],
+        "append(out[2],go)",
+        "Создаём первую группу."
+      ],
+      [
+        "Второй элемент",
+        [
+          "k=3",
+          "out={2:[go],3:[api]}"
+        ],
+        "append(out[3],api)",
+        "Новая группа."
+      ],
+      [
+        "Третий элемент",
+        [
+          "k=2",
+          "out={2:[go,db],3:[api]}"
+        ],
+        "append(out[2],db)",
+        "Сохраняем оба элемента."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать map",
+        "out := make(map[K][]T)",
+        "Ключ K сравним, значения — срезы T."
+      ],
+      [
+        "Получить ключ",
+        "k := key(v)",
+        "Один вызов для каждого элемента."
+      ],
+      [
+        "Добавить в группу",
+        "out[k] = append(out[k], v)",
+        "Отсутствующая группа читается как nil срез, append работает и с nil."
+      ],
+      [
+        "Вернуть группы",
+        "return out",
+        "Порядок внутри группы сохранён."
+      ]
+    ],
+    "blocks": [
+      "Вернуть группы",
+      "Добавить в группу",
+      "Получить ключ",
+      "Создать map"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out[k] = ",
+        "after": "",
+        "options": [
+          "[]T{v}",
+          "append(out[k],v)",
+          "nil"
+        ],
+        "correct": 1,
+        "explain": "Добавляем к существующей группе."
+      },
+      {
+        "before": "k := ",
+        "after": "",
+        "options": [
+          "v",
+          "key",
+          "key(v)"
+        ],
+        "correct": 2,
+        "explain": "Вычисляем ключ."
+      }
+    ],
+    "partial": "package practice\n\nfunc GroupValues[T any, K comparable](values []T, key func(T) K) map[K][]T {\n\tout := make(map[K][]T)\n\tfor _,v := range values { _ = key(v) }\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc GroupValues[T any, K comparable](values []T, key func(T) K) map[K][]T {\n\tout := make(map[K][]T)\n\tfor _,v := range values { k:=key(v); out[k]=[]T{v} }\n\treturn out\n}\n",
+    "hints": [
+      "Тип элемента и тип ключа могут отличаться.",
+      "Инициализируй map[K][]T.",
+      "В цикле вычисли k := key(v) один раз.",
+      "Добавляй v в существующую группу через append, не заменяй её.",
+      "out:=make(map[K][]T); for _,v:=range values {k:=key(v);out[k]=append(out[k],v)};return out"
+    ],
+    "related": [
+      [
+        "core-group-length",
+        "Группировка строк"
+      ],
+      [
+        "advanced-generic-filter",
+        "Generic предикат"
+      ]
+    ],
+    "production": "Группировка событий по tenant ID или DTO по статусу помогает формировать пакетные операции. Порядок обхода самих ключей map не определён; для стабильного вывода сортируй ключи отдельно.",
+    "interview": "Почему T any, а K comparable?"
+  },
+  "advanced-generic-map": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "values=[7,12]",
+          "T=int",
+          "R=string"
+        ],
+        "convert=strconv.Itoa",
+        "Типы различаются."
+      ],
+      [
+        "Выделение",
+        [
+          "out=[\"\",\"\"]"
+        ],
+        "make([]R,2)",
+        "Длина уже равна двум."
+      ],
+      [
+        "Первый вызов",
+        [
+          "out=[\"7\",\"\"]"
+        ],
+        "out[0]=convert(7)",
+        "Записываем по индексу."
+      ],
+      [
+        "Результат",
+        [
+          "out=[\"7\",\"12\"]"
+        ],
+        "return out",
+        "Исходный срез не меняется."
+      ]
+    ],
+    "steps": [
+      [
+        "Выделить []R",
+        "out := make([]R, len(values))",
+        "Результат имеет другой тип элементов."
+      ],
+      [
+        "Перебрать с индексом",
+        "for i,v := range values",
+        "Сохраняем соответствие индексов."
+      ],
+      [
+        "Преобразовать",
+        "out[i] = convert(v)",
+        "Один вызов на элемент."
+      ],
+      [
+        "Вернуть",
+        "return out",
+        "Длина и порядок сохраняются."
+      ]
+    ],
+    "blocks": [
+      "Вернуть",
+      "Преобразовать",
+      "Перебрать с индексом",
+      "Выделить []R"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out := make(",
+        "after": ",len(values))",
+        "options": [
+          "[]R",
+          "[]T",
+          "[]any"
+        ],
+        "correct": 0,
+        "explain": "Выходной тип R."
+      },
+      {
+        "before": "out[i] = ",
+        "after": "",
+        "options": [
+          "v",
+          "convert(v)",
+          "nil"
+        ],
+        "correct": 1,
+        "explain": "Преобразуем элемент."
+      }
+    ],
+    "partial": "package practice\n\nfunc TransformValues[T any, R any](values []T, convert func(T) R) []R {\n\tout := make([]R,len(values))\n\tif len(values)>0 {out[0]=convert(values[0])}\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc TransformValues[T any, R any](values []T, convert func(T) R) []R {\n\tout := make([]R,0,len(values))\n\tfor i:=len(values)-1;i>=0;i-- {out=append(out,convert(values[i]))}\n\treturn out\n}\n",
+    "hints": [
+      "Вход и выход могут иметь разные типы.",
+      "Выдели []R длины len(values).",
+      "Используй range с индексом.",
+      "Запиши convert(v) в out[i], не append поверх готовой длины.",
+      "out:=make([]R,len(values));for i,v:=range values {out[i]=convert(v)};return out"
+    ],
+    "related": [
+      [
+        "advanced-generic-filter",
+        "Универсальная фильтрация"
+      ],
+      [
+        "advanced-generic-group",
+        "Универсальная группировка"
+      ]
+    ],
+    "production": "Преобразование доменных моделей в DTO можно выразить обычным циклом или generic helper, если это повышает читаемость. Сложные преобразования с ошибками требуют отдельного контракта.",
+    "interview": "Чем TransformValues отличается от FilterValues?"
+  },
+  "advanced-generic-set": {
+    "frames": [
+      [
+        "Подготовка",
+        [
+          "first=[b,a,b,c]",
+          "second=[a,b]"
+        ],
+        "remaining={a,b}",
+        "Множество второго среза."
+      ],
+      [
+        "Первое совпадение",
+        [
+          "out=[b]",
+          "remaining={a}"
+        ],
+        "delete(remaining,b)",
+        "b больше не выдаём."
+      ],
+      [
+        "Второе совпадение",
+        [
+          "out=[b,a]",
+          "remaining={}"
+        ],
+        "delete(remaining,a)",
+        "a добавлено."
+      ],
+      [
+        "Остальные",
+        [
+          "out=[b,a]"
+        ],
+        "b и c пропущены",
+        "Порядок и уникальность сохранены."
+      ]
+    ],
+    "steps": [
+      [
+        "Построить множество",
+        "remaining := make(map[T]struct{},len(second))",
+        "Запоминаем присутствие элементов второго среза."
+      ],
+      [
+        "Перебрать второй",
+        "for _,v:=range second {remaining[v]=struct{}{}}",
+        "Дубликаты схлопываются по ключу."
+      ],
+      [
+        "Найти совпадения",
+        "if _,ok:=remaining[v];ok {out=append(out,v);delete(remaining,v)}",
+        "Удаление исключает повторную выдачу."
+      ],
+      [
+        "Вернуть результат",
+        "return out",
+        "Порядок задан первым срезом."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Найти совпадения",
+      "Перебрать второй",
+      "Построить множество"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "remaining := make(",
+        "after": ",len(second))",
+        "options": [
+          "[]T",
+          "map[T]struct{}",
+          "map[any]T"
+        ],
+        "correct": 1,
+        "explain": "Множество сравнимых ключей."
+      },
+      {
+        "before": "",
+        "after": "(remaining,v)",
+        "options": [
+          "append",
+          "copy",
+          "delete"
+        ],
+        "correct": 2,
+        "explain": "Исключаем повтор."
+      }
+    ],
+    "partial": "package practice\n\nfunc CommonDistinct[T comparable](first, second []T) []T {\n\tremaining:=make(map[T]struct{})\n\tfor _,v:=range second {remaining[v]=struct{}{}}\n\tout:=make([]T,0)\n\tfor _,v:=range first {if _,ok:=remaining[v];ok {_=v}}\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc CommonDistinct[T comparable](first, second []T) []T {\n\tremaining:=make(map[T]struct{})\n\tfor _,v:=range second {remaining[v]=struct{}{}}\n\tout:=make([]T,0)\n\tfor _,v:=range first {if _,ok:=remaining[v];ok {out=append(out,v)}}\n\treturn out\n}\n",
+    "hints": [
+      "Нужны проверка присутствия и исключение повторов.",
+      "Создай map[T]struct{} из второго среза.",
+      "Перебирай первый срез, не map.",
+      "После добавления удали ключ из множества, чтобы не вернуть его повторно.",
+      "remaining:=make(map[T]struct{},len(second));for _,v:=range second{remaining[v]=struct{}{}};out:=make([]T,0);for _,v:=range first{if _,ok:=remaining[v];ok{out=append(out,v);delete(remaining,v)}};return out"
+    ],
+    "related": [
+      [
+        "generic-unique",
+        "Дедупликация"
+      ],
+      [
+        "advanced-generic-group",
+        "Ключи generic map"
+      ]
+    ],
+    "production": "Пересечение списков разрешённых идентификаторов удобно при подготовке выборок. Само по себе упражнение не заменяет полноценную серверную авторизацию и проверки актуальности прав.",
+    "interview": "Почему comparable не гарантирует отсутствие panic для любого интерфейсного аргумента?"
   }
 };

@@ -839,3 +839,31 @@ func TestCloneNamedSlice(t *testing.T) {
  if v:=CloneNamedSlice(Labels{});v==nil||len(v)!=0{t.Fatal(v)}
  n:=7;ptrs:=[]*int{&n};cp:=CloneNamedSlice(ptrs);if cp[0]!=ptrs[0]{t.Fatal("not shallow")};cp[0]=nil;if ptrs[0]==nil{t.Fatal("alias")}
 }
+
+func TestGroupValues(t *testing.T) {
+ in:=[]string{"go","api","db","go"};var calls []string
+ got:=GroupValues(in,func(v string)int{calls=append(calls,v);return len(v)})
+ if !reflect.DeepEqual(got,map[int][]string{2:{"go","db","go"},3:{"api"}})||!reflect.DeepEqual(calls,in){t.Fatal(got,calls)}
+ got[2][0]="changed";if in[0]!="go"{t.Fatal("alias")}
+ if v:=GroupValues([]string(nil),(func(string)int)(nil));v==nil||len(v)!=0{t.Fatal(v)}
+ type item struct{ ID int; Status string }
+ if v:=GroupValues([]item{{1,"ok"},{2,"ok"},{3,"bad"}},func(x item)string{return x.Status});len(v["ok"])!=2||v["ok"][1].ID!=2{t.Fatal(v)}
+}
+
+func TestTransformValues(t *testing.T) {
+ in:=[]int{7,12,-1};var calls []int
+ got:=TransformValues(in,func(v int)string{calls=append(calls,v);return fmt.Sprint(v)})
+ if !reflect.DeepEqual(got,[]string{"7","12","-1"})||!reflect.DeepEqual(calls,in)||!reflect.DeepEqual(in,[]int{7,12,-1}){t.Fatal(got,calls,in)}
+ if v:=TransformValues([]int(nil),(func(int)string)(nil));v==nil||len(v)!=0{t.Fatal(v)}
+ same:=TransformValues(in,func(v int)int{return v});same[0]=99;if in[0]!=7{t.Fatal("alias")}
+}
+
+func TestCommonDistinct(t *testing.T) {
+ first:=[]string{"b","a","b","c"};second:=[]string{"a","b","b"}
+ got:=CommonDistinct(first,second)
+ if !reflect.DeepEqual(got,[]string{"b","a"})||!reflect.DeepEqual(first,[]string{"b","a","b","c"})||!reflect.DeepEqual(second,[]string{"a","b","b"}){t.Fatal(got,first,second)}
+ got[0]="x";if first[0]!="b"{t.Fatal("alias")}
+ if v:=CommonDistinct([]int(nil),[]int{1});v==nil||len(v)!=0{t.Fatal(v)}
+ type Key struct{ID int}
+ if v:=CommonDistinct([]Key{{2},{1},{2}},[]Key{{1},{2}});!reflect.DeepEqual(v,[]Key{{2},{1}}){t.Fatal(v)}
+}
