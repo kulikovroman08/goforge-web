@@ -763,3 +763,13 @@ func TestLabelErrorStatus(t *testing.T) {
 func TestReadStringValue(t *testing.T) {
  type Label string;type Alias=string;var p *string;for _,tc:=range []struct{v any;s string;ok bool}{{"Go","Go",true},{"","",true},{Alias("alias"),"alias",true},{42,"",false},{nil,"",false},{p,"",false},{Label("Go"),"",false},{[]byte("Go"),"",false}}{s,ok:=ReadStringValue(tc.v);if s!=tc.s||ok!=tc.ok{t.Fatal(tc,s,ok)}}
 }
+
+func TestCombineOperationErrors(t *testing.T) {
+ operation:=errors.New("write failed");cleanup:=&ServiceCodeError{Code:42}
+ if CombineOperationErrors(nil,nil)!=nil { t.Fatal("expected nil") }
+ if CombineOperationErrors(operation,nil)!=operation || CombineOperationErrors(nil,cleanup)!=cleanup { t.Fatal("single cause identity") }
+ got:=CombineOperationErrors(operation,cleanup)
+ var typed *ServiceCodeError
+ if !errors.Is(got,operation)||!errors.Is(got,cleanup)||!errors.As(got,&typed)||typed!=cleanup { t.Fatal("lost cause",got) }
+ joined,ok:=got.(interface{Unwrap() []error});if !ok { t.Fatal("expected multiple causes") }; causes:=joined.Unwrap();if len(causes)!=2||causes[0]!=operation||causes[1]!=cleanup { t.Fatal("cause order",causes) }
+}

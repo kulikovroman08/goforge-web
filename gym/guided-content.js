@@ -1,4 +1,4 @@
-window.GOFORGE_GUIDES = {
+window.GOFORGE_GUIDES ={
   "dedupe": {
     "example": [
       "101",
@@ -10152,5 +10152,117 @@ window.GOFORGE_GUIDES = {
     ],
     "production": "Comma-ok полезен в адаптерах динамических данных. Для JSON и доменных объектов предпочтительнее заранее определённая структура и явная валидация, а не неявное преобразование через fmt.Sprint.",
     "interview": "Чем type assertion отличается от преобразования типа?"
+  },
+  "advanced-join-errors": {
+    "frames": [
+      [
+        "Обе отсутствуют",
+        [
+          "operation=nil",
+          "cleanup=nil"
+        ],
+        "nil",
+        "Нет ошибки."
+      ],
+      [
+        "Только операция",
+        [
+          "operation=write failed",
+          "cleanup=nil"
+        ],
+        "operation",
+        "Сохраняем исходный объект."
+      ],
+      [
+        "Только очистка",
+        [
+          "operation=nil",
+          "cleanup=close failed"
+        ],
+        "cleanup",
+        "Сохраняем исходный объект."
+      ],
+      [
+        "Обе ошибки",
+        [
+          "operation=write failed",
+          "cleanup=close failed"
+        ],
+        "errors.Join(operation,cleanup)",
+        "Дерево содержит обе причины."
+      ]
+    ],
+    "steps": [
+      [
+        "Нет ошибки операции",
+        "if operation == nil { return cleanup }",
+        "Сохраняем ошибку очистки или nil."
+      ],
+      [
+        "Нет ошибки очистки",
+        "if cleanup == nil { return operation }",
+        "Возвращаем исходную ошибку операции."
+      ],
+      [
+        "Есть обе причины",
+        "return errors.Join(operation, cleanup)",
+        "Обе причины остаются доступны через Is и As."
+      ]
+    ],
+    "blocks": [
+      "Есть обе причины",
+      "Нет ошибки операции",
+      "Нет ошибки очистки"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if operation == nil { return ",
+        "after": " }",
+        "options": [
+          "cleanup",
+          "operation",
+          "errors.New(\"cleanup\")"
+        ],
+        "correct": 0,
+        "explain": "Одиночную причину сохраняем без обёртки."
+      },
+      {
+        "before": "return ",
+        "after": "",
+        "options": [
+          "errors.Join(operation, cleanup)",
+          "cleanup",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Объединяем причины в заданном порядке."
+      }
+    ],
+    "partial": "package practice\n\nfunc CombineOperationErrors(operation, cleanup error) error {\n\tif operation == nil { return cleanup }\n\treturn operation\n}\n",
+    "bug": "package practice\n\nfunc CombineOperationErrors(operation, cleanup error) error {\n\tif cleanup != nil { return cleanup }\n\treturn operation\n}\n",
+    "hints": [
+      "Сначала разбери три случая: нет основной ошибки, нет ошибки очистки, есть обе.",
+      "При operation == nil верни cleanup, даже если cleanup тоже nil.",
+      "При cleanup == nil верни operation без дополнительной обёртки.",
+      "Когда обе ошибки ненулевые, используй errors.Join вместо выбора одной.",
+      "if operation == nil { return cleanup }\nif cleanup == nil { return operation }\nreturn errors.Join(operation, cleanup)"
+    ],
+    "related": [
+      [
+        "defer-cleanup",
+        "Освобождение ресурсов"
+      ],
+      [
+        "advanced-domain-error",
+        "Типизированная ошибка"
+      ]
+    ],
+    "production": "При записи файла или обработке транзакции ошибка очистки не должна скрывать исходную ошибку. В реальном сервисе правила логирования, повторов и ответа клиенту определяются отдельно.",
+    "interview": "Почему errors.Unwrap не возвращает первую причину errors.Join?"
   }
 };

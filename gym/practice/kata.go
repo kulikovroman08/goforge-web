@@ -350,3 +350,5 @@ var ErrLabelConflict = errors.New("label conflict")
 func LabelErrorStatus(err error) int { return 500 }
 
 func ReadStringValue(value any) (string,bool) { return "",false }
+
+func CombineOperationErrors(operation, cleanup error) error { return nil }
