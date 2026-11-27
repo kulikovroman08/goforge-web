@@ -718,3 +718,261 @@ func TestMaxWindowSum(t *testing.T) {
 func TestSummarizeEventStatuses(t *testing.T) {
  in:=[]string{" Active ","cancelled","ACTIVE"," ","Pending"};order,counts:=SummarizeEventStatuses(in);if !reflect.DeepEqual(order,[]string{"active","cancelled","pending"})||!reflect.DeepEqual(counts,map[string]int{"active":2,"cancelled":1,"pending":1}){t.Fatal(order,counts)};if !reflect.DeepEqual(in,[]string{" Active ","cancelled","ACTIVE"," ","Pending"}){t.Fatal("modified input")};order[0]="x";if in[0]!=" Active "{t.Fatal("alias")};for _,v:=range [][]string{nil,{"","\t","\u00a0"}}{order,counts:=SummarizeEventStatuses(v);if order==nil||counts==nil||len(order)!=0||len(counts)!=0{t.Fatal(order,counts)}};order,counts=SummarizeEventStatuses([]string{" Я ","я","A","a"});if !reflect.DeepEqual(order,[]string{"я","a"})||!reflect.DeepEqual(counts,map[string]int{"я":2,"a":2}){t.Fatal(order,counts)}
 }
+
+func TestServiceQuotaWithLimit(t *testing.T) {
+ q:=ServiceQuota{Limit:10};r:=q.WithLimit(20);if r.Limit!=20||q.Limit!=10{t.Fatal(q,r)};for _,n:=range []int{0,-1}{if got:=q.WithLimit(n);got!=q{t.Fatal(got)}};q.SetLimit(30);if q.Limit!=30{t.Fatal(q)}
+}
+
+func TestNewServiceProfile(t *testing.T) {
+ p:=NewServiceProfile("u1","Go",true);if p.ID!="u1"||p.Name!="Go"||!p.IsActive()||!p.ProfileMeta.Active{t.Fatal(p)};q:=NewServiceProfile("","",false);if q.ID!=""||q.Name!=""||q.IsActive(){t.Fatal(q)}
+}
+
+type gymNameRepo struct { name string; err error; calls int; id string }
+func (r *gymNameRepo) FindName(id string)(string,error){r.calls++;r.id=id;return r.name,r.err}
+func TestLoadUserName(t *testing.T) {
+ cause:=errors.New("missing");r:=&gymNameRepo{name:"Alice"};name,err:=LoadUserName(r,"42");if name!="Alice"||err!=nil||r.calls!=1||r.id!="42"{t.Fatal(name,err,r)};r=&gymNameRepo{name:"partial",err:cause};name,err=LoadUserName(r,"99");if name!=""||err==nil||err==cause||!errors.Is(err,cause)||r.calls!=1||r.id!="99"||!strings.Contains(err.Error(),"load user"){t.Fatal(name,err,r)}
+}
+
+func TestValueKind(t *testing.T) {
+ type UserID int;var p *int;for _,tc:=range []struct{v any;want string}{{nil,"nil"},{"hi","string"},{42,"int"},{true,"bool"},{UserID(42),"other"},{p,"other"},{[]int{1},"other"},{int64(2),"other"}}{if got:=ValueKind(tc.v);got!=tc.want{t.Fatal(tc,got)}}
+}
+
+func TestExtractServiceCode(t *testing.T) {
+ e:=&ServiceCodeError{Code:404};var nilErr *ServiceCodeError;for _,tc:=range []struct{err error;code int;ok bool}{{e,404,true},{fmt.Errorf("load: %w",e),404,true},{errors.Join(errors.New("other"),e),404,true},{&ServiceCodeError{Code:0},0,true},{errors.New("service code 404"),0,false},{nil,0,false},{nilErr,0,false}}{code,ok:=ExtractServiceCode(tc.err);if code!=tc.code||ok!=tc.ok{t.Fatal(code,ok,tc.code,tc.ok)}}
+}
+
+func TestResetIfNeeded(t *testing.T) {
+ c:=&ResetCounter{Count:5};if !ResetIfNeeded(c)||c.Count!=0{t.Fatal(c)};if ResetIfNeeded(c)||ResetIfNeeded(nil){t.Fatal("unexpected reset")};c.Count=-2;if !ResetIfNeeded(c)||c.Count!=0{t.Fatal(c)}
+}
+
+type gymLabelStore struct { value,written string; readErr,writeErr error; reads,writes int }
+func (s *gymLabelStore) ReadLabel()(string,error){s.reads++;return s.value,s.readErr}
+func (s *gymLabelStore) WriteLabel(v string)error{s.writes++;s.written=v;return s.writeErr}
+func TestCopyLabel(t *testing.T) {
+ cause:=errors.New("failed");for _,tc:=range []struct{value string;readErr,writeErr,want error;writes int}{{"go",nil,nil,nil,1},{"",nil,nil,nil,1},{"partial",cause,nil,cause,0},{"go",nil,cause,cause,1}}{s:=&gymLabelStore{value:tc.value,readErr:tc.readErr,writeErr:tc.writeErr};if got:=CopyLabel(s);got!=tc.want||s.reads!=1||s.writes!=tc.writes||(s.writes==1&&s.written!=tc.value){t.Fatal(got,s,tc)}}
+}
+
+func TestWrapOperation(t *testing.T) {
+ if WrapOperation("load",nil)!=nil{t.Fatal("nil")};cause:=errors.New("timeout");got:=WrapOperation("load",cause);var target *OperationError;if !errors.As(got,&target)||target==nil||target.Op!="load"||target.Cause!=cause||!errors.Is(got,cause)||got.Error()!="load: timeout"{t.Fatal(got,target)}
+}
+
+func TestLabelErrorStatus(t *testing.T) {
+ for _,tc:=range []struct{err error;want int}{{nil,200},{ErrLabelMissing,404},{fmt.Errorf("load: %w",ErrLabelMissing),404},{ErrLabelConflict,409},{fmt.Errorf("save: %w",ErrLabelConflict),409},{errors.Join(ErrLabelConflict,ErrLabelMissing),404},{errors.New("label missing"),500},{errors.New("unknown"),500}}{if got:=LabelErrorStatus(tc.err);got!=tc.want{t.Fatal(tc.err,got,tc.want)}}
+}
+
+func TestReadStringValue(t *testing.T) {
+ type Label string;type Alias=string;var p *string;for _,tc:=range []struct{v any;s string;ok bool}{{"Go","Go",true},{"","",true},{Alias("alias"),"alias",true},{42,"",false},{nil,"",false},{p,"",false},{Label("Go"),"",false},{[]byte("Go"),"",false}}{s,ok:=ReadStringValue(tc.v);if s!=tc.s||ok!=tc.ok{t.Fatal(tc,s,ok)}}
+}
+
+func TestCombineOperationErrors(t *testing.T) {
+ operation:=errors.New("write failed");cleanup:=&ServiceCodeError{Code:42}
+ if CombineOperationErrors(nil,nil)!=nil { t.Fatal("expected nil") }
+ if CombineOperationErrors(operation,nil)!=operation || CombineOperationErrors(nil,cleanup)!=cleanup { t.Fatal("single cause identity") }
+ got:=CombineOperationErrors(operation,cleanup)
+ var typed *ServiceCodeError
+ if !errors.Is(got,operation)||!errors.Is(got,cleanup)||!errors.As(got,&typed)||typed!=cleanup { t.Fatal("lost cause",got) }
+ joined,ok:=got.(interface{Unwrap() []error});if !ok { t.Fatal("expected multiple causes") }; causes:=joined.Unwrap();if len(causes)!=2||causes[0]!=operation||causes[1]!=cleanup { t.Fatal("cause order",causes) }
+}
+
+func TestDeferredReleaseOrder(t *testing.T) {
+ for _, tc := range []struct{ in, want []string }{
+  {[]string{"A","B","C"}, []string{"C","B","A"}},
+  {[]string{"A","A"}, []string{"A","A"}},
+  {nil, []string{}},
+  {[]string{}, []string{}},
+ } {
+  before := append([]string(nil), tc.in...)
+  got := DeferredReleaseOrder(tc.in)
+  if !reflect.DeepEqual(got, tc.want) { t.Fatal(tc.in, got, tc.want) }
+  if len(tc.in)>0 && !reflect.DeepEqual(tc.in,before) { t.Fatal("input changed") }
+ }
+}
+
+func TestDeferredStatusTrace(t *testing.T) {
+ for _, tc := range []struct{ initial, final string }{{"pending","done"},{"A","A"},{"","done"},{"start",""},{"",""}} {
+  got := DeferredStatusTrace(tc.initial,tc.final)
+  if !reflect.DeepEqual(got,[]string{tc.initial,tc.final}) { t.Fatal(tc,got) }
+ }
+}
+
+func TestPanicUnwindTrace(t *testing.T) {
+ for i:=0;i<2;i++ { if got:=PanicUnwindTrace(); !reflect.DeepEqual(got,[]string{"inner","outer","recovered"}) { t.Fatal(got) } }
+}
+
+func TestRunProtectedWork(t *testing.T) {
+ cause:=errors.New("failed")
+ calls:=0
+ if got:=RunProtectedWork(func()error{calls++;return nil});got!=nil||calls!=1{t.Fatal(got,calls)}
+ if got:=RunProtectedWork(func()error{calls++;return cause});got!=cause||calls!=2{t.Fatal(got,calls)}
+ if got:=RunProtectedWork(func()error{calls++;panic("boom")});got==nil||got.Error()!="work panic: boom"||calls!=3{t.Fatal(got,calls)}
+ if got:=RunProtectedWork(func()error{calls++;panic(cause)});!errors.Is(got,cause)||calls!=4{t.Fatal(got,calls)}
+ if got:=RunProtectedWork(func()error{panic(42)});got==nil||got.Error()!="work panic: 42"{t.Fatal(got)}
+ if got:=RunProtectedWork(nil);got==nil{t.Fatal("nil callback panic lost")}
+ // The isolated CI runner uses GO111MODULE=off, which can select legacy
+ // panic(nil) behavior even on Go 1.23. Test the documented modern semantics.
+ t.Run("modern panic nil",func(t *testing.T){
+  t.Setenv("GODEBUG","panicnil=0")
+  if got:=RunProtectedWork(func()error{panic(nil)});got==nil{t.Fatal("panic(nil) lost")}
+ })
+}
+
+func TestFilterValues(t *testing.T) {
+ in:=[]int{3,2,4,1}; var calls []int
+ got:=FilterValues(in,func(v int)bool{calls=append(calls,v);return v%2==0})
+ if !reflect.DeepEqual(got,[]int{2,4})||!reflect.DeepEqual(calls,[]int{3,2,4,1})||!reflect.DeepEqual(in,[]int{3,2,4,1}){t.Fatal(got,calls,in)}
+ got[0]=99;if in[1]!=2{t.Fatal("alias")}
+ if v:=FilterValues([]string(nil),nil);v==nil||len(v)!=0{t.Fatal(v)}
+ if v:=FilterValues([][]int{{1},{},{2,3}},func(x []int)bool{return len(x)>1});!reflect.DeepEqual(v,[][]int{{2,3}}){t.Fatal(v)}
+ if v:=FilterValues([]int{1},func(int)bool{return false});v==nil||len(v)!=0{t.Fatal(v)}
+}
+
+func TestSumSigned(t *testing.T) {
+ type Quantity int64
+ type Count int
+ if got:=SumSigned([]int{5,-2,4});got!=7{t.Fatal(got)}
+ if got:=SumSigned([]int64{-5,2});got!=-3{t.Fatal(got)}
+ if got:=SumSigned([]Quantity{5,-2});reflect.TypeOf(got)!=reflect.TypeOf(Quantity(0))||got!=3{t.Fatal(got)}
+ if got:=SumSigned([]Count{-2,-3});got!=-5{t.Fatal(got)}
+ if got:=SumSigned([]Quantity(nil));got!=0{t.Fatal(got)}
+}
+
+func TestCloneNamedSlice(t *testing.T) {
+ type Labels []string
+ in:=Labels{"go","api"};got:=CloneNamedSlice(in)
+ if reflect.TypeOf(got)!=reflect.TypeOf(in)||!reflect.DeepEqual(got,in){t.Fatal(got)}
+ got[0]="changed";if in[0]!="go"{t.Fatal("alias")}
+ if v:=CloneNamedSlice(Labels(nil));v!=nil{t.Fatal(v)}
+ if v:=CloneNamedSlice(Labels{});v==nil||len(v)!=0{t.Fatal(v)}
+ n:=7;ptrs:=[]*int{&n};cp:=CloneNamedSlice(ptrs);if cp[0]!=ptrs[0]{t.Fatal("not shallow")};cp[0]=nil;if ptrs[0]==nil{t.Fatal("alias")}
+}
+
+func TestGroupValues(t *testing.T) {
+ in:=[]string{"go","api","db","go"};var calls []string
+ got:=GroupValues(in,func(v string)int{calls=append(calls,v);return len(v)})
+ if !reflect.DeepEqual(got,map[int][]string{2:{"go","db","go"},3:{"api"}})||!reflect.DeepEqual(calls,in){t.Fatal(got,calls)}
+ got[2][0]="changed";if in[0]!="go"{t.Fatal("alias")}
+ if v:=GroupValues([]string(nil),(func(string)int)(nil));v==nil||len(v)!=0{t.Fatal(v)}
+ type item struct{ ID int; Status string }
+ if v:=GroupValues([]item{{1,"ok"},{2,"ok"},{3,"bad"}},func(x item)string{return x.Status});len(v["ok"])!=2||v["ok"][1].ID!=2{t.Fatal(v)}
+}
+
+func TestTransformValues(t *testing.T) {
+ in:=[]int{7,12,-1};var calls []int
+ got:=TransformValues(in,func(v int)string{calls=append(calls,v);return fmt.Sprint(v)})
+ if !reflect.DeepEqual(got,[]string{"7","12","-1"})||!reflect.DeepEqual(calls,in)||!reflect.DeepEqual(in,[]int{7,12,-1}){t.Fatal(got,calls,in)}
+ if v:=TransformValues([]int(nil),(func(int)string)(nil));v==nil||len(v)!=0{t.Fatal(v)}
+ same:=TransformValues(in,func(v int)int{return v});same[0]=99;if in[0]!=7{t.Fatal("alias")}
+}
+
+func TestCommonDistinct(t *testing.T) {
+ first:=[]string{"b","a","b","c"};second:=[]string{"a","b","b"}
+ got:=CommonDistinct(first,second)
+ if !reflect.DeepEqual(got,[]string{"b","a"})||!reflect.DeepEqual(first,[]string{"b","a","b","c"})||!reflect.DeepEqual(second,[]string{"a","b","b"}){t.Fatal(got,first,second)}
+ got[0]="x";if first[0]!="b"{t.Fatal("alias")}
+ if v:=CommonDistinct([]int(nil),[]int{1});v==nil||len(v)!=0{t.Fatal(v)}
+ type Key struct{ID int}
+ if v:=CommonDistinct([]Key{{2},{1},{2}},[]Key{{1},{2}});!reflect.DeepEqual(v,[]Key{{2},{1}}){t.Fatal(v)}
+}
+
+func TestDeliveryDependency(t *testing.T) {
+ cause:=errors.New("offline")
+ var messages []string
+ s:=NewDeliveryService(DeliverySenderFunc(func(text string)error{messages=append(messages,text);return cause}))
+ if s==nil{t.Fatal("nil service")}
+ if err:=s.Deliver("hello");err!=cause{t.Fatal(err)}
+ if err:=s.Deliver("");err!=cause{t.Fatal(err)}
+ if !reflect.DeepEqual(messages,[]string{"hello",""}){t.Fatal(messages)}
+ calls:=0
+ other:=NewDeliveryService(DeliverySenderFunc(func(text string)error{calls++;if text!="other"{t.Fatal(text)};return nil}))
+ if other==nil||other.Deliver("other")!=nil||calls!=1||len(messages)!=2{t.Fatal("dependency not isolated")}
+}
+
+func TestAdaptEventHandler(t *testing.T) {
+ cause:=errors.New("callback failed");var received []string
+ h:=AdaptEventHandler(func(event string)error{received=append(received,event);return cause})
+ if h==nil||len(received)!=0{t.Fatal("adapter must not call callback")}
+ if err:=h.Handle("created");err!=cause{t.Fatal(err)}
+ if err:=h.Handle("");err!=cause{t.Fatal(err)}
+ if !reflect.DeepEqual(received,[]string{"created",""}){t.Fatal(received)}
+ var direct EventHandler=EventHandlerFunc(func(string)error{return nil})
+ if direct.Handle("ok")!=nil{t.Fatal("unexpected error")}
+}
+
+func TestSafeValueEqual(t *testing.T) {
+ type Box struct{ V any }
+ var p *int
+ for _,tc:=range []struct{a,b any; equal,ok bool}{
+ {nil,nil,true,true},{nil,[]int{},false,true},{7,7,true,true},{7,8,false,true},
+ {7,int64(7),false,true},{[]int{1},"1",false,true},{[]int{1},[]int{1},false,false},
+ {map[string]int{},map[string]int{},false,false},{func(){},func(){},false,false},
+ {Box{[]int{1}},Box{[]int{1}},false,false},{Box{7},Box{7},true,true},
+ {Box{7},Box{[]int{1}},false,false},{p,nil,false,true},{p,p,true,true},
+ }{equal,ok:=SafeValueEqual(tc.a,tc.b);if equal!=tc.equal||ok!=tc.ok{t.Fatal(tc,equal,ok)}}
+}
+
+func TestCaptureQuotaReaders(t *testing.T) {
+ q:=&MethodQuota{Limit:10};snapshot,live:=CaptureQuotaReaders(q)
+ if snapshot==nil||live==nil{t.Fatal("missing readers")}
+ if snapshot()!=10||live()!=10{t.Fatal("initial values")}
+ q.Limit=25;if snapshot()!=10||live()!=25{t.Fatal("receiver capture",snapshot(),live())}
+ other:=&MethodQuota{Limit:3};s2,l2:=CaptureQuotaReaders(other)
+ if s2==nil||l2==nil{t.Fatal("missing second readers")}
+ other.Limit=-2;if s2()!=3||l2()!=-2||live()!=25{t.Fatal("independent receivers")}
+}
+
+func TestApplyMetricDeltas(t *testing.T) {
+ c:=&MetricCounter{Value:10};in:=[]int{2,-3,5}
+ got:=ApplyMetricDeltas(c,in)
+ if !reflect.DeepEqual(got,[]int{12,9,14})||c.Value!=14||!reflect.DeepEqual(in,[]int{2,-3,5}){t.Fatal(got,c.Value,in)}
+ if v:=ApplyMetricDeltas(c,nil);v==nil||len(v)!=0||c.Value!=14{t.Fatal(v,c.Value)}
+ other:=&MetricCounter{Value:-2}
+ if v:=ApplyMetricDeltas(other,[]int{0,-4});!reflect.DeepEqual(v,[]int{-2,-6})||other.Value!=-6||c.Value!=14{t.Fatal(v,other.Value,c.Value)}
+}
+
+func TestAccessSummaryAllowed(t *testing.T) {
+ for _,tc:=range []struct{local,remote,want bool}{{true,true,true},{true,false,false},{false,true,false},{false,false,false}} {
+  s:=AccessSummary{LocalAccess:LocalAccess{Enabled:tc.local},RemoteAccess:RemoteAccess{Approved:tc.remote}}
+  var decision AccessDecision=s
+  if got:=decision.Allowed();got!=tc.want{t.Fatal(tc,got)}
+  if s.Enabled!=tc.local||s.Approved!=tc.remote{t.Fatal("input changed")}
+ }
+}
+
+func TestPublishWorkflow(t *testing.T) {
+ invalid:=errors.New("invalid")
+ failed:=errors.New("publish failed")
+ for _,tc:=range []struct{text string; validateErr,publishErr,want error; calls []string}{
+ {"event",nil,nil,nil,[]string{"validate:event","publish:event"}},
+ {"bad",invalid,nil,invalid,[]string{"validate:bad"}},
+ {"event",nil,failed,failed,[]string{"validate:event","publish:event"}},
+ {"",nil,nil,nil,[]string{"validate:","publish:"}},
+ } {
+  var calls []string
+  v:=WorkflowValidatorFunc(func(text string)error{calls=append(calls,"validate:"+text);return tc.validateErr})
+  p:=WorkflowPublisherFunc(func(text string)error{calls=append(calls,"publish:"+text);return tc.publishErr})
+  w:=NewPublishWorkflow(v,p)
+  if w==nil||len(calls)!=0{t.Fatal("constructor must only store dependencies")}
+  if got:=w.Publish(tc.text);got!=tc.want||!reflect.DeepEqual(calls,tc.calls){t.Fatal(tc,got,calls)}
+ }
+}
+
+func TestProcessDeliveryBatch(t *testing.T) {
+ e1,e2:=errors.New("offline"),errors.New("denied")
+ ids:=[]string{"A","B","C","B"}; var calls []string
+ got,err:=ProcessDeliveryBatch(ids,func(id string)error{calls=append(calls,id);if id=="B"{if len(calls)==2{return e1};return e2};return nil})
+ if !reflect.DeepEqual(got,[]string{"A","C"})||!reflect.DeepEqual(calls,ids)||!reflect.DeepEqual(ids,[]string{"A","B","C","B"})||!errors.Is(err,e1)||!errors.Is(err,e2){t.Fatal(got,err,calls)}
+ joined,ok:=err.(interface{Unwrap() []error});if !ok{t.Fatal(err)}
+ causes:=joined.Unwrap();if len(causes)!=2||causes[0].Error()!="item 1 (B): offline"||causes[1].Error()!="item 3 (B): denied"{t.Fatal(causes)}
+ got[0]="X";if ids[0]!="A"{t.Fatal("alias")}
+ if v,e:=ProcessDeliveryBatch(nil,nil);v==nil||len(v)!=0||e!=nil{t.Fatal(v,e)}
+ if v,e:=ProcessDeliveryBatch([]string{"X"},func(string)error{return nil});!reflect.DeepEqual(v,[]string{"X"})||e!=nil{t.Fatal(v,e)}
+ if v,e:=ProcessDeliveryBatch([]string{"X","Y"},func(string)error{return e1});v==nil||len(v)!=0||!errors.Is(e,e1){t.Fatal(v,e)}
+}
+
+func TestTransformChecked(t *testing.T) {
+ cause:=errors.New("invalid"); in:=[]string{"7","bad","9"};var calls []string
+ got,err:=TransformChecked(in,func(v string)(int,error){calls=append(calls,v);if v=="bad"{return 123,cause};return 7,nil})
+ if got!=nil||!errors.Is(err,cause)||err.Error()!="item 1: invalid"||!reflect.DeepEqual(calls,[]string{"7","bad"})||!reflect.DeepEqual(in,[]string{"7","bad","9"}){t.Fatal(got,err,calls)}
+ values:=[]int{2,4};v,e:=TransformChecked(values,func(n int)(int,error){return n*2,nil});if e!=nil||!reflect.DeepEqual(v,[]int{4,8}){t.Fatal(v,e)};v[0]=99;if values[0]!=2{t.Fatal("alias")}
+ if v,e:=TransformChecked([]int(nil),(func(int)(string,error))(nil));v==nil||len(v)!=0||e!=nil{t.Fatal(v,e)}
+}

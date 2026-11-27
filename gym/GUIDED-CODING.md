@@ -1,2 +1,6 @@
 # Guided Coding pilot
 Dedupe only: five stages, deterministic trace, line explanations, ordering, blanks, partial/bug/starter templates, progressive hints, compiler feedback. All code submissions still use existing Go Playground runner and consent. Draft replacement requires confirmation. Other tasks unchanged except generic compiler hints and clearer hint label. Guided UI state is session-local; no mastery tracking. Related exercises are existing filter and slice-detach, not new kata. Run node gym/guided-check.cjs and node --check gym/app.js; verify on mobile before merge.
+
+## Обязательная методика для всех новых тем
+
+Референсы Go Core: dedupe, core-sum, core-frequency, core-two-sum. Сначала показываем конкретный вход и изменения состояния данных. Затем объясняем каждое действие словами, показываем соответствующую строку Go и объясняем, почему она нужна. Не требуем от ученика написать неизвестный синтаксис до демонстрации. Не пропускаем объявления переменных, циклы, условия и возврат результата. После объяснения: собрать план → заполнить пропуски → дописать почти готовую функцию с конкретным TODO → исправить ошибку → решить самостоятельно. Пять подсказок от первого действия до кода; реальные тесты проверяют полную функцию. Этот порядок относится ко всем будущим модулям. Самостоятельное написание — итог обучения, не входное требование.

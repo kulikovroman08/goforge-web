@@ -97,6 +97,8 @@
     const map = new Map(headers.map(h => [h.key, h]));
     // Extra test-only types are declared in kata_test.go, not kata.go.
     const dependencies = {
+      TestCopyLabel: ['type:gymLabelStore', 'func:*gymLabelStore:ReadLabel', 'func:*gymLabelStore:WriteLabel'],
+      TestLoadUserName: ['type:gymNameRepo', 'func:*gymNameRepo:FindName'],
       TestCloseWithError: ['type:gymCloser', 'func:*gymCloser:Close'],
       TestWithinTx: [
         'type:fakeGymTx', 'type:fakeGymDB',

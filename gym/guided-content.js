@@ -1,4 +1,4 @@
-window.GOFORGE_GUIDES = {
+window.GOFORGE_GUIDES ={
   "dedupe": {
     "example": [
       "101",
@@ -8498,5 +8498,4251 @@ window.GOFORGE_GUIDES = {
     ],
     "production": "Агрегация статусов для API, аналитики или UI. В реальном сервисе статусы обычно enum: неизвестные значения валидируются, а нормализация и порядок определяются продуктовым контрактом.",
     "interview": "Почему для такого ответа используют и map, и slice?"
+  },
+  "errors": {
+    "frames": [
+      [
+        "Причина",
+        [
+          "repository → not found"
+        ],
+        "err = cause",
+        "Исходная ошибка имеет собственную идентичность."
+      ],
+      [
+        "Проверка",
+        [
+          "err != nil"
+        ],
+        "if err == nil { return nil }",
+        "Не создаём ошибку при успехе."
+      ],
+      [
+        "Оборачивание",
+        [
+          "load event → cause"
+        ],
+        "fmt.Errorf(\"load event: %w\", err)",
+        "Добавляем контекст и сохраняем связь."
+      ],
+      [
+        "Проверка вызывающим кодом",
+        [
+          "errors.Is → true"
+        ],
+        "errors.Is(wrapped,cause)",
+        "Причина доступна через цепочку."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить отсутствие ошибки",
+        "if err == nil { return nil }",
+        "nil означает успех."
+      ],
+      [
+        "Добавить контекст",
+        "return fmt.Errorf(\"load event: %w\", err)",
+        "%w сохраняет исходную причину."
+      ]
+    ],
+    "blocks": [
+      "Добавить контекст",
+      "Проверить отсутствие ошибки"
+    ],
+    "order": [
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "fmt.Errorf(\"load event: ",
+        "after": "\", err)",
+        "options": [
+          "%v",
+          "%w",
+          "%s"
+        ],
+        "correct": 1,
+        "explain": "Для оборачивания нужна %w."
+      },
+      {
+        "before": "if err == nil { return ",
+        "after": " }",
+        "options": [
+          "nil",
+          "err.Error()",
+          "errors.New(\"nil\")"
+        ],
+        "correct": 0,
+        "explain": "Успех остаётся успехом."
+      }
+    ],
+    "partial": "package practice\nfunc WithContext(err error) error {\n if err==nil {return nil}\n // TODO: оберни ошибку с контекстом\n return err\n}\n",
+    "bug": "package practice\nfunc WithContext(err error) error {\n if err==nil {return nil}\n return fmt.Errorf(\"load event: %v\",err)\n}\n",
+    "hints": [
+      "Вначале обработай err == nil.",
+      "Используй fmt.Errorf.",
+      "Строка: \"load event: %w\".",
+      "%w сохраняет исходную причину.",
+      "package practice\n\nimport \"fmt\"\nfunc WithContext(err error) error {\n\tif err == nil { return nil }\n\treturn fmt.Errorf(\"load event: %w\", err)\n}\n"
+    ],
+    "related": [
+      [
+        "defer-cleanup",
+        "Сохранить ошибку при закрытии ресурса"
+      ]
+    ],
+    "production": "На границе repository/service добавляй контекст операции, не раскрывая внутренние детали клиенту. Используй errors.Is для классификации, а не сравнение текста.",
+    "interview": "Чем отличаются errors.Is и errors.As?"
+  },
+  "typednil": {
+    "frames": [
+      [
+        "Указатель",
+        [
+          "*MyError",
+          "nil"
+        ],
+        "var e *MyError",
+        "Указатель равен nil."
+      ],
+      [
+        "Преобразование",
+        [
+          "type: *MyError",
+          "value: nil"
+        ],
+        "var err error = e",
+        "Интерфейс получил динамический тип."
+      ],
+      [
+        "Сравнение",
+        [
+          "err != nil"
+        ],
+        "true",
+        "Интерфейс с динамическим типом не является nil."
+      ],
+      [
+        "Исправление",
+        [
+          "type: отсутствует",
+          "value: отсутствует"
+        ],
+        "return nil",
+        "Возвращаем nil interface напрямую."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить флаг",
+        "if !fail {",
+        "При успехе не нужен объект ошибки."
+      ],
+      [
+        "Вернуть настоящий nil",
+        "return nil\n}",
+        "Не преобразуем nil-указатель в интерфейс."
+      ],
+      [
+        "Создать ошибку при сбое",
+        "return &MyError{}",
+        "При fail=true возвращаем ненулевую ошибку."
+      ]
+    ],
+    "blocks": [
+      "Создать ошибку при сбое",
+      "Проверить флаг",
+      "Вернуть настоящий nil"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if !fail { return ",
+        "after": " }",
+        "options": [
+          "nil",
+          "(*MyError)(nil)",
+          "&MyError{}"
+        ],
+        "correct": 0,
+        "explain": "Возвращаем nil интерфейс."
+      },
+      {
+        "before": "return ",
+        "after": "",
+        "options": [
+          "&MyError{}",
+          "nil",
+          "\"failed\""
+        ],
+        "correct": 0,
+        "explain": "Ненулевая ошибка при сбое."
+      }
+    ],
+    "partial": "package practice\ntype MyError struct{}\nfunc (*MyError) Error() string{return \"failed\"}\nfunc MaybeError(fail bool) error {\n // TODO: верни nil при успехе\n return &MyError{}\n}\n",
+    "bug": "package practice\ntype MyError struct{}\nfunc (*MyError) Error() string{return \"failed\"}\nfunc MaybeError(fail bool) error {\n var e *MyError\n if fail {e=&MyError{}}\n return e\n}\n",
+    "hints": [
+      "Проверь значение e перед возвратом.",
+      "error — интерфейс; *MyError(nil) не равен nil-interface.",
+      "При e==nil возвращай nil напрямую.",
+      "При fail=true возвращаем ненулевую ошибку.",
+      "package practice\ntype MyError struct{}\nfunc (*MyError) Error() string{return \"failed\"}\nfunc MaybeError(fail bool)error{if !fail{return nil};return &MyError{}}\n"
+    ],
+    "related": [
+      [
+        "errors",
+        "Оборачивать ошибки сервиса"
+      ]
+    ],
+    "production": "Не возвращай nil-указатель конкретного типа как error. Проверяй контракт на границе сервиса; не используй reflect как универсальный обход проблемы.",
+    "interview": "Почему `var err error = (*MyError)(nil)` не равен nil?"
+  },
+  "activity-methods": {
+    "frames": [
+      [
+        "Начальное состояние",
+        [
+          "LastMessageAt=0",
+          "Unread=0"
+        ],
+        "at=10",
+        "Нулевое значение структуры пригодно к работе."
+      ],
+      [
+        "Новое событие",
+        [
+          "LastMessageAt=10",
+          "Unread=1"
+        ],
+        "return true",
+        "Обновляем оба поля."
+      ],
+      [
+        "Повтор",
+        [
+          "LastMessageAt=10",
+          "Unread=1"
+        ],
+        "at=10 → false",
+        "Повторный timestamp не изменяет состояние."
+      ],
+      [
+        "Старое событие",
+        [
+          "LastMessageAt=10",
+          "Unread=1"
+        ],
+        "at=9 → false",
+        "Не допускаем движение времени назад."
+      ],
+      [
+        "Следующее событие",
+        [
+          "LastMessageAt=11",
+          "Unread=2"
+        ],
+        "at=11 → true",
+        "Инварианты сохранены."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить receiver и timestamp",
+        "if a==nil || at<=0 || at<=a.LastMessageAt { return false }",
+        "Проверка nil должна предшествовать чтению поля."
+      ],
+      [
+        "Обновить активность",
+        "a.LastMessageAt=at",
+        "Pointer receiver меняет исходный объект."
+      ],
+      [
+        "Увеличить счётчик",
+        "a.Unread++",
+        "Только принятые события изменяют счётчик."
+      ],
+      [
+        "Сообщить результат",
+        "return true",
+        "Вызывающий код знает, была ли мутация."
+      ]
+    ],
+    "blocks": [
+      "Сообщить результат",
+      "Проверить receiver и timestamp",
+      "Обновить активность",
+      "Увеличить счётчик"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "func (a ",
+        "after": "ChatActivity) ApplyMessage",
+        "options": [
+          "*",
+          "",
+          "&"
+        ],
+        "correct": 0,
+        "explain": "Нужен pointer receiver."
+      },
+      {
+        "before": "at ",
+        "after": " a.LastMessageAt",
+        "options": [
+          "<=",
+          "<",
+          ">="
+        ],
+        "correct": 0,
+        "explain": "Отклоняем повтор и старое событие."
+      }
+    ],
+    "partial": "package practice\ntype ChatActivity struct { LastMessageAt int64; Unread int }\nfunc (a *ChatActivity) ApplyMessage(at int64) bool {\n if a==nil||at<=0||at<=a.LastMessageAt{return false}\n a.LastMessageAt=at\n // TODO: обнови счётчик\n return true\n}\n",
+    "bug": "package practice\ntype ChatActivity struct { LastMessageAt int64; Unread int }\nfunc (a *ChatActivity) ApplyMessage(at int64) bool {\n if a==nil||at<=0||at<a.LastMessageAt{return false}\n a.LastMessageAt=at;a.Unread++;return true\n}\n",
+    "hints": [
+      "Проверь a==nil, at<=0 и at<=a.LastMessageAt.",
+      "Если проверка прошла — обнови LastMessageAt.",
+      "Увеличь Unread и верни true.",
+      "Вызывающий код знает, была ли мутация.",
+      "type ChatActivity struct { LastMessageAt int64; Unread int }\nfunc (a *ChatActivity) ApplyMessage(at int64) bool {\n\tif a==nil || at<=0 || at<=a.LastMessageAt { return false }\n\ta.LastMessageAt=at\n\ta.Unread++\n\treturn true\n}\n"
+    ],
+    "related": [
+      [
+        "core-clone-config",
+        "Скопировать структуру с указателем"
+      ]
+    ],
+    "production": "Монотонное обновление активности — пример доменного инварианта. В реальном конкурентном сервисе необходима атомарная операция в хранилище или синхронизация; timestamp сам по себе не уникальный ID события.",
+    "interview": "Когда использовать value receiver, а когда pointer receiver? Как это влияет на method set?"
+  },
+  "defer-cleanup": {
+    "frames": [
+      [
+        "Результат работы",
+        [
+          "workErr = write failed"
+        ],
+        "err пока nil",
+        "Основная операция завершилась ошибкой."
+      ],
+      [
+        "Регистрация",
+        [
+          "defer Close"
+        ],
+        "defer func(){...}()",
+        "Ресурс нужно закрыть независимо от результата работы."
+      ],
+      [
+        "Return",
+        [
+          "err = workErr"
+        ],
+        "return workErr",
+        "Именованный результат установлен до defer."
+      ],
+      [
+        "Закрытие",
+        [
+          "Close → flush failed"
+        ],
+        "errors.Join(err, closer.Close())",
+        "Объединяем обе причины."
+      ],
+      [
+        "Выход",
+        [
+          "write failed",
+          "flush failed"
+        ],
+        "errors.Is → true для обеих",
+        "Ни одна ошибка не потеряна."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить отсутствие ресурса",
+        "if closer==nil { return workErr }",
+        "Nil-интерфейс не вызываем."
+      ],
+      [
+        "Зарегистрировать закрытие",
+        "defer func(){ err=errors.Join(err,closer.Close()) }()",
+        "Замыкание обновит именованный результат при выходе."
+      ],
+      [
+        "Вернуть основную ошибку",
+        "return workErr",
+        "До передачи результата выполнится defer."
+      ]
+    ],
+    "blocks": [
+      "Вернуть основную ошибку",
+      "Проверить отсутствие ресурса",
+      "Зарегистрировать закрытие"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "err = errors.",
+        "after": "(err,closer.Close())",
+        "options": [
+          "Join",
+          "New",
+          "Is"
+        ],
+        "correct": 0,
+        "explain": "Join сохраняет обе причины."
+      },
+      {
+        "before": "defer ",
+        "after": "(){ err=errors.Join(err,closer.Close()) }()",
+        "options": [
+          "func",
+          "go",
+          "return"
+        ],
+        "correct": 0,
+        "explain": "Тело замыкания выполнится при выходе."
+      }
+    ],
+    "partial": "package practice\nfunc CloseWithError(workErr error,closer io.Closer)(err error){\n if closer==nil{return workErr}\n defer func(){ _=closer.Close() }()\n // TODO: сохрани ошибку Close\n return workErr\n}\n",
+    "bug": "package practice\nfunc CloseWithError(workErr error,closer io.Closer)(err error){\n if closer==nil{return workErr}\n defer func(){err=closer.Close()}()\n return workErr\n}\n",
+    "hints": [
+      "Если closer==nil, возвращай workErr.",
+      "Зарегистрируй defer с замыканием, чтобы закрытие произошло при выходе из функции.",
+      "В defer выполни err = errors.Join(err, closer.Close()).",
+      "До передачи результата выполнится defer.",
+      "func CloseWithError(workErr error, closer io.Closer) (err error) {\n\tif closer == nil { return workErr }\n\tdefer func() { err = errors.Join(err, closer.Close()) }()\n\treturn workErr\n}\n"
+    ],
+    "related": [
+      [
+        "core-defer-result",
+        "Изменить результат через defer"
+      ]
+    ],
+    "production": "Закрытие файла или flush ресурса может быть значимой частью операции. Сохраняй обе причины; учитывай, что nil-интерфейс и typed nil различаются.",
+    "interview": "В каком порядке выполняются defer и как сохранить ошибку Close, не потеряв основную ошибку?"
+  },
+  "generic-unique": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "2",
+          "1",
+          "2",
+          "3"
+        ],
+        "T=int",
+        "Тип выводится из аргумента."
+      ],
+      [
+        "Первый элемент",
+        [
+          "seen: 2",
+          "out: 2"
+        ],
+        "map[T]struct{}",
+        "Constraint comparable разрешает ключи map."
+      ],
+      [
+        "Второй элемент",
+        [
+          "seen: 2,1",
+          "out: 2,1"
+        ],
+        "v=1",
+        "Сохраняем первое появление."
+      ],
+      [
+        "Повтор",
+        [
+          "seen: 2,1",
+          "out: 2,1"
+        ],
+        "v=2 → continue",
+        "Не добавляем повтор."
+      ],
+      [
+        "Выход",
+        [
+          "2",
+          "1",
+          "3"
+        ],
+        "return out",
+        "Тот же алгоритм работает для string."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать множество",
+        "seen:=make(map[T]struct{},len(values))",
+        "T ограничен comparable."
+      ],
+      [
+        "Создать выход",
+        "out:=make([]T,0,len(values))",
+        "Тип элементов сохраняется."
+      ],
+      [
+        "Обойти значения",
+        "for _,v:=range values {",
+        "Работаем с T без type assertions."
+      ],
+      [
+        "Проверить повтор",
+        "if _,ok:=seen[v];ok{continue}",
+        "Повторные значения пропускаем."
+      ],
+      [
+        "Запомнить и добавить",
+        "seen[v]=struct{}{}\nout=append(out,v)\n}",
+        "Порядок задаёт вход, не map."
+      ],
+      [
+        "Вернуть результат",
+        "return out",
+        "Результат имеет тип []T."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Создать множество",
+      "Создать выход",
+      "Обойти значения",
+      "Проверить повтор",
+      "Запомнить и добавить"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "func UniqueValues[T ",
+        "after": "](values []T) []T",
+        "options": [
+          "any",
+          "comparable",
+          "string"
+        ],
+        "correct": 1,
+        "explain": "Для ключа map нужен comparable."
+      },
+      {
+        "before": "seen[v] = ",
+        "after": "",
+        "options": [
+          "struct{}{}",
+          "true",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Пустая структура хранит факт присутствия."
+      }
+    ],
+    "partial": "package practice\nfunc UniqueValues[T comparable](values []T) []T {\n seen:=make(map[T]struct{})\n out:=make([]T,0,len(values))\n for _,v:=range values {seen[v]=struct{}{};out=append(out,v)}\n // TODO: пропускай повторы\n return out\n}\n",
+    "bug": "package practice\nfunc UniqueValues[T comparable](values []T) []T {\n seen:=make(map[T]struct{})\n for _,v:=range values {seen[v]=struct{}{}}\n out:=make([]T,0,len(seen))\n // BUG: идём по входу в обратном порядке\n for i:=len(values)-1;i>=0;i-- {v:=values[i];if _,ok:=seen[v];ok{out=append(out,v);delete(seen,v)}}\n return out\n}\n",
+    "hints": [
+      "Создай seen := make(map[T]struct{},len(values)).",
+      "Перебери values через range; если значение уже встречалось, пропусти.",
+      "Иначе добавь в seen и append в result.",
+      "Результат имеет тип []T.",
+      "func UniqueValues[T comparable](values []T) []T {\n seen:=make(map[T]struct{},len(values))\n out:=make([]T,0,len(values))\n for _,v:=range values {if _,ok:=seen[v];ok{continue};seen[v]=struct{}{};out=append(out,v)}\n return out\n}\n"
+    ],
+    "related": [
+      [
+        "dedupe",
+        "Убрать дубли получателей"
+      ]
+    ],
+    "production": "Обобщай действительно одинаковые алгоритмы для нескольких типов. Comparable не гарантирует отсутствие panic для interface-ключей с динамически несравнимым значением; для обычных int/string такой проблемы нет.",
+    "interview": "Что такое type parameters и constraint comparable, чем generics отличаются от interface{}?"
+  },
+  "advanced-value-receiver": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "original.Limit=10",
+          "limit=20"
+        ],
+        "original.WithLimit(20)",
+        "Value receiver получает копию структуры."
+      ],
+      [
+        "Локальная копия",
+        [
+          "original=10",
+          "q=10"
+        ],
+        "q.Limit=20",
+        "Меняем только поле копии."
+      ],
+      [
+        "Возврат",
+        [
+          "original=10",
+          "result=20"
+        ],
+        "return q",
+        "Оригинал остаётся неизменным."
+      ],
+      [
+        "Неверный лимит",
+        [
+          "original=10",
+          "result=10"
+        ],
+        "limit=0",
+        "Не допускаем некорректное состояние."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить лимит",
+        "if limit>0 {",
+        "limit > 0 сравнивает аргумент с нулём; при false тело if пропускается."
+      ],
+      [
+        "Обновить локальную копию",
+        "q.Limit=limit\n}",
+        "q — копия ServiceQuota. Присваивание меняет только её поле Limit, а не поле вызывающего объекта."
+      ],
+      [
+        "Вернуть копию",
+        "return q",
+        "return q возвращает всю структуру. Для изменения оригинала вызывающий код может присвоить результат обратно."
+      ]
+    ],
+    "blocks": [
+      "Вернуть копию",
+      "Проверить лимит",
+      "Обновить локальную копию"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "func (q ",
+        "after": "ServiceQuota) WithLimit",
+        "options": [
+          "",
+          "*",
+          "&"
+        ],
+        "correct": 0,
+        "explain": "Для этого контракта нужен value receiver."
+      },
+      {
+        "before": "if limit ",
+        "after": " 0",
+        "options": [
+          ">",
+          ">=",
+          "<"
+        ],
+        "correct": 0,
+        "explain": "Допускаем строго положительное значение."
+      }
+    ],
+    "partial": "package practice\n\ntype ServiceQuota struct { Limit int }\nfunc (q *ServiceQuota) SetLimit(limit int) { q.Limit=limit }\n\nfunc (q ServiceQuota) WithLimit(limit int) ServiceQuota {\n\tif limit<=0 { return q }\n\t// TODO: обнови локальную копию\n\treturn q\n}\n",
+    "bug": "package practice\n\ntype ServiceQuota struct { Limit int }\nfunc (q *ServiceQuota) SetLimit(limit int) { q.Limit=limit }\n\nfunc (q ServiceQuota) WithLimit(limit int) ServiceQuota {\n\tq.Limit=limit\n\treturn q\n}\n",
+    "hints": [
+      "Начни: Проверить лимит.",
+      "limit > 0 сравнивает аргумент с нулём; при false тело if пропускается.",
+      "Следующее действие: Обновить локальную копию. q — копия ServiceQuota. Присваивание меняет только её поле Limit, а не поле вызывающего объекта.",
+      "Проверь план: Проверить лимит → Обновить локальную копию → Вернуть копию.",
+      "if limit>0 { q.Limit=limit }\nreturn q"
+    ],
+    "related": [
+      [
+        "activity-methods",
+        "Метод обновления активности чата"
+      ]
+    ],
+    "production": "Value receiver удобен для небольших value objects. Копирование структуры с map, slice или pointer не обеспечивает глубокую независимость; структуры с mutex нельзя копировать после использования.",
+    "interview": "Когда value receiver не гарантирует отсутствие мутации исходных данных?"
+  },
+  "advanced-embedding": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "id=u1",
+          "name=Go",
+          "active=true"
+        ],
+        "NewServiceProfile(...)",
+        "Поля относятся к двум структурам."
+      ],
+      [
+        "Композиция",
+        [
+          "ProfileMeta",
+          "ID=u1",
+          "Active=true"
+        ],
+        "ProfileMeta{ID:id,Active:active}",
+        "Вложенное значение создаётся явно."
+      ],
+      [
+        "Сборка",
+        [
+          "ProfileMeta",
+          "Name=Go"
+        ],
+        "ServiceProfile{ProfileMeta:...,Name:name}",
+        "Embedding включает поле типа ProfileMeta."
+      ],
+      [
+        "Доступ",
+        [
+          "p.ID=u1",
+          "p.IsActive()=true"
+        ],
+        "promoted field / method",
+        "Поля и методы доступны через внешнюю структуру."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать вложенное значение",
+        "ProfileMeta{ID:id,Active:active}",
+        "Литерал ProfileMeta{ID: id, Active: active} создаёт значение вложенного типа; имена слева — поля, справа — аргументы."
+      ],
+      [
+        "Собрать внешнюю структуру",
+        "return ServiceProfile{ProfileMeta:ProfileMeta{ID:id,Active:active},Name:name}",
+        "ServiceProfile содержит embedded field ProfileMeta и обычное поле Name. В литерале нельзя писать promoted ID напрямую: заполняем ProfileMeta явно, затем Name."
+      ]
+    ],
+    "blocks": [
+      "Собрать внешнюю структуру",
+      "Создать вложенное значение"
+    ],
+    "order": [
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "ServiceProfile{",
+        "after": " :ProfileMeta{ID:id,Active:active},Name:name}",
+        "options": [
+          "ProfileMeta",
+          "ID",
+          "Active"
+        ],
+        "correct": 0,
+        "explain": "В литерале указывается имя непосредственного поля."
+      },
+      {
+        "before": "p.",
+        "after": "()",
+        "options": [
+          "IsActive",
+          "Active",
+          "ID"
+        ],
+        "correct": 0,
+        "explain": "Метод вложенного типа продвигается во внешний тип."
+      }
+    ],
+    "partial": "package practice\n\ntype ProfileMeta struct { ID string; Active bool }\nfunc (m ProfileMeta) IsActive() bool { return m.Active }\ntype ServiceProfile struct { ProfileMeta; Name string }\n\nfunc NewServiceProfile(id,name string,active bool) ServiceProfile {\n\t// TODO: заполни вложенный ProfileMeta полями ID и Active\n\treturn ServiceProfile{Name:name}\n}\n",
+    "bug": "package practice\n\ntype ProfileMeta struct { ID string; Active bool }\nfunc (m ProfileMeta) IsActive() bool { return m.Active }\ntype ServiceProfile struct { ProfileMeta; Name string }\n\nfunc NewServiceProfile(id,name string,active bool) ServiceProfile {\n\treturn ServiceProfile{ProfileMeta:ProfileMeta{ID:id,Active:!active},Name:name}\n}\n",
+    "hints": [
+      "Начни с литерала вложенного ProfileMeta.",
+      "Заполни поля ID и Active аргументами id и active.",
+      "Внешний литерал принимает поле ProfileMeta, а не promoted ID.",
+      "Заполни также Name и верни ServiceProfile.",
+      "return ServiceProfile{ProfileMeta:ProfileMeta{ID:id,Active:active},Name:name}"
+    ],
+    "related": [
+      [
+        "advanced-value-receiver",
+        "Обновить конфигурацию без изменения оригинала"
+      ]
+    ],
+    "production": "Embedding помогает переиспользовать поведение, но создаёт часть публичного API внешнего типа. При конфликте имён или необходимости строгой инкапсуляции лучше использовать именованное поле и явные методы.",
+    "interview": "Является ли embedding наследованием?"
+  },
+  "advanced-repository": {
+    "frames": [
+      [
+        "Зависимость",
+        [
+          "service",
+          "NameRepository",
+          "fake / real"
+        ],
+        "LoadUserName(repo,\"42\")",
+        "Сервис зависит от контракта, а не конкретного хранилища."
+      ],
+      [
+        "Вызов",
+        [
+          "FindName(\"42\")"
+        ],
+        "name,err:=repo.FindName(id)",
+        "Один вызов репозитория."
+      ],
+      [
+        "Успех",
+        [
+          "name=Alice",
+          "err=nil"
+        ],
+        "return name,nil",
+        "Возвращаем данные."
+      ],
+      [
+        "Ошибка",
+        [
+          "load user",
+          "cause"
+        ],
+        "fmt.Errorf(\"load user: %w\",err)",
+        "Причина остаётся доступной через errors.Is."
+      ]
+    ],
+    "steps": [
+      [
+        "Вызвать зависимость",
+        "name,err:=repo.FindName(id)",
+        "repo имеет тип интерфейса NameRepository. := создаёт name и err из двух результатов FindName; передаём исходный id ровно один раз."
+      ],
+      [
+        "Обработать ошибку",
+        "if err!=nil { return \"\",fmt.Errorf(\"load user: %w\",err) }",
+        "err != nil означает сбой. fmt.Errorf с %w добавляет контекст и сохраняет причину для errors.Is; пустая строка исключает частичный результат."
+      ],
+      [
+        "Вернуть имя",
+        "return name,nil",
+        "При отсутствии ошибки возвращаем имя и nil. Реальную БД можно заменить fake с тем же методом FindName."
+      ]
+    ],
+    "blocks": [
+      "Вернуть имя",
+      "Вызвать зависимость",
+      "Обработать ошибку"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "name,err:=repo.",
+        "after": "(id)",
+        "options": [
+          "FindName",
+          "LoadUserName",
+          "Error"
+        ],
+        "correct": 0,
+        "explain": "Вызываем метод интерфейса."
+      },
+      {
+        "before": "fmt.Errorf(\"load user: ",
+        "after": "\",err)",
+        "options": [
+          "%w",
+          "%v",
+          "%s"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем причину ошибки."
+      }
+    ],
+    "partial": "package practice\n\ntype NameRepository interface { FindName(id string) (string,error) }\n\nfunc LoadUserName(repo NameRepository,id string) (string,error) {\n\tname,err:=repo.FindName(id)\n\t// TODO: обработай ошибку с контекстом\n\treturn name,err\n}\n",
+    "bug": "package practice\n\ntype NameRepository interface { FindName(id string) (string,error) }\n\nfunc LoadUserName(repo NameRepository,id string) (string,error) {\n\tname,err:=repo.FindName(id)\n\tif err!=nil { return \"\",fmt.Errorf(\"load user: %v\",err) }\n\treturn name,nil\n}\n",
+    "hints": [
+      "Начни: Вызвать зависимость.",
+      "repo имеет тип интерфейса NameRepository. := создаёт name и err из двух результатов FindName; передаём исходный id ровно один раз.",
+      "Следующее действие: Обработать ошибку. err != nil означает сбой. fmt.Errorf с %w добавляет контекст и сохраняет причину для errors.Is; пустая строка исключает частичный результат.",
+      "Проверь план: Вызвать зависимость → Обработать ошибку → Вернуть имя.",
+      "name,err:=repo.FindName(id)\nif err!=nil { return \"\",fmt.Errorf(\"load user: %w\",err) }\nreturn name,nil"
+    ],
+    "related": [
+      [
+        "errors",
+        "Оборачивать ошибки сервиса"
+      ]
+    ],
+    "production": "Небольшие интерфейсы на стороне потребителя упрощают тестирование сервисов без БД. Реальный репозиторий обычно принимает context.Context для отмены и дедлайнов.",
+    "interview": "Почему интерфейс часто объявляют на стороне потребителя?"
+  },
+  "advanced-type-switch": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "any",
+          "dynamic type=int",
+          "value=42"
+        ],
+        "ValueKind(42)",
+        "any — alias interface{}."
+      ],
+      [
+        "Проверка",
+        [
+          "case int"
+        ],
+        "switch v.(type)",
+        "Выбираем ветку по динамическому типу."
+      ],
+      [
+        "Именованный тип",
+        [
+          "type UserID int",
+          "dynamic type=UserID"
+        ],
+        "case int не совпадает",
+        "Определённый тип отличается от int."
+      ],
+      [
+        "Nil",
+        [
+          "type отсутствует"
+        ],
+        "case nil",
+        "Typed nil указатель относится к other."
+      ]
+    ],
+    "steps": [
+      [
+        "Начать type switch",
+        "switch v.(type) {",
+        "v — интерфейс any; v.(type) допустимо в type switch и проверяет динамический тип, а не значение."
+      ],
+      [
+        "Обработать известные типы",
+        "case nil: return \"nil\"\ncase string: return \"string\"\ncase int: return \"int\"\ncase bool: return \"bool\"",
+        "case nil совпадает только с nil-интерфейсом. string, int и bool — точные типы; именованный UserID не совпадает с int."
+      ],
+      [
+        "Обработать остальные",
+        "default: return \"other\"\n}",
+        "default выполняется для всех остальных типов, включая typed nil указатель. return завершает функцию; break не нужен."
+      ]
+    ],
+    "blocks": [
+      "Обработать остальные",
+      "Начать type switch",
+      "Обработать известные типы"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "switch v.(",
+        "after": ")",
+        "options": [
+          "type",
+          "int",
+          "any"
+        ],
+        "correct": 0,
+        "explain": "Type switch использует специальную форму .(type)."
+      },
+      {
+        "before": "case ",
+        "after": " : return \"nil\"",
+        "options": [
+          "nil",
+          "any",
+          "string"
+        ],
+        "correct": 0,
+        "explain": "Nil interface обрабатывается отдельным case."
+      }
+    ],
+    "partial": "package practice\n\nfunc ValueKind(v any) string {\n\tswitch v.(type) {\n\tcase nil: return \"nil\"\n\tcase string: return \"string\"\n\t// TODO: обработай int и bool\n\tdefault: return \"other\"\n\t}\n}\n",
+    "bug": "package practice\n\nfunc ValueKind(v any) string {\n\tif v==nil { return \"nil\" }\n\tif _,ok:=v.(string);ok { return \"string\" }\n\tif _,ok:=v.(int);ok { return \"int\" }\n\treturn \"other\"\n}\n",
+    "hints": [
+      "Начни: Начать type switch.",
+      "v — интерфейс any; v.(type) допустимо в type switch и проверяет динамический тип, а не значение.",
+      "Следующее действие: Обработать известные типы. case nil совпадает только с nil-интерфейсом. string, int и bool — точные типы; именованный UserID не совпадает с int.",
+      "Проверь план: Начать type switch → Обработать известные типы → Обработать остальные.",
+      "switch v.(type) {\ncase nil: return \"nil\"\ncase string: return \"string\"\ncase int: return \"int\"\ncase bool: return \"bool\"\ndefault: return \"other\"\n}"
+    ],
+    "related": [
+      [
+        "typednil",
+        "Починить typed nil error"
+      ]
+    ],
+    "production": "Type switch полезен для ограниченных наборов входных форматов и адаптеров. Для доменной логики предпочитай типизированные контракты и не превращай всё в any без необходимости.",
+    "interview": "Чем отличается v.(T) от v.(type)?"
+  },
+  "advanced-errors-as": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "load user",
+          "ServiceCodeError{Code:404}"
+        ],
+        "err = wrapped",
+        "Типизированная ошибка находится внутри обёртки."
+      ],
+      [
+        "Целевая переменная",
+        [
+          "target: *ServiceCodeError",
+          "nil"
+        ],
+        "var target *ServiceCodeError",
+        "As нужен адрес переменной, в которую записать найденное значение."
+      ],
+      [
+        "Поиск",
+        [
+          "errors.As(err,&target) → true"
+        ],
+        "target → {Code:404}",
+        "As проходит цепочку или дерево ошибок."
+      ],
+      [
+        "Результат",
+        [
+          "404",
+          "true"
+        ],
+        "target.Code,true",
+        "Читаем поле только у ненулевого указателя."
+      ]
+    ],
+    "steps": [
+      [
+        "Объявить целевой указатель",
+        "var target *ServiceCodeError",
+        "var target *ServiceCodeError создаёт nil-указатель нужного типа."
+      ],
+      [
+        "Найти ошибку",
+        "if errors.As(err,&target)&&target!=nil {",
+        "errors.As(err, &target) получает **ServiceCodeError и записывает найденный указатель. && проверяет target только при успехе As; typed nil не разыменовываем."
+      ],
+      [
+        "Вернуть код",
+        "return target.Code,true\n}",
+        "target.Code — поле найденной ошибки. true отличает найденный код 0 от отсутствия."
+      ],
+      [
+        "Обработать отсутствие",
+        "return 0,false",
+        "Если совпадения нет или первое совпадение typed nil, возвращаем 0,false."
+      ]
+    ],
+    "blocks": [
+      "Обработать отсутствие",
+      "Объявить целевой указатель",
+      "Найти ошибку",
+      "Вернуть код"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "errors.As(err,",
+        "after": "target)",
+        "options": [
+          "&",
+          "*",
+          ""
+        ],
+        "correct": 0,
+        "explain": "As должен записать найденное значение в target."
+      },
+      {
+        "before": "&& target ",
+        "after": " nil",
+        "options": [
+          "!=",
+          "==",
+          "<"
+        ],
+        "correct": 0,
+        "explain": "Защищаемся от typed nil."
+      }
+    ],
+    "partial": "package practice\n\ntype ServiceCodeError struct { Code int }\nfunc (e *ServiceCodeError) Error() string { return fmt.Sprintf(\"service code %d\",e.Code) }\n\nfunc ExtractServiceCode(err error) (int,bool) {\n\tvar target *ServiceCodeError\n\tif errors.As(err,&target)&&target!=nil {\n\t // TODO: верни код\n\t return 0,true\n\t}\n\treturn 0,false\n}\n",
+    "bug": "package practice\n\ntype ServiceCodeError struct { Code int }\nfunc (e *ServiceCodeError) Error() string { return fmt.Sprintf(\"service code %d\",e.Code) }\n\nfunc ExtractServiceCode(err error) (int,bool) {\n\ttarget,ok:=err.(*ServiceCodeError)\n\tif ok&&target!=nil {return target.Code,true}\n\treturn 0,false\n}\n",
+    "hints": [
+      "Начни: Объявить целевой указатель.",
+      "var target *ServiceCodeError создаёт nil-указатель нужного типа.",
+      "Следующее действие: Найти ошибку. errors.As(err, &target) получает **ServiceCodeError и записывает найденный указатель. && проверяет target только при успехе As; typed nil не разыменовываем.",
+      "Проверь план: Объявить целевой указатель → Найти ошибку → Вернуть код → Обработать отсутствие.",
+      "var target *ServiceCodeError\nif errors.As(err,&target)&&target!=nil { return target.Code,true }\nreturn 0,false"
+    ],
+    "related": [
+      [
+        "errors",
+        "Оборачивать ошибки сервиса"
+      ]
+    ],
+    "production": "Типизированные доменные ошибки могут хранить код, retryability или сведения о нарушенном ограничении. На границе API преобразуй их в публичный ответ, не раскрывая внутренние данные.",
+    "interview": "Почему для поиска *MyError в errors.As передают &target, где target имеет тип *MyError?"
+  },
+  "advanced-method-set": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "c → Count=5"
+        ],
+        "c: *ResetCounter",
+        "Reset объявлен с pointer receiver."
+      ],
+      [
+        "Присваивание",
+        [
+          "r: Resettable",
+          "dynamic type: *ResetCounter"
+        ],
+        "var r Resettable=c",
+        "Интерфейс содержит копию указателя."
+      ],
+      [
+        "Вызов",
+        [
+          "Count=0"
+        ],
+        "r.Reset()",
+        "Метод меняет тот же объект."
+      ],
+      [
+        "Выход",
+        [
+          "true",
+          "c.Count=0"
+        ],
+        "return true",
+        "Изменение видно снаружи."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить вход",
+        "if c==nil||c.Count==0 { return false }",
+        "|| вычисляется слева направо: при c == nil поле Count не читается. Нулевой счётчик не требует сброса."
+      ],
+      [
+        "Присвоить интерфейсу",
+        "var r Resettable=c",
+        "var r Resettable = c проверяет соответствие интерфейсу: Reset входит в method set *ResetCounter, но не ResetCounter."
+      ],
+      [
+        "Вызвать метод",
+        "r.Reset()",
+        "r.Reset() вызывает метод динамического типа и через указатель меняет исходный Count."
+      ],
+      [
+        "Вернуть результат",
+        "return true",
+        "true означает, что сброс действительно выполнен."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Проверить вход",
+      "Присвоить интерфейсу",
+      "Вызвать метод"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "var r Resettable = ",
+        "after": "",
+        "options": [
+          "c",
+          "*c",
+          "c.Count"
+        ],
+        "correct": 0,
+        "explain": "Только *ResetCounter имеет нужный method set."
+      },
+      {
+        "before": "r.",
+        "after": "()",
+        "options": [
+          "Reset",
+          "Count",
+          "Set"
+        ],
+        "correct": 0,
+        "explain": "Вызываем метод контракта."
+      }
+    ],
+    "partial": "package practice\n\ntype Resettable interface { Reset() }\ntype ResetCounter struct { Count int }\nfunc (c *ResetCounter) Reset() { c.Count=0 }\nvar _ Resettable = (*ResetCounter)(nil)\n\nfunc ResetIfNeeded(c *ResetCounter) bool {\n\tif c==nil||c.Count==0 { return false }\n\tvar r Resettable=c\n\t// TODO: вызови Reset через r\n\t_ = r\n\treturn true\n}\n",
+    "bug": "package practice\n\ntype Resettable interface { Reset() }\ntype ResetCounter struct { Count int }\nfunc (c *ResetCounter) Reset() { c.Count=0 }\nvar _ Resettable = (*ResetCounter)(nil)\n\nfunc ResetIfNeeded(c *ResetCounter) bool {\n\tif c==nil||c.Count==0 { return false }\n\tcopyValue:=*c\n\tvar r Resettable=&copyValue\n\tr.Reset()\n\treturn true\n}\n",
+    "hints": [
+      "Начни: Проверить вход.",
+      "|| вычисляется слева направо: при c == nil поле Count не читается. Нулевой счётчик не требует сброса.",
+      "Следующее действие: Присвоить интерфейсу. var r Resettable = c проверяет соответствие интерфейсу: Reset входит в method set *ResetCounter, но не ResetCounter.",
+      "Проверь план: Проверить вход → Присвоить интерфейсу → Вызвать метод → Вернуть результат.",
+      "if c==nil||c.Count==0 { return false }\nvar r Resettable=c\nr.Reset()\nreturn true"
+    ],
+    "related": [
+      [
+        "advanced-value-receiver",
+        "Обновить конфигурацию без изменения оригинала"
+      ]
+    ],
+    "production": "Compile-time assertion var _ Interface = (*Type)(nil) документирует контракт. Он не создаёт рабочий объект и не доказывает, что nil receiver безопасен.",
+    "interview": "Почему c.Reset() может компилироваться для адресуемого значения c, но c нельзя присвоить Resettable?"
+  },
+  "advanced-interface-compose": {
+    "frames": [
+      [
+        "Контракт",
+        [
+          "LabelReader",
+          "LabelWriter"
+        ],
+        "LabelStore",
+        "Композиция включает методы обоих интерфейсов."
+      ],
+      [
+        "Чтение",
+        [
+          "ReadLabel → go,nil"
+        ],
+        "label=\"go\"",
+        "Читаем данные один раз."
+      ],
+      [
+        "Проверка",
+        [
+          "err=nil"
+        ],
+        "переход к записи",
+        "Если чтение не удалось, останавливаемся."
+      ],
+      [
+        "Запись",
+        [
+          "WriteLabel(\"go\")"
+        ],
+        "return error",
+        "Передаём результат записи вызывающему коду."
+      ]
+    ],
+    "steps": [
+      [
+        "Прочитать данные",
+        "label,err:=store.ReadLabel()",
+        "ReadLabel возвращает строку и error. := объявляет обе переменные; пустая строка сама по себе допустима."
+      ],
+      [
+        "Проверить ошибку",
+        "if err!=nil { return err }",
+        "При err != nil return завершает функцию до записи и сохраняет исходную ошибку."
+      ],
+      [
+        "Записать значение",
+        "return store.WriteLabel(label)",
+        "WriteLabel получает ровно прочитанное значение; возвращаем его error без замены. Два вызова не становятся транзакцией автоматически."
+      ]
+    ],
+    "blocks": [
+      "Записать значение",
+      "Прочитать данные",
+      "Проверить ошибку"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "type LabelStore interface { LabelReader; ",
+        "after": " }",
+        "options": [
+          "LabelWriter",
+          "string",
+          "error"
+        ],
+        "correct": 0,
+        "explain": "Объединяем два набора методов."
+      },
+      {
+        "before": "if err!=nil { return ",
+        "after": " }",
+        "options": [
+          "err",
+          "nil",
+          "label"
+        ],
+        "correct": 0,
+        "explain": "Ошибка чтения прерывает операцию."
+      }
+    ],
+    "partial": "package practice\n\ntype LabelReader interface { ReadLabel() (string,error) }\ntype LabelWriter interface { WriteLabel(string) error }\ntype LabelStore interface { LabelReader; LabelWriter }\n\nfunc CopyLabel(store LabelStore) error {\n\tlabel,err:=store.ReadLabel()\n\tif err!=nil { return err }\n\t// TODO: запиши прочитанное значение\n\t_ = label\n\treturn nil\n}\n",
+    "bug": "package practice\n\ntype LabelReader interface { ReadLabel() (string,error) }\ntype LabelWriter interface { WriteLabel(string) error }\ntype LabelStore interface { LabelReader; LabelWriter }\n\nfunc CopyLabel(store LabelStore) error {\n\tlabel,err:=store.ReadLabel()\n\t_ = err\n\treturn store.WriteLabel(label)\n}\n",
+    "hints": [
+      "Начни: Прочитать данные.",
+      "ReadLabel возвращает строку и error. := объявляет обе переменные; пустая строка сама по себе допустима.",
+      "Следующее действие: Проверить ошибку. При err != nil return завершает функцию до записи и сохраняет исходную ошибку.",
+      "Проверь план: Прочитать данные → Проверить ошибку → Записать значение.",
+      "label,err:=store.ReadLabel()\nif err!=nil { return err }\nreturn store.WriteLabel(label)"
+    ],
+    "related": [
+      [
+        "advanced-repository",
+        "Загрузить имя пользователя через Repository"
+      ]
+    ],
+    "production": "Композиция маленьких интерфейсов позволяет потребителю запрашивать только нужные возможности. Не объединяй интерфейсы без необходимости: это усложняет fake и связывает независимые компоненты.",
+    "interview": "Что означает embedding интерфейса в интерфейс?"
+  },
+  "advanced-domain-error": {
+    "frames": [
+      [
+        "Причина",
+        [
+          "cause: timeout"
+        ],
+        "op=\"load\"",
+        "Есть исходный объект ошибки."
+      ],
+      [
+        "Обёртка",
+        [
+          "OperationError",
+          "Op=load",
+          "Cause → timeout"
+        ],
+        "&OperationError{Op:op,Cause:cause}",
+        "Сохраняем метаданные и исходную причину."
+      ],
+      [
+        "Извлечение",
+        [
+          "errors.As → OperationError"
+        ],
+        "target.Op == \"load\"",
+        "Типизированная ошибка доступна вызывающему коду."
+      ],
+      [
+        "Классификация",
+        [
+          "errors.Is → true"
+        ],
+        "Unwrap() → cause",
+        "Цепочка не потеряна."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить nil",
+        "if cause==nil { return nil }",
+        "Если cause == nil, нет причины для обёртки: возвращаем nil-интерфейс."
+      ],
+      [
+        "Создать типизированную обёртку",
+        "return &OperationError{Op:op,Cause:cause}",
+        "&OperationError{Op: op, Cause: cause} создаёт указатель на структуру. Error формирует текст, Unwrap возвращает исходную причину; errors.As находит тип, errors.Is — причину."
+      ]
+    ],
+    "blocks": [
+      "Создать типизированную обёртку",
+      "Проверить nil"
+    ],
+    "order": [
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "func (e *OperationError) ",
+        "after": "() error",
+        "options": [
+          "Unwrap",
+          "Error",
+          "String"
+        ],
+        "correct": 0,
+        "explain": "Unwrap предоставляет следующую причину."
+      },
+      {
+        "before": "Cause: ",
+        "after": "",
+        "options": [
+          "cause",
+          "errors.New(cause.Error())",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем оригинальную ошибку."
+      }
+    ],
+    "partial": "package practice\n\ntype OperationError struct { Op string; Cause error }\nfunc (e *OperationError) Error() string { return e.Op+\": \"+e.Cause.Error() }\nfunc (e *OperationError) Unwrap() error { return e.Cause }\n\nfunc WrapOperation(op string,cause error) error {\n\tif cause==nil { return nil }\n\t// TODO: верни типизированную ошибку\n\treturn cause\n}\n",
+    "bug": "package practice\n\ntype OperationError struct { Op string; Cause error }\nfunc (e *OperationError) Error() string { return e.Op+\": \"+e.Cause.Error() }\nfunc (e *OperationError) Unwrap() error { return e.Cause }\n\nfunc WrapOperation(op string,cause error) error {\n\tif cause==nil { return nil }\n\treturn &OperationError{Op:op,Cause:errors.New(cause.Error())}\n}\n",
+    "hints": [
+      "Сначала исключи отсутствие причины.",
+      "Создай указатель на OperationError.",
+      "Заполни Op исходным op, Cause исходным cause.",
+      "Не создавай errors.New из текста: Unwrap должен вернуть тот же объект.",
+      "if cause==nil { return nil }\nreturn &OperationError{Op:op,Cause:cause}"
+    ],
+    "related": [
+      [
+        "advanced-errors-as",
+        "Извлечь код типизированной ошибки"
+      ]
+    ],
+    "production": "Доменная ошибка может хранить структурированные поля для логирования и преобразования в API-ответ. Определяй инварианты: Cause в данной обёртке не nil; не публикуй внутренние тексты ошибок клиентам.",
+    "interview": "Зачем реализовывать Unwrap у собственного error?"
+  },
+  "advanced-sentinel-errors": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "load label",
+          "ErrLabelMissing"
+        ],
+        "wrapped error",
+        "Внешний текст не определяет категорию."
+      ],
+      [
+        "Проверка",
+        [
+          "errors.Is → true"
+        ],
+        "ErrLabelMissing",
+        "Стандартный обход находит sentinel."
+      ],
+      [
+        "Приоритет",
+        [
+          "missing + conflict"
+        ],
+        "404",
+        "Порядок проверок фиксирует приоритет."
+      ],
+      [
+        "Неизвестная ошибка",
+        [
+          "errors.Is → false"
+        ],
+        "500",
+        "Не раскрываем внутреннюю причину в статусе."
+      ]
+    ],
+    "steps": [
+      [
+        "Обработать успех",
+        "if err==nil { return 200 }",
+        "nil означает успех; 200 — статус по контракту этой задачи."
+      ],
+      [
+        "Проверить отсутствие",
+        "if errors.Is(err,ErrLabelMissing) { return 404 }",
+        "errors.Is обходит обёртки и дерево ошибок. Проверяем ErrLabelMissing первым, поскольку 404 имеет приоритет."
+      ],
+      [
+        "Проверить конфликт",
+        "if errors.Is(err,ErrLabelConflict) { return 409 }",
+        "Если missing не найден, ищем ErrLabelConflict и возвращаем 409."
+      ],
+      [
+        "Вернуть общий статус",
+        "return 500",
+        "Ни одна известная причина не найдена: 500. Сравнение текста не используется."
+      ]
+    ],
+    "blocks": [
+      "Вернуть общий статус",
+      "Обработать успех",
+      "Проверить отсутствие",
+      "Проверить конфликт"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "errors.",
+        "after": "(err,ErrLabelMissing)",
+        "options": [
+          "Is",
+          "As",
+          "New"
+        ],
+        "correct": 0,
+        "explain": "Is проверяет конкретную причину."
+      },
+      {
+        "before": "if errors.Is(err,ErrLabelConflict) { return ",
+        "after": " }",
+        "options": [
+          "409",
+          "404",
+          "200"
+        ],
+        "correct": 0,
+        "explain": "Конфликт соответствует 409."
+      }
+    ],
+    "partial": "package practice\n\nfunc LabelErrorStatus(err error) int {\n\tif err==nil { return 200 }\n\tif errors.Is(err,ErrLabelMissing) { return 404 }\n\t// TODO: обработай конфликт\n\treturn 500\n}\n",
+    "bug": "package practice\n\nfunc LabelErrorStatus(err error) int {\n\tif err==nil { return 200 }\n\tif err==ErrLabelMissing { return 404 }\n\tif err==ErrLabelConflict { return 409 }\n\treturn 500\n}\n",
+    "hints": [
+      "Начни: Обработать успех.",
+      "nil означает успех; 200 — статус по контракту этой задачи.",
+      "Следующее действие: Проверить отсутствие. errors.Is обходит обёртки и дерево ошибок. Проверяем ErrLabelMissing первым, поскольку 404 имеет приоритет.",
+      "Проверь план: Обработать успех → Проверить отсутствие → Проверить конфликт → Вернуть общий статус.",
+      "if err==nil { return 200 }\nif errors.Is(err,ErrLabelMissing) { return 404 }\nif errors.Is(err,ErrLabelConflict) { return 409 }\nreturn 500"
+    ],
+    "related": [
+      [
+        "advanced-domain-error",
+        "Создать доменную ошибку с причиной"
+      ]
+    ],
+    "production": "Преобразование доменных ошибок в HTTP-статусы удобно делать на границе API. Реальные правила статусов, приоритетов и публичных сообщений должны быть согласованы с контрактом сервиса.",
+    "interview": "Чем sentinel error отличается от типизированной ошибки?"
+  },
+  "advanced-safe-assertion": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "any",
+          "dynamic type=string",
+          "value=Go"
+        ],
+        "value.(string)",
+        "Assertion проверяет динамический тип."
+      ],
+      [
+        "Успех",
+        [
+          "s=Go",
+          "ok=true"
+        ],
+        "s,ok:=value.(string)",
+        "Возвращаем значение."
+      ],
+      [
+        "Несовпадение",
+        [
+          "dynamic type=int",
+          "s=\"\"",
+          "ok=false"
+        ],
+        "value=42",
+        "Comma-ok не вызывает panic."
+      ],
+      [
+        "Пустая строка",
+        [
+          "s=\"\"",
+          "ok=true"
+        ],
+        "value=\"\"",
+        "Bool отличает успех от несовпадения."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить динамический тип",
+        "s,ok:=value.(string)",
+        "value.(string) с двумя результатами проверяет точный динамический тип. При несовпадении s — zero value строки, ok — false; panic нет."
+      ],
+      [
+        "Вернуть оба результата",
+        "return s,ok",
+        "Возвращаем s и ok вместе: пустая строка может быть корректным результатом, если ok == true."
+      ]
+    ],
+    "blocks": [
+      "Вернуть оба результата",
+      "Проверить динамический тип"
+    ],
+    "order": [
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "s,ok:=value.(",
+        "after": ")",
+        "options": [
+          "string",
+          "[]byte",
+          "any"
+        ],
+        "correct": 0,
+        "explain": "Проверяем конкретный встроенный string."
+      },
+      {
+        "before": "return s,",
+        "after": "",
+        "options": [
+          "ok",
+          "true",
+          "false"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем признак совпадения типа."
+      }
+    ],
+    "partial": "package practice\n\nfunc ReadStringValue(value any) (string,bool) {\n\t// TODO: извлеки string через comma-ok\n\treturn \"\",false\n}\n",
+    "bug": "package practice\n\nfunc ReadStringValue(value any) (string,bool) {\n\tif value==nil { return \"\",false }\n\treturn fmt.Sprint(value),true\n}\n",
+    "hints": [
+      "Проверяй динамический тип, а не строковое представление.",
+      "Используй assertion к string с двумя результатами.",
+      "При несовпадении Go сам вернёт пустую строку и false.",
+      "Верни оба результата без дополнительной проверки пустой строки.",
+      "s,ok:=value.(string)\nreturn s,ok"
+    ],
+    "related": [
+      [
+        "advanced-type-switch",
+        "Классифицировать входное значение через type switch"
+      ]
+    ],
+    "production": "Comma-ok полезен в адаптерах динамических данных. Для JSON и доменных объектов предпочтительнее заранее определённая структура и явная валидация, а не неявное преобразование через fmt.Sprint.",
+    "interview": "Чем type assertion отличается от преобразования типа?"
+  },
+  "advanced-join-errors": {
+    "frames": [
+      [
+        "Обе отсутствуют",
+        [
+          "operation=nil",
+          "cleanup=nil"
+        ],
+        "nil",
+        "Нет ошибки."
+      ],
+      [
+        "Только операция",
+        [
+          "operation=write failed",
+          "cleanup=nil"
+        ],
+        "operation",
+        "Сохраняем исходный объект."
+      ],
+      [
+        "Только очистка",
+        [
+          "operation=nil",
+          "cleanup=close failed"
+        ],
+        "cleanup",
+        "Сохраняем исходный объект."
+      ],
+      [
+        "Обе ошибки",
+        [
+          "operation=write failed",
+          "cleanup=close failed"
+        ],
+        "errors.Join(operation,cleanup)",
+        "Дерево содержит обе причины."
+      ]
+    ],
+    "steps": [
+      [
+        "Нет ошибки операции",
+        "if operation == nil { return cleanup }",
+        "Если operation == nil, возвращаем cleanup как есть, включая nil."
+      ],
+      [
+        "Нет ошибки очистки",
+        "if cleanup == nil { return operation }",
+        "Если cleanup == nil, возвращаем исходную operation, сохраняя идентичность объекта ошибки."
+      ],
+      [
+        "Есть обе причины",
+        "return errors.Join(operation, cleanup)",
+        "При двух причинах errors.Join создаёт ошибку с Unwrap() []error; порядок причин сохраняется, Is и As обходят обе."
+      ]
+    ],
+    "blocks": [
+      "Есть обе причины",
+      "Нет ошибки операции",
+      "Нет ошибки очистки"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if operation == nil { return ",
+        "after": " }",
+        "options": [
+          "cleanup",
+          "operation",
+          "errors.New(\"cleanup\")"
+        ],
+        "correct": 0,
+        "explain": "Одиночную причину сохраняем без обёртки."
+      },
+      {
+        "before": "return ",
+        "after": "",
+        "options": [
+          "errors.Join(operation, cleanup)",
+          "cleanup",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Объединяем причины в заданном порядке."
+      }
+    ],
+    "partial": "package practice\n\nfunc CombineOperationErrors(operation, cleanup error) error {\n    if operation == nil { return cleanup }\n    if cleanup == nil { return operation }\n    // TODO: объедини обе причины, не потеряв ни одну\n    return operation\n}\n",
+    "bug": "package practice\n\nfunc CombineOperationErrors(operation, cleanup error) error {\n\tif cleanup != nil { return cleanup }\n\treturn operation\n}\n",
+    "hints": [
+      "Начни: Нет ошибки операции.",
+      "Если operation == nil, возвращаем cleanup как есть, включая nil.",
+      "Следующее действие: Нет ошибки очистки. Если cleanup == nil, возвращаем исходную operation, сохраняя идентичность объекта ошибки.",
+      "Проверь план: Нет ошибки операции → Нет ошибки очистки → Есть обе причины.",
+      "if operation == nil { return cleanup }\nif cleanup == nil { return operation }\nreturn errors.Join(operation, cleanup)"
+    ],
+    "related": [
+      [
+        "defer-cleanup",
+        "Освобождение ресурсов"
+      ],
+      [
+        "advanced-domain-error",
+        "Типизированная ошибка"
+      ]
+    ],
+    "production": "При записи файла или обработке транзакции ошибка очистки не должна скрывать исходную ошибку. В реальном сервисе правила логирования, повторов и ответа клиенту определяются отдельно.",
+    "interview": "Почему errors.Unwrap не возвращает первую причину errors.Join?"
+  },
+  "advanced-defer-lifo": {
+    "frames": [
+      [
+        "Открытие A",
+        [
+          "resources=[A,B,C]",
+          "stack=[A]"
+        ],
+        "defer release(A)",
+        "Вызов зарегистрирован, но не выполнен."
+      ],
+      [
+        "Открытие B и C",
+        [
+          "stack=[A,B,C]",
+          "order=[]"
+        ],
+        "defer release(C)",
+        "Последний зарегистрированный вызов выполнится первым."
+      ],
+      [
+        "Возврат",
+        [
+          "stack=[A,B]",
+          "order=[C]"
+        ],
+        "release(C)",
+        "Начинается выполнение отложенных функций."
+      ],
+      [
+        "Завершение",
+        [
+          "stack=[]",
+          "order=[C,B,A]"
+        ],
+        "return",
+        "Именованный результат включает изменения defer."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать результат",
+        "order = make([]string, 0, len(resources))",
+        "order уже объявлен как именованный результат в сигнатуре. Поэтому используем =, а не :=."
+      ],
+      [
+        "Перебрать ресурсы",
+        "for _, name := range resources {",
+        "name — имя текущего ресурса в порядке открытия."
+      ],
+      [
+        "Зарегистрировать освобождение",
+        "    defer func(resource string) {\n        order = append(order, resource)\n    }(name)\n}",
+        "func(resource string) объявляет функцию с параметром. (name) передаёт текущее имя. defer откладывает вызов до выхода из функции."
+      ],
+      [
+        "Вернуть именованный результат",
+        "return",
+        "После return выполняются defer в обратном порядке и дополняют order."
+      ]
+    ],
+    "blocks": [
+      "Вернуть именованный результат",
+      "Зарегистрировать освобождение",
+      "Перебрать ресурсы",
+      "Создать результат"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "",
+        "after": "",
+        "options": [
+          "defer func(resource string) { order = append(order, resource) }(name)",
+          "order = append(order,name)",
+          "return nil"
+        ],
+        "correct": 0,
+        "explain": "Регистрируем вызов, сохраняющий текущее имя."
+      },
+      {
+        "before": "",
+        "after": "",
+        "options": [
+          "return nil",
+          "return",
+          "panic(nil)"
+        ],
+        "correct": 1,
+        "explain": "Сохраняем именованный результат."
+      }
+    ],
+    "partial": "package practice\n\nfunc DeferredReleaseOrder(resources []string) (order []string) {\n    order = make([]string, 0, len(resources))\n    for _, name := range resources {\n        defer func(resource string) {\n            // TODO: добавь resource в order\n            _ = resource\n        }(name)\n    }\n    return\n}\n",
+    "bug": "package practice\n\nfunc DeferredReleaseOrder(resources []string) (order []string) {\n\torder = make([]string, 0, len(resources))\n\tfor _, name := range resources { defer func(resource string) { order = append(order, resource) }(name) }\n\treturn nil\n}\n",
+    "hints": [
+      "Первое действие: Создать результат. order уже объявлен как именованный результат в сигнатуре. Поэтому используем =, а не :=.",
+      "Начни с этой строки: order = make([]string, 0, len(resources))",
+      "Следующее действие: Перебрать ресурсы. name — имя текущего ресурса в порядке открытия.",
+      "Проверь оставшиеся действия: Зарегистрировать освобождение → Вернуть именованный результат.",
+      "order = make([]string, 0, len(resources))\nfor _, name := range resources {\n    defer func(resource string) {\n        order = append(order, resource)\n    }(name)\n}\nreturn"
+    ],
+    "related": [
+      [
+        "core-defer-result",
+        "Именованный результат"
+      ],
+      [
+        "defer-cleanup",
+        "Очистка ресурсов"
+      ]
+    ],
+    "production": "При последовательном захвате ресурсов обычно освобождают их в обратном порядке: например, сначала закрывают файл, затем удаляют временный каталог. Здесь моделируется только порядок, не ошибки реального I/O.",
+    "interview": "Когда выполняются defer и в каком порядке?"
+  },
+  "advanced-defer-capture": {
+    "frames": [
+      [
+        "Начало",
+        [
+          "status=pending",
+          "trace=[]"
+        ],
+        "status := initial",
+        "Одна переменная status."
+      ],
+      [
+        "Регистрация",
+        [
+          "closure → status",
+          "snapshot=pending"
+        ],
+        "defer ... (status)",
+        "Снимок сохраняет значение."
+      ],
+      [
+        "Изменение",
+        [
+          "status=done",
+          "snapshot=pending"
+        ],
+        "status = final",
+        "Снимок не меняется."
+      ],
+      [
+        "Возврат",
+        [
+          "trace=[pending,done]"
+        ],
+        "return",
+        "Сначала snapshot, затем чтение status."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать переменную статуса",
+        "status := initial",
+        "status — переменная, которую позже изменим."
+      ],
+      [
+        "Создать журнал",
+        "trace = make([]string, 0, 2)",
+        "trace уже объявлен в сигнатуре; ожидаем две записи."
+      ],
+      [
+        "Зарегистрировать чтение позже",
+        "defer func() {\n    trace = append(trace, status)\n}()",
+        "Функция без параметров прочитает переменную status при выполнении defer."
+      ],
+      [
+        "Зарегистрировать снимок",
+        "defer func(snapshot string) {\n    trace = append(trace, snapshot)\n}(status)",
+        "status передаётся как аргумент прямо сейчас. snapshot хранит исходное значение."
+      ],
+      [
+        "Изменить статус",
+        "status = final",
+        "Первое замыкание увидит final, снимок не изменится."
+      ],
+      [
+        "Вернуть журнал",
+        "return",
+        "Второй defer выполнится первым: initial, затем final."
+      ]
+    ],
+    "blocks": [
+      "Вернуть журнал",
+      "Изменить статус",
+      "Зарегистрировать снимок",
+      "Зарегистрировать чтение позже",
+      "Создать журнал",
+      "Создать переменную статуса"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "defer func(snapshot string) { trace = append(trace, snapshot) }(",
+        "after": ")",
+        "options": [
+          "final",
+          "status",
+          "\"\""
+        ],
+        "correct": 1,
+        "explain": "Аргумент вычисляется при регистрации."
+      },
+      {
+        "before": "status = ",
+        "after": "",
+        "options": [
+          "initial",
+          "\"\"",
+          "final"
+        ],
+        "correct": 2,
+        "explain": "Замыкание прочитает final."
+      }
+    ],
+    "partial": "package practice\n\nfunc DeferredStatusTrace(initial, final string) (trace []string) {\n    status := initial\n    trace = make([]string, 0, 2)\n    defer func() { trace = append(trace, status) }()\n    defer func(snapshot string) {\n        // TODO: добавь snapshot в trace\n        _ = snapshot\n    }(status)\n    status = final\n    return\n}\n",
+    "bug": "package practice\n\nfunc DeferredStatusTrace(initial, final string) (trace []string) {\n\tstatus := initial\n\ttrace = make([]string, 0, 2)\n\tdefer func() { trace = append(trace, status) }()\n\tdefer func() { trace = append(trace, status) }()\n\tstatus = final\n\treturn\n}\n",
+    "hints": [
+      "Первое действие: Создать переменную статуса. status — переменная, которую позже изменим.",
+      "Начни с этой строки: status := initial",
+      "Следующее действие: Создать журнал. trace уже объявлен в сигнатуре; ожидаем две записи.",
+      "Проверь оставшиеся действия: Зарегистрировать чтение позже → Зарегистрировать снимок → Изменить статус → Вернуть журнал.",
+      "status := initial\ntrace = make([]string, 0, 2)\ndefer func() {\n    trace = append(trace, status)\n}()\ndefer func(snapshot string) {\n    trace = append(trace, snapshot)\n}(status)\nstatus = final\nreturn"
+    ],
+    "related": [
+      [
+        "advanced-defer-lifo",
+        "Порядок LIFO"
+      ],
+      [
+        "core-defer-result",
+        "Именованный результат"
+      ]
+    ],
+    "production": "При журналировании завершения запроса важно осознанно выбирать начальные или итоговые значения. Для итогового результата часто подходит замыкание, для неизменного снимка — аргумент.",
+    "interview": "Почему defer log(x) и defer func(){log(x)}() могут вывести разные значения?"
+  },
+  "advanced-panic-trace": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "outer frame",
+          "defer outer"
+        ],
+        "defer func() ...",
+        "Внешняя граница готова восстановиться."
+      ],
+      [
+        "Вложенный вызов",
+        [
+          "outer frame",
+          "inner frame",
+          "defer inner"
+        ],
+        "panic(\"failed\")",
+        "Обычное выполнение прекращается."
+      ],
+      [
+        "Раскрутка",
+        [
+          "trace=[inner]",
+          "outer frame"
+        ],
+        "defer inner",
+        "Вложенный defer выполняется первым."
+      ],
+      [
+        "Восстановление",
+        [
+          "trace=[inner,outer,recovered]"
+        ],
+        "recover()",
+        "Внешний defer останавливает панику; функция возвращается."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать журнал",
+        "trace = make([]string, 0, 3)",
+        "Именованный результат trace доступен обеим вложенным функциям."
+      ],
+      [
+        "Зарегистрировать внешний defer",
+        "defer func() {\n    trace = append(trace, \"outer\")",
+        "Когда стек дойдёт до внешней функции, добавим outer."
+      ],
+      [
+        "Восстановиться после паники",
+        "    if recover() != nil {\n        trace = append(trace, \"recovered\")\n    }\n}()",
+        "recover вызывается непосредственно в defer. При активной панике добавляем recovered."
+      ],
+      [
+        "Начать вложенную функцию",
+        "func() {",
+        "Анонимная функция создаёт отдельный вызов в той же горутине."
+      ],
+      [
+        "Зарегистрировать внутренний defer",
+        "    defer func() { trace = append(trace, \"inner\") }()",
+        "Этот defer выполнится раньше внешнего при раскрутке."
+      ],
+      [
+        "Вызвать panic",
+        "    panic(\"failed\")\n}()",
+        "Вызов вложенной функции запускает панику, затем выполняется inner."
+      ],
+      [
+        "Показать, что обычный путь не продолжается",
+        "trace = append(trace, \"after\")\nreturn",
+        "При панике эта запись не выполняется. Внешний defer остановит панику, и функция вернётся с журналом."
+      ]
+    ],
+    "blocks": [
+      "Показать, что обычный путь не продолжается",
+      "Вызвать panic",
+      "Зарегистрировать внутренний defer",
+      "Начать вложенную функцию",
+      "Восстановиться после паники",
+      "Зарегистрировать внешний defer",
+      "Создать журнал"
+    ],
+    "order": [
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if ",
+        "after": " != nil",
+        "options": [
+          "recover()",
+          "panic(\"failed\")",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Recover вызывается непосредственно в defer."
+      },
+      {
+        "before": "",
+        "after": "(\"failed\")",
+        "options": [
+          "recover",
+          "panic",
+          "return"
+        ],
+        "correct": 1,
+        "explain": "Паника запускает раскрутку."
+      }
+    ],
+    "partial": "package practice\n\nfunc PanicUnwindTrace() (trace []string) {\n    trace = make([]string, 0, 3)\n    defer func() {\n        trace = append(trace, \"outer\")\n        if recover() != nil { trace = append(trace, \"recovered\") }\n    }()\n    func() {\n        defer func() {\n            // TODO: добавь \"inner\" в trace\n        }()\n        panic(\"failed\")\n    }()\n    return\n}\n",
+    "bug": "package practice\n\nfunc PanicUnwindTrace() (trace []string) {\n\ttrace = make([]string, 0, 3)\n\tdefer func() {\n\t trace = append(trace, \"outer\")\n\t if recover() != nil { trace = append(trace, \"recovered\") }\n\t}()\n\tfunc() {\n\t defer func() { trace = append(trace, \"inner\") }()\n\t}()\n\ttrace = append(trace, \"after\")\n\treturn\n}\n",
+    "hints": [
+      "Первое действие: Создать журнал. Именованный результат trace доступен обеим вложенным функциям.",
+      "Начни с этой строки: trace = make([]string, 0, 3)",
+      "Следующее действие: Зарегистрировать внешний defer. Когда стек дойдёт до внешней функции, добавим outer.",
+      "Проверь оставшиеся действия: Восстановиться после паники → Начать вложенную функцию → Зарегистрировать внутренний defer → Вызвать panic → Показать, что обычный путь не продолжается.",
+      "trace = make([]string, 0, 3)\ndefer func() {\n    trace = append(trace, \"outer\")\n    if recover() != nil {\n        trace = append(trace, \"recovered\")\n    }\n}()\nfunc() {\n    defer func() { trace = append(trace, \"inner\") }()\n    panic(\"failed\")\n}()\ntrace = append(trace, \"after\")\nreturn"
+    ],
+    "related": [
+      [
+        "advanced-defer-lifo",
+        "Порядок defer"
+      ],
+      [
+        "advanced-defer-capture",
+        "Захват переменной"
+      ]
+    ],
+    "production": "На границе обработки запроса можно восстановиться после неожиданной паники, записать диагностические данные и завершить запрос. Не следует использовать panic для обычных доменных ошибок.",
+    "interview": "Продолжается ли выполнение после строки panic, если recover сработал?"
+  },
+  "advanced-recover-boundary": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "work callback",
+          "err=nil"
+        ],
+        "defer recovery",
+        "Граница регистрируется заранее."
+      ],
+      [
+        "Нормальный путь",
+        [
+          "work → original error"
+        ],
+        "return work()",
+        "Recover возвращает nil, результат сохраняется."
+      ],
+      [
+        "Путь panic",
+        [
+          "work → panic(error)"
+        ],
+        "recover()",
+        "Отложенная функция получает значение паники."
+      ],
+      [
+        "Результат",
+        [
+          "err=wrapped cause"
+        ],
+        "fmt.Errorf(... %w ...)",
+        "Вызывающий код получает ошибку вместо продолжения аварии."
+      ]
+    ],
+    "steps": [
+      [
+        "Зарегистрировать отложенную функцию",
+        "defer func() {",
+        "Граница восстановления должна быть зарегистрирована до вызова work. Именованный err доступен внутри замыкания."
+      ],
+      [
+        "Получить значение паники",
+        "    if value := recover(); value != nil {",
+        "recover вызываем непосредственно внутри defer. При обычном возврате он даст nil, и блок не выполнится."
+      ],
+      [
+        "Проверить, является ли значение ошибкой",
+        "        if cause, ok := value.(error); ok {",
+        "Type assertion с двумя результатами не вызывает panic при несовпадении типа."
+      ],
+      [
+        "Сохранить исходную ошибку",
+        "            err = fmt.Errorf(\"work panic: %w\", cause)\n            return\n        }",
+        "%w сохраняет причину. return здесь выходит только из отложенной функции."
+      ],
+      [
+        "Обработать другое значение",
+        "        err = fmt.Errorf(\"work panic: %v\", value)\n    }\n}()",
+        "%v форматирует строку, число или другое значение. Закрываем блоки и объявление defer."
+      ],
+      [
+        "Вызвать основную операцию",
+        "return work()",
+        "При обычном возврате сохраняется исходный error. При panic отложенная функция изменит err."
+      ]
+    ],
+    "blocks": [
+      "Вызвать основную операцию",
+      "Обработать другое значение",
+      "Сохранить исходную ошибку",
+      "Проверить, является ли значение ошибкой",
+      "Получить значение паники",
+      "Зарегистрировать отложенную функцию"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if value := ",
+        "after": "; value != nil",
+        "options": [
+          "work()",
+          "recover()",
+          "nil"
+        ],
+        "correct": 1,
+        "explain": "Получаем значение паники."
+      },
+      {
+        "before": "fmt.Errorf(\"work panic: ",
+        "after": "\", cause)",
+        "options": [
+          "%v",
+          "%s",
+          "%w"
+        ],
+        "correct": 2,
+        "explain": "%w сохраняет error-причину."
+      }
+    ],
+    "partial": "package practice\n\nfunc RunProtectedWork(work func() error) (err error) {\n    defer func() {\n        if value := recover(); value != nil {\n            if cause, ok := value.(error); ok {\n                // TODO: замени %v на формат, сохраняющий причину\n                err = fmt.Errorf(\"work panic: %v\", cause)\n                return\n            }\n            err = fmt.Errorf(\"work panic: %v\", value)\n        }\n    }()\n    return work()\n}\n",
+    "bug": "package practice\n\nfunc RunProtectedWork(work func() error) (err error) {\n\tdefer func() {\n\t if value := recover(); value != nil { err = nil }\n\t}()\n\treturn work()\n}\n",
+    "hints": [
+      "Первое действие: Зарегистрировать отложенную функцию. Граница восстановления должна быть зарегистрирована до вызова work. Именованный err доступен внутри замыкания.",
+      "Начни с этой строки: defer func() {",
+      "Следующее действие: Получить значение паники. recover вызываем непосредственно внутри defer. При обычном возврате он даст nil, и блок не выполнится.",
+      "Проверь оставшиеся действия: Проверить, является ли значение ошибкой → Сохранить исходную ошибку → Обработать другое значение → Вызвать основную операцию.",
+      "defer func() {\n    if value := recover(); value != nil {\n        if cause, ok := value.(error); ok {\n            err = fmt.Errorf(\"work panic: %w\", cause)\n            return\n        }\n        err = fmt.Errorf(\"work panic: %v\", value)\n    }\n}()\nreturn work()"
+    ],
+    "related": [
+      [
+        "advanced-panic-trace",
+        "Раскрутка стека"
+      ],
+      [
+        "advanced-join-errors",
+        "Сохранение причин ошибок"
+      ]
+    ],
+    "production": "Обёртка подходит как учебная модель границы worker или request handler. В production дополнительно нужны stack trace, политика логирования, корректная отмена и защита от повторной обработки. Нельзя считать recover гарантией целостности данных.",
+    "interview": "Почему recover лучше размещать на границе обработки, а не в каждой функции?"
+  },
+  "advanced-generic-filter": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "values=[3,2,4]",
+          "out=[]"
+        ],
+        "keep: чётное число",
+        "Тип T выведен как int."
+      ],
+      [
+        "Первый элемент",
+        [
+          "v=3",
+          "out=[]"
+        ],
+        "keep(3)=false",
+        "Пропускаем."
+      ],
+      [
+        "Второй элемент",
+        [
+          "v=2",
+          "out=[2]"
+        ],
+        "keep(2)=true",
+        "Добавляем."
+      ],
+      [
+        "Завершение",
+        [
+          "values=[3,2,4]",
+          "out=[2,4]"
+        ],
+        "return out",
+        "Вход не изменён."
+      ]
+    ],
+    "steps": [
+      [
+        "Выделить результат",
+        "out := make([]T, 0, len(values))",
+        "T — тип элемента входного среза. Длина 0, потому что пока ничего не отобрали. Ёмкость len(values) резервирует память."
+      ],
+      [
+        "Перебрать элементы",
+        "for _, v := range values {",
+        "range даёт индекс и элемент v. Индекс не нужен, поэтому _."
+      ],
+      [
+        "Проверить условие отбора",
+        "    if keep(v) {",
+        "keep — функция из параметров, возвращающая bool. Если true, элемент подходит."
+      ],
+      [
+        "Добавить подходящий элемент",
+        "        out = append(out, v)\n    }\n}",
+        "append возвращает обновлённый срез. Закрываем условие и цикл."
+      ],
+      [
+        "Вернуть результат",
+        "return out",
+        "После цикла возвращаем только отобранные элементы."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Добавить подходящий элемент",
+      "Проверить условие отбора",
+      "Перебрать элементы",
+      "Выделить результат"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out := ",
+        "after": "",
+        "options": [
+          "values[:0]",
+          "make([]T,0,len(values))",
+          "values"
+        ],
+        "correct": 1,
+        "explain": "Отдельный backing array."
+      },
+      {
+        "before": "if ",
+        "after": " { out=append(out,v) }",
+        "options": [
+          "v==v",
+          "true",
+          "keep(v)"
+        ],
+        "correct": 2,
+        "explain": "Предикат определяет отбор."
+      }
+    ],
+    "partial": "package practice\n\nfunc FilterValues[T any](values []T, keep func(T) bool) []T {\n    out := make([]T, 0, len(values))\n    for _, v := range values {\n        if keep(v) {\n            // TODO: добавь v в out\n        }\n    }\n    return out\n}\n",
+    "bug": "package practice\n\nfunc FilterValues[T any](values []T, keep func(T) bool) []T {\n\tout := values[:0]\n\tfor _, v := range values { if keep(v) { out = append(out,v) } }\n\treturn out\n}\n",
+    "hints": [
+      "Первое действие: Выделить результат. T — тип элемента входного среза. Длина 0, потому что пока ничего не отобрали. Ёмкость len(values) резервирует память.",
+      "Начни с этой строки: out := make([]T, 0, len(values))",
+      "Следующее действие: Перебрать элементы. range даёт индекс и элемент v. Индекс не нужен, поэтому _.",
+      "Проверь оставшиеся действия: Проверить условие отбора → Добавить подходящий элемент → Вернуть результат.",
+      "out := make([]T, 0, len(values))\nfor _, v := range values {\n    if keep(v) {\n        out = append(out, v)\n    }\n}\nreturn out"
+    ],
+    "related": [
+      [
+        "filter",
+        "Фильтрация конкретного типа"
+      ],
+      [
+        "generic-unique",
+        "Ограничение comparable"
+      ]
+    ],
+    "production": "Один алгоритм фильтрации подходит для DTO, событий и результатов запросов. Независимый backing array не означает глубокую копию вложенных ссылочных полей.",
+    "interview": "Зачем здесь any, а не comparable?"
+  },
+  "advanced-generic-sum": {
+    "frames": [
+      [
+        "Вызов",
+        [
+          "type Quantity int64",
+          "values=[5,-2,4]"
+        ],
+        "T=Quantity",
+        "~int64 включает Quantity."
+      ],
+      [
+        "Начало",
+        [
+          "total=0"
+        ],
+        "var total T",
+        "Нулевое значение."
+      ],
+      [
+        "Накопление",
+        [
+          "total=5",
+          "total=3"
+        ],
+        "total += v",
+        "Учитываем отрицательное значение."
+      ],
+      [
+        "Возврат",
+        [
+          "total=7",
+          "type=Quantity"
+        ],
+        "return total",
+        "Тип не потерян."
+      ]
+    ],
+    "steps": [
+      [
+        "Объявить накопитель",
+        "var total T",
+        "Сумма начинается с zero value типа T. Так сохраняем именованный числовой тип."
+      ],
+      [
+        "Перебрать числа",
+        "for _, v := range values {",
+        "v — очередной элемент типа T, _ пропускает индекс."
+      ],
+      [
+        "Прибавить число",
+        "    total += v\n}",
+        "+= означает total = total + v. Constraint разрешает сложение для всех допустимых типов."
+      ],
+      [
+        "Вернуть сумму",
+        "return total",
+        "Возвращаем T, а не преобразуем результат в int."
+      ]
+    ],
+    "blocks": [
+      "Вернуть сумму",
+      "Прибавить число",
+      "Перебрать числа",
+      "Объявить накопитель"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "var total ",
+        "after": "",
+        "options": [
+          "T",
+          "int64",
+          "any"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем тип."
+      },
+      {
+        "before": "total ",
+        "after": " v",
+        "options": [
+          "=",
+          "+=",
+          "-="
+        ],
+        "correct": 1,
+        "explain": "Накапливаем сумму."
+      }
+    ],
+    "partial": "package practice\n\nfunc SumSigned[T ~int | ~int64](values []T) T {\n    var total T\n    for _, v := range values {\n        // TODO: прибавь v к total\n        _ = v\n    }\n    return total\n}\n",
+    "bug": "package practice\n\nfunc SumSigned[T ~int | ~int64](values []T) T {\n\tvar total T\n\tfor _,v:=range values { if v>0 { total+=v } }\n\treturn total\n}\n",
+    "hints": [
+      "Первое действие: Объявить накопитель. Сумма начинается с zero value типа T. Так сохраняем именованный числовой тип.",
+      "Начни с этой строки: var total T",
+      "Следующее действие: Перебрать числа. v — очередной элемент типа T, _ пропускает индекс.",
+      "Проверь оставшиеся действия: Прибавить число → Вернуть сумму.",
+      "var total T\nfor _, v := range values {\n    total += v\n}\nreturn total"
+    ],
+    "related": [
+      [
+        "generic-unique",
+        "Comparable"
+      ],
+      [
+        "advanced-generic-filter",
+        "Any и предикат"
+      ]
+    ],
+    "production": "Доменные числовые типы помогают не смешивать разные единицы измерения. Общий алгоритм может сохранить тип, но не заменяет проверку переполнения или бизнес-инвариантов.",
+    "interview": "Чем int64 отличается от ~int64 в constraint?"
+  },
+  "advanced-generic-named-slice": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "type Labels []string",
+          "values=[go,api]"
+        ],
+        "S=Labels, E=string",
+        "Компилятор выводит оба параметра."
+      ],
+      [
+        "Выделение",
+        [
+          "values → array A",
+          "out → array B"
+        ],
+        "make(S,2)",
+        "Хранилища различны."
+      ],
+      [
+        "Копирование",
+        [
+          "A=[go,api]",
+          "B=[go,api]"
+        ],
+        "copy(out,values)",
+        "Копируются значения элементов."
+      ],
+      [
+        "Возврат",
+        [
+          "out type=Labels"
+        ],
+        "return out",
+        "Именованный тип сохранён."
+      ]
+    ],
+    "steps": [
+      [
+        "Сохранить nil",
+        "if values == nil { return nil }",
+        "Отличаем nil от пустого инициализированного среза."
+      ],
+      [
+        "Создать S",
+        "out := make(S, len(values))",
+        "Сохраняем конкретный тип, а не только []E."
+      ],
+      [
+        "Скопировать элементы",
+        "copy(out, values)",
+        "Создаём независимое внешнее хранилище."
+      ],
+      [
+        "Вернуть S",
+        "return out",
+        "Методы именованного типа доступны вызывающему коду."
+      ]
+    ],
+    "blocks": [
+      "Вернуть S",
+      "Скопировать элементы",
+      "Создать S",
+      "Сохранить nil"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out := make(",
+        "after": ",len(values))",
+        "options": [
+          "[]any",
+          "S",
+          "E"
+        ],
+        "correct": 1,
+        "explain": "Тип всего среза."
+      },
+      {
+        "before": "",
+        "after": "(out,values)",
+        "options": [
+          "append",
+          "delete",
+          "copy"
+        ],
+        "correct": 2,
+        "explain": "Копируем элементы."
+      }
+    ],
+    "partial": "package practice\n\nfunc CloneNamedSlice[S ~[]E, E any](values S) S {\n    if values == nil { return nil }\n    out := make(S, len(values))\n    // TODO: скопируй элементы из values в out\n    return out\n}\n",
+    "bug": "package practice\n\nfunc CloneNamedSlice[S ~[]E, E any](values S) S {\n\treturn values\n}\n",
+    "hints": [
+      "Сначала различи nil и непустой по признаку nil вход.",
+      "Параметр S описывает тип всего среза.",
+      "Выдели make(S,len(values)), не []E.",
+      "Скопируй элементы встроенной copy.",
+      "if values==nil{return nil}; out:=make(S,len(values));copy(out,values);return out"
+    ],
+    "related": [
+      [
+        "slice-detach",
+        "Независимое хранилище"
+      ],
+      [
+        "advanced-generic-sum",
+        "Underlying types"
+      ]
+    ],
+    "production": "Подходит для копирования доменных коллекций перед изменением. В стандартной библиотеке есть slices.Clone; это упражнение изучает смысл сигнатуры, а не предлагает заменять библиотеку.",
+    "interview": "Почему возвращать S, а не []E?"
+  },
+  "advanced-generic-group": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "values=[go,api,db]",
+          "key=len"
+        ],
+        "out={}",
+        "K=int, T=string."
+      ],
+      [
+        "Первый элемент",
+        [
+          "k=2",
+          "out={2:[go]}"
+        ],
+        "append(out[2],go)",
+        "Создаём первую группу."
+      ],
+      [
+        "Второй элемент",
+        [
+          "k=3",
+          "out={2:[go],3:[api]}"
+        ],
+        "append(out[3],api)",
+        "Новая группа."
+      ],
+      [
+        "Третий элемент",
+        [
+          "k=2",
+          "out={2:[go,db],3:[api]}"
+        ],
+        "append(out[2],db)",
+        "Сохраняем оба элемента."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать map для групп",
+        "out := make(map[K][]T)",
+        "Нам нужно хранить несколько элементов для одного ключа. K — тип ключа, []T — список элементов этой группы."
+      ],
+      [
+        "Перебрать вход",
+        "for _, v := range values {",
+        "range даёт индекс и элемент. Индекс не нужен, поэтому используем _. Переменная v — текущий элемент типа T."
+      ],
+      [
+        "Получить ключ текущего элемента",
+        "    k := key(v)",
+        "key — функция из параметров GroupValues. Она принимает v и возвращает K. Например, key(\"go\") вернёт 2 при группировке по длине."
+      ],
+      [
+        "Добавить элемент в его группу",
+        "    out[k] = append(out[k], v)\n}",
+        "out[k] — текущий список группы. Для отсутствующего ключа это nil срез. append добавляет v и возвращает обновлённый срез, который записываем обратно."
+      ],
+      [
+        "Вернуть группы",
+        "return out",
+        "Цикл уже завершён, все элементы распределены."
+      ]
+    ],
+    "blocks": [
+      "Вернуть группы",
+      "Добавить элемент в его группу",
+      "Получить ключ текущего элемента",
+      "Перебрать вход",
+      "Создать map для групп"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out[k] = ",
+        "after": "",
+        "options": [
+          "[]T{v}",
+          "append(out[k],v)",
+          "nil"
+        ],
+        "correct": 1,
+        "explain": "Добавляем к существующей группе."
+      },
+      {
+        "before": "k := ",
+        "after": "",
+        "options": [
+          "v",
+          "key",
+          "key(v)"
+        ],
+        "correct": 2,
+        "explain": "Вычисляем ключ."
+      }
+    ],
+    "partial": "package practice\n\nfunc GroupValues[T any, K comparable](values []T, key func(T) K) map[K][]T {\n    out := make(map[K][]T)\n    for _, v := range values {\n        k := key(v)\n        // TODO: добавь v в группу out[k]\n        _ = k\n    }\n    return out\n}\n",
+    "bug": "package practice\n\nfunc GroupValues[T any, K comparable](values []T, key func(T) K) map[K][]T {\n\tout := make(map[K][]T)\n\tfor _,v := range values { k:=key(v); out[k]=[]T{v} }\n\treturn out\n}\n",
+    "hints": [
+      "Первое действие: Создать map для групп. Нам нужно хранить несколько элементов для одного ключа. K — тип ключа, []T — список элементов этой группы.",
+      "Начни с этой строки: out := make(map[K][]T)",
+      "Следующее действие: Перебрать вход. range даёт индекс и элемент. Индекс не нужен, поэтому используем _. Переменная v — текущий элемент типа T.",
+      "Проверь оставшиеся действия: Получить ключ текущего элемента → Добавить элемент в его группу → Вернуть группы.",
+      "out := make(map[K][]T)\nfor _, v := range values {\n    k := key(v)\n    out[k] = append(out[k], v)\n}\nreturn out"
+    ],
+    "related": [
+      [
+        "core-group-length",
+        "Группировка строк"
+      ],
+      [
+        "advanced-generic-filter",
+        "Generic предикат"
+      ]
+    ],
+    "production": "Группировка событий по tenant ID или DTO по статусу помогает формировать пакетные операции. Порядок обхода самих ключей map не определён; для стабильного вывода сортируй ключи отдельно.",
+    "interview": "Почему T any, а K comparable?"
+  },
+  "advanced-generic-map": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "values=[7,12]",
+          "T=int",
+          "R=string"
+        ],
+        "convert=strconv.Itoa",
+        "Типы различаются."
+      ],
+      [
+        "Выделение",
+        [
+          "out=[\"\",\"\"]"
+        ],
+        "make([]R,2)",
+        "Длина уже равна двум."
+      ],
+      [
+        "Первый вызов",
+        [
+          "out=[\"7\",\"\"]"
+        ],
+        "out[0]=convert(7)",
+        "Записываем по индексу."
+      ],
+      [
+        "Результат",
+        [
+          "out=[\"7\",\"12\"]"
+        ],
+        "return out",
+        "Исходный срез не меняется."
+      ]
+    ],
+    "steps": [
+      [
+        "Выделить результат",
+        "out := make([]R, len(values))",
+        "R — выходной тип. Длина заранее известна: один выходной элемент на каждый входной."
+      ],
+      [
+        "Перебрать с индексом",
+        "for i, v := range values {",
+        "i — позиция, v — элемент T. Индекс нужен для записи в готовый срез."
+      ],
+      [
+        "Преобразовать элемент",
+        "    out[i] = convert(v)\n}",
+        "convert принимает T и возвращает R. Записываем R по тому же индексу, не используем append к уже заполненной длине."
+      ],
+      [
+        "Вернуть результат",
+        "return out",
+        "Порядок и длина сохранены."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Преобразовать элемент",
+      "Перебрать с индексом",
+      "Выделить результат"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out := make(",
+        "after": ",len(values))",
+        "options": [
+          "[]R",
+          "[]T",
+          "[]any"
+        ],
+        "correct": 0,
+        "explain": "Выходной тип R."
+      },
+      {
+        "before": "out[i] = ",
+        "after": "",
+        "options": [
+          "v",
+          "convert(v)",
+          "nil"
+        ],
+        "correct": 1,
+        "explain": "Преобразуем элемент."
+      }
+    ],
+    "partial": "package practice\n\nfunc TransformValues[T any, R any](values []T, convert func(T) R) []R {\n    out := make([]R, len(values))\n    for i, v := range values {\n        // TODO: запиши результат convert(v) в out[i]\n        _, _ = i, v\n    }\n    return out\n}\n",
+    "bug": "package practice\n\nfunc TransformValues[T any, R any](values []T, convert func(T) R) []R {\n\tout := make([]R,0,len(values))\n\tfor i:=len(values)-1;i>=0;i-- {out=append(out,convert(values[i]))}\n\treturn out\n}\n",
+    "hints": [
+      "Первое действие: Выделить результат. R — выходной тип. Длина заранее известна: один выходной элемент на каждый входной.",
+      "Начни с этой строки: out := make([]R, len(values))",
+      "Следующее действие: Перебрать с индексом. i — позиция, v — элемент T. Индекс нужен для записи в готовый срез.",
+      "Проверь оставшиеся действия: Преобразовать элемент → Вернуть результат.",
+      "out := make([]R, len(values))\nfor i, v := range values {\n    out[i] = convert(v)\n}\nreturn out"
+    ],
+    "related": [
+      [
+        "advanced-generic-filter",
+        "Универсальная фильтрация"
+      ],
+      [
+        "advanced-generic-group",
+        "Универсальная группировка"
+      ]
+    ],
+    "production": "Преобразование доменных моделей в DTO можно выразить обычным циклом или generic helper, если это повышает читаемость. Сложные преобразования с ошибками требуют отдельного контракта.",
+    "interview": "Чем TransformValues отличается от FilterValues?"
+  },
+  "advanced-generic-set": {
+    "frames": [
+      [
+        "Подготовка",
+        [
+          "first=[b,a,b,c]",
+          "second=[a,b]"
+        ],
+        "remaining={a,b}",
+        "Множество второго среза."
+      ],
+      [
+        "Первое совпадение",
+        [
+          "out=[b]",
+          "remaining={a}"
+        ],
+        "delete(remaining,b)",
+        "b больше не выдаём."
+      ],
+      [
+        "Второе совпадение",
+        [
+          "out=[b,a]",
+          "remaining={}"
+        ],
+        "delete(remaining,a)",
+        "a добавлено."
+      ],
+      [
+        "Остальные",
+        [
+          "out=[b,a]"
+        ],
+        "b и c пропущены",
+        "Порядок и уникальность сохранены."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать множество",
+        "remaining := make(map[T]struct{}, len(second))",
+        "Ключ — элемент T. Пустая структура хранит только факт присутствия."
+      ],
+      [
+        "Заполнить множество",
+        "for _, v := range second {\n    remaining[v] = struct{}{}\n}",
+        "Перебираем второй срез. Одинаковые ключи записываются в одну ячейку map."
+      ],
+      [
+        "Создать результат",
+        "out := make([]T, 0)",
+        "Нужен отдельный срез, потому что map не сохраняет порядок."
+      ],
+      [
+        "Перебрать первый срез",
+        "for _, v := range first {",
+        "Именно этот обход задаёт порядок результата."
+      ],
+      [
+        "Проверить присутствие",
+        "    if _, ok := remaining[v]; ok {",
+        "ok показывает, есть ли ключ. Само пустое значение нам не нужно."
+      ],
+      [
+        "Добавить и исключить повтор",
+        "        out = append(out, v)\n        delete(remaining, v)\n    }\n}",
+        "Добавляем совпадение один раз. Удаляем ключ, чтобы повтор в first больше не прошёл проверку."
+      ],
+      [
+        "Вернуть результат",
+        "return out",
+        "Оба входных среза остаются неизменными."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Добавить и исключить повтор",
+      "Проверить присутствие",
+      "Перебрать первый срез",
+      "Создать результат",
+      "Заполнить множество",
+      "Создать множество"
+    ],
+    "order": [
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "remaining := make(",
+        "after": ",len(second))",
+        "options": [
+          "[]T",
+          "map[T]struct{}",
+          "map[any]T"
+        ],
+        "correct": 1,
+        "explain": "Множество сравнимых ключей."
+      },
+      {
+        "before": "",
+        "after": "(remaining,v)",
+        "options": [
+          "append",
+          "copy",
+          "delete"
+        ],
+        "correct": 2,
+        "explain": "Исключаем повтор."
+      }
+    ],
+    "partial": "package practice\n\nfunc CommonDistinct[T comparable](first, second []T) []T {\n    remaining := make(map[T]struct{}, len(second))\n    for _, v := range second { remaining[v] = struct{}{} }\n    out := make([]T, 0)\n    for _, v := range first {\n        if _, ok := remaining[v]; ok {\n            // TODO: добавь v в out\n            delete(remaining, v)\n        }\n    }\n    return out\n}\n",
+    "bug": "package practice\n\nfunc CommonDistinct[T comparable](first, second []T) []T {\n\tremaining:=make(map[T]struct{})\n\tfor _,v:=range second {remaining[v]=struct{}{}}\n\tout:=make([]T,0)\n\tfor _,v:=range first {if _,ok:=remaining[v];ok {out=append(out,v)}}\n\treturn out\n}\n",
+    "hints": [
+      "Первое действие: Создать множество. Ключ — элемент T. Пустая структура хранит только факт присутствия.",
+      "Начни с этой строки: remaining := make(map[T]struct{}, len(second))",
+      "Следующее действие: Заполнить множество. Перебираем второй срез. Одинаковые ключи записываются в одну ячейку map.",
+      "Проверь оставшиеся действия: Создать результат → Перебрать первый срез → Проверить присутствие → Добавить и исключить повтор → Вернуть результат.",
+      "remaining := make(map[T]struct{}, len(second))\nfor _, v := range second {\n    remaining[v] = struct{}{}\n}\nout := make([]T, 0)\nfor _, v := range first {\n    if _, ok := remaining[v]; ok {\n        out = append(out, v)\n        delete(remaining, v)\n    }\n}\nreturn out"
+    ],
+    "related": [
+      [
+        "generic-unique",
+        "Дедупликация"
+      ],
+      [
+        "advanced-generic-group",
+        "Ключи generic map"
+      ]
+    ],
+    "production": "Пересечение списков разрешённых идентификаторов удобно при подготовке выборок. Само по себе упражнение не заменяет полноценную серверную авторизацию и проверки актуальности прав.",
+    "interview": "Почему comparable не гарантирует отсутствие panic для любого интерфейсного аргумента?"
+  },
+  "advanced-dependency-injection": {
+    "frames": [
+      [
+        "Сборка",
+        [
+          "fake sender",
+          "NewDeliveryService(fake)"
+        ],
+        "service.sender = fake",
+        "Сохраняем зависимость."
+      ],
+      [
+        "Вызов",
+        [
+          "service.Deliver(\"hello\")"
+        ],
+        "s.sender.Send(\"hello\")",
+        "Текст передаётся без изменения."
+      ],
+      [
+        "Успех",
+        [
+          "calls=1",
+          "err=nil"
+        ],
+        "return nil",
+        "Операция завершена."
+      ],
+      [
+        "Сбой",
+        [
+          "calls=1",
+          "err=offline"
+        ],
+        "return offline",
+        "Сервис возвращает ошибку зависимости."
+      ]
+    ],
+    "steps": [
+      [
+        "Определить контракт",
+        "type DeliverySender interface {\n    Send(string) error\n}",
+        "Сервису нужен один метод отправки текста. Интерфейс описывает его сигнатуру, а не способ отправки."
+      ],
+      [
+        "Хранить зависимость",
+        "type DeliveryService struct {\n    sender DeliverySender\n}",
+        "Поле sender имеет тип интерфейса: в нём может храниться любая подходящая реализация."
+      ],
+      [
+        "Объявить конструктор",
+        "func NewDeliveryService(sender DeliverySender) *DeliveryService {",
+        "Принимаем готовую зависимость снаружи. Результат — указатель на сервис."
+      ],
+      [
+        "Создать структуру",
+        "    return &DeliveryService{sender: sender}\n}",
+        "Слева имя поля, справа параметр. & берёт адрес созданной структуры."
+      ],
+      [
+        "Объявить метод",
+        "func (s *DeliveryService) Deliver(text string) error {",
+        "s — receiver, через него доступно поле sender конкретного сервиса."
+      ],
+      [
+        "Вызвать зависимость",
+        "    return s.sender.Send(text)\n}",
+        "Получаем поле sender, вызываем его метод Send с text и сразу возвращаем исходный error."
+      ]
+    ],
+    "blocks": [
+      "Вызвать зависимость",
+      "Объявить метод",
+      "Создать структуру",
+      "Объявить конструктор",
+      "Хранить зависимость",
+      "Определить контракт"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "return &DeliveryService{sender: ",
+        "after": "}",
+        "options": [
+          "nil",
+          "sender",
+          "text"
+        ],
+        "correct": 1,
+        "explain": "Сохраняем переданный параметр."
+      },
+      {
+        "before": "return ",
+        "after": "(text)",
+        "options": [
+          "sender",
+          "s.Deliver",
+          "s.sender.Send"
+        ],
+        "correct": 2,
+        "explain": "Вызываем метод зависимости."
+      }
+    ],
+    "partial": "package practice\n\ntype DeliverySender interface { Send(string) error }\ntype DeliveryService struct { sender DeliverySender }\n\nfunc NewDeliveryService(sender DeliverySender) *DeliveryService {\n    return &DeliveryService{sender: sender}\n}\n\nfunc (s *DeliveryService) Deliver(text string) error {\n    // TODO: вызови Send через поле sender и верни полученную ошибку\n    return nil\n}\n",
+    "bug": "package practice\n\ntype DeliverySender interface { Send(string) error }\ntype DeliveryService struct { sender DeliverySender }\n\nfunc NewDeliveryService(sender DeliverySender) *DeliveryService {\n    return &DeliveryService{sender: sender}\n}\n\nfunc (s *DeliveryService) Deliver(text string) error {\n    _ = s.sender.Send(text)\n    return nil\n}\n",
+    "hints": [
+      "Сервис получает готовую зависимость, а не создаёт её сам.",
+      "Посмотри на поле sender структуры DeliveryService.",
+      "Создай сервис: return &DeliveryService{sender: sender}.",
+      "В Deliver обратись к s.sender и вызови Send с text.",
+      "return s.sender.Send(text)"
+    ],
+    "related": [
+      [
+        "advanced-repository",
+        "Интерфейс репозитория"
+      ],
+      [
+        "advanced-interface-compose",
+        "Композиция интерфейсов"
+      ]
+    ],
+    "production": "В main или composition root собирают сервис из репозиториев, HTTP-клиентов и publishers. В тестах подставляют fake. Это ручной DI без обязательного фреймворка.",
+    "interview": "Зачем передавать интерфейс через конструктор?"
+  },
+  "advanced-interface-adapter": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "fn: func(string) error",
+          "calls=0"
+        ],
+        "AdaptEventHandler(fn)",
+        "Функция ещё не вызывается."
+      ],
+      [
+        "Адаптация",
+        [
+          "dynamic type=EventHandlerFunc",
+          "calls=0"
+        ],
+        "EventHandlerFunc(fn)",
+        "Преобразуем тип, помещаем значение в интерфейс."
+      ],
+      [
+        "Вызов",
+        [
+          "handler.Handle(\"created\")",
+          "f(\"created\")"
+        ],
+        "return f(event)",
+        "Метод делегирует вызов."
+      ],
+      [
+        "Выход",
+        [
+          "calls=1",
+          "err=original"
+        ],
+        "return error",
+        "Сохраняем результат callback."
+      ]
+    ],
+    "steps": [
+      [
+        "Описать нужный метод",
+        "type EventHandler interface {\n    Handle(string) error\n}",
+        "Потребителю нужен метод Handle. Обычная функция с такой сигнатурой ещё не имеет метода."
+      ],
+      [
+        "Объявить определённый тип функции",
+        "type EventHandlerFunc func(string) error",
+        "Это новый тип с underlying function type. В том же пакете к нему можно добавить метод."
+      ],
+      [
+        "Объявить метод",
+        "func (f EventHandlerFunc) Handle(event string) error {",
+        "f — receiver, значение нашего функционального типа. event — аргумент метода."
+      ],
+      [
+        "Вызвать функцию",
+        "    return f(event)\n}",
+        "f можно вызывать как обычную функцию. Передаём event и возвращаем исходный error."
+      ],
+      [
+        "Объявить адаптер",
+        "func AdaptEventHandler(fn func(string) error) EventHandler {",
+        "Принимаем обычную функцию. Результат — интерфейс, требующий Handle."
+      ],
+      [
+        "Преобразовать тип",
+        "    return EventHandlerFunc(fn)\n}",
+        "Это conversion, не вызов fn. Полученный тип имеет Handle и неявно реализует EventHandler."
+      ]
+    ],
+    "blocks": [
+      "Преобразовать тип",
+      "Объявить адаптер",
+      "Вызвать функцию",
+      "Объявить метод",
+      "Объявить определённый тип функции",
+      "Описать нужный метод"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "return ",
+        "after": "(event)",
+        "options": [
+          "f",
+          "Handle",
+          "EventHandler"
+        ],
+        "correct": 0,
+        "explain": "Receiver f — функция."
+      },
+      {
+        "before": "return ",
+        "after": "(fn)",
+        "options": [
+          "fn",
+          "EventHandlerFunc",
+          "Handle"
+        ],
+        "correct": 1,
+        "explain": "Преобразуем тип, не вызываем callback."
+      }
+    ],
+    "partial": "package practice\n\ntype EventHandler interface { Handle(string) error }\ntype EventHandlerFunc func(string) error\n\nfunc (f EventHandlerFunc) Handle(event string) error {\n    return f(event)\n}\n\nfunc AdaptEventHandler(fn func(string) error) EventHandler {\n    // TODO: преобразуй fn в EventHandlerFunc и верни результат\n    return nil\n}\n",
+    "bug": "package practice\n\ntype EventHandler interface { Handle(string) error }\ntype EventHandlerFunc func(string) error\n\nfunc (f EventHandlerFunc) Handle(event string) error {\n    _ = f(event)\n    return nil\n}\n\nfunc AdaptEventHandler(fn func(string) error) EventHandler {\n    return EventHandlerFunc(fn)\n}\n",
+    "hints": [
+      "Интерфейс требует метод Handle, а не просто функцию с такой сигнатурой.",
+      "Тип EventHandlerFunc уже объявлен. Receiver f сам является функцией.",
+      "В Handle напиши return f(event).",
+      "В AdaptEventHandler нужно преобразовать fn, не вызывать её.",
+      "return EventHandlerFunc(fn)"
+    ],
+    "related": [
+      [
+        "advanced-dependency-injection",
+        "Передача зависимости"
+      ],
+      [
+        "advanced-method-set",
+        "Method set"
+      ]
+    ],
+    "production": "net/http использует http.HandlerFunc для адаптации обычных функций к Handler. Этот приём подходит и для небольших обработчиков событий или тестовых зависимостей.",
+    "interview": "Почему http.HandlerFunc реализует http.Handler?"
+  },
+  "advanced-interface-equality": {
+    "frames": [
+      [
+        "Обычные значения",
+        [
+          "a=int(7)",
+          "b=int(7)"
+        ],
+        "equal=true,ok=true",
+        "Типы совпадают, значения сравнимы."
+      ],
+      [
+        "Разные типы",
+        [
+          "a=[]int{1}",
+          "b=string(\"1\")"
+        ],
+        "equal=false,ok=true",
+        "Разные динамические типы не равны."
+      ],
+      [
+        "Одинаковые срезы",
+        [
+          "a=[]int{1}",
+          "b=[]int{1}"
+        ],
+        "equal=false,ok=false",
+        "Срезы нельзя сравнивать через ==."
+      ],
+      [
+        "Вложенный интерфейс",
+        [
+          "a=struct{V any}{[]int{1}}",
+          "b=struct{V any}{[]int{1}}"
+        ],
+        "Value.Comparable=false",
+        "Type.Comparable недостаточно для конкретного значения."
+      ]
+    ],
+    "steps": [
+      [
+        "Обработать nil-интерфейс",
+        "if a == nil || b == nil {",
+        "Сравнить интерфейс с nil безопасно. ValueOf(nil) даёт невалидное reflect.Value, поэтому начинаем с этой проверки."
+      ],
+      [
+        "Вернуть результат для nil",
+        "    return a == nil && b == nil, true\n}",
+        "Оба nil равны. Если только один nil, значения не равны, но сравнение допустимо."
+      ],
+      [
+        "Сравнить динамические типы",
+        "if reflect.TypeOf(a) != reflect.TypeOf(b) {\n    return false, true\n}",
+        "Разные динамические типы интерфейсов не равны, даже если один содержит срез."
+      ],
+      [
+        "Проверить сравнимость значений",
+        "if !reflect.ValueOf(a).Comparable() || !reflect.ValueOf(b).Comparable() {",
+        "Value.Comparable проверяет конкретное значение, включая динамические значения вложенных интерфейсных полей."
+      ],
+      [
+        "Отклонить опасное сравнение",
+        "    return false, false\n}",
+        "ok=false сообщает, что безопасное сравнение через == не поддержано контрактом."
+      ],
+      [
+        "Сравнить значения",
+        "return a == b, true",
+        "После проверок сравнение безопасно. Не используем DeepEqual: у него другая семантика."
+      ]
+    ],
+    "blocks": [
+      "Сравнить значения",
+      "Отклонить опасное сравнение",
+      "Проверить сравнимость значений",
+      "Сравнить динамические типы",
+      "Вернуть результат для nil",
+      "Обработать nil-интерфейс"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if reflect.",
+        "after": "(a) != reflect.TypeOf(b) {",
+        "options": [
+          "ValueOf",
+          "TypeOf",
+          "DeepEqual"
+        ],
+        "correct": 1,
+        "explain": "Сравниваем динамические типы."
+      },
+      {
+        "before": "if !reflect.ValueOf(a).",
+        "after": "() {",
+        "options": [
+          "IsNil",
+          "Kind",
+          "Comparable"
+        ],
+        "correct": 2,
+        "explain": "Проверяем безопасную сравнимость конкретного значения."
+      }
+    ],
+    "partial": "package practice\n\nfunc SafeValueEqual(a, b any) (equal, ok bool) {\n    if a == nil || b == nil { return a == nil && b == nil, true }\n    if reflect.TypeOf(a) != reflect.TypeOf(b) { return false, true }\n    // TODO: проверь Comparable у обоих значений перед сравнением\n    return false, false\n}\n",
+    "bug": "package practice\n\nfunc SafeValueEqual(a, b any) (equal, ok bool) {\n    if a == nil || b == nil { return a == nil && b == nil, true }\n    if reflect.TypeOf(a) != reflect.TypeOf(b) { return false, true }\n    if !reflect.TypeOf(a).Comparable() { return false, false }\n    return a == b, true\n}\n",
+    "hints": [
+      "Сначала разберись с nil: reflect.ValueOf(nil) невалиден.",
+      "Если динамические типы различны, интерфейсы не равны.",
+      "Проверяй reflect.ValueOf(a).Comparable(), а не только TypeOf(a).Comparable().",
+      "Если хотя бы одно значение несравнимо, верни false,false.",
+      "После проверок напиши return a == b, true."
+    ],
+    "related": [
+      [
+        "typednil",
+        "Typed nil"
+      ],
+      [
+        "advanced-generic-set",
+        "Comparable в generics"
+      ]
+    ],
+    "production": "При работе с произвольными metadata или адаптерами не следует сравнивать any без контракта. Лучше ограничить типы заранее. Эта функция учебно показывает консервативную проверку безопасности ==, а не универсальное сравнение объектов.",
+    "interview": "Почему reflect.Type.Comparable может быть true, а сравнение всё равно вызвать panic?"
+  },
+  "advanced-method-values": {
+    "frames": [
+      [
+        "Исходное состояние",
+        [
+          "q → Limit=10"
+        ],
+        "q.Current, q.Live",
+        "Оба метода доступны через указатель."
+      ],
+      [
+        "Создание функций",
+        [
+          "snapshot → copy{10}",
+          "live → q"
+        ],
+        "snapshot = q.Current; live = q.Live",
+        "Receiver вычисляется и сохраняется при создании method value."
+      ],
+      [
+        "Изменение",
+        [
+          "q → Limit=25",
+          "copy → Limit=10"
+        ],
+        "q.Limit = 25",
+        "Копия структуры не изменяется."
+      ],
+      [
+        "Вызов",
+        [
+          "snapshot()=10",
+          "live()=25"
+        ],
+        "return values",
+        "Pointer method читает изменённый объект."
+      ]
+    ],
+    "steps": [
+      [
+        "Разобрать структуру и методы",
+        "type MethodQuota struct { Limit int }\nfunc (q MethodQuota) Current() int { return q.Limit }\nfunc (q *MethodQuota) Live() int { return q.Limit }",
+        "Оба метода возвращают Limit, но Current получает копию структуры, а Live — указатель. Они уже даны в заготовке."
+      ],
+      [
+        "Разобрать сигнатуру",
+        "func CaptureQuotaReaders(q *MethodQuota) (snapshot, live func() int) {",
+        "Возвращаем две функции без аргументов. snapshot и live — именованные переменные результата, поэтому далее используем =, а не :=."
+      ],
+      [
+        "Сохранить value method",
+        "    snapshot = q.Current",
+        "Убираем круглые скобки: q.Current — значение функции, q.Current() — вызов с результатом int. Для value receiver Go сохраняет копию *q при создании method value."
+      ],
+      [
+        "Сохранить pointer method",
+        "    live = q.Live",
+        "Здесь сохраняется указатель q, а не копия структуры. При будущем вызове метод прочитает актуальное поле по этому адресу."
+      ],
+      [
+        "Вернуть функции",
+        "    return\n}",
+        "Именованные результаты уже заполнены. Вызовы snapshot() и live() произойдут позже у вызывающего кода."
+      ]
+    ],
+    "blocks": [
+      "Вернуть функции",
+      "Сохранить pointer method",
+      "Сохранить value method",
+      "Разобрать сигнатуру",
+      "Разобрать структуру и методы"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "snapshot = ",
+        "after": "",
+        "options": [
+          "q.Current()",
+          "q.Current",
+          "q.Live"
+        ],
+        "correct": 1,
+        "explain": "Сохраняем value method, не вызывая."
+      },
+      {
+        "before": "live = ",
+        "after": "",
+        "options": [
+          "q.Current",
+          "q.Live()",
+          "q.Live"
+        ],
+        "correct": 2,
+        "explain": "Связываем pointer receiver."
+      }
+    ],
+    "partial": "package practice\n\ntype MethodQuota struct { Limit int }\nfunc (q MethodQuota) Current() int { return q.Limit }\nfunc (q *MethodQuota) Live() int { return q.Limit }\n\nfunc CaptureQuotaReaders(q *MethodQuota) (snapshot, live func() int) {\n    snapshot = q.Current\n    // TODO: сохрани метод Live как функцию, не вызывая его\n    return\n}\n",
+    "bug": "package practice\n\ntype MethodQuota struct { Limit int }\nfunc (q MethodQuota) Current() int { return q.Limit }\nfunc (q *MethodQuota) Live() int { return q.Limit }\n\nfunc CaptureQuotaReaders(q *MethodQuota) (snapshot, live func() int) {\n    snapshot = q.Live\n    live = q.Live\n    return\n}\n",
+    "hints": [
+      "Нужно вернуть функции, а не результаты их вызовов.",
+      "Method value записывается как q.Method без круглых скобок.",
+      "snapshot = q.Current сохраняет value receiver.",
+      "live = q.Live сохраняет pointer receiver.",
+      "snapshot = q.Current\nlive = q.Live\nreturn"
+    ],
+    "related": [
+      [
+        "advanced-value-receiver",
+        "Value и pointer receiver"
+      ],
+      [
+        "core-closure",
+        "Функции и захват состояния"
+      ]
+    ],
+    "production": "Method values позволяют передать метод сервиса как callback с уже связанным экземпляром. Копия value receiver поверхностная: вложенные map, slices и указатели могут по-прежнему разделять данные. В этом упражнении поле int демонстрирует копирование без дополнительных ссылок.",
+    "interview": "Когда вычисляется receiver method value?"
+  },
+  "advanced-method-expressions": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "c.Value=10",
+          "deltas=[2,-3,5]"
+        ],
+        "add := (*MetricCounter).Add",
+        "Тип функции включает receiver."
+      ],
+      [
+        "Первое изменение",
+        [
+          "c.Value=12",
+          "out=[12]"
+        ],
+        "add(c,2)",
+        "Мутируем исходный объект."
+      ],
+      [
+        "Второе изменение",
+        [
+          "c.Value=9",
+          "out=[12,9]"
+        ],
+        "add(c,-3)",
+        "Отрицательное изменение тоже применяется."
+      ],
+      [
+        "Завершение",
+        [
+          "c.Value=14",
+          "out=[12,9,14]"
+        ],
+        "add(c,5)",
+        "Сохраняем последовательность результатов."
+      ]
+    ],
+    "steps": [
+      [
+        "Разобрать готовый метод",
+        "type MetricCounter struct { Value int }\nfunc (c *MetricCounter) Add(delta int) int { c.Value += delta; return c.Value }",
+        "Add изменяет поле конкретного счётчика через указатель. Возвращает значение после прибавления. Этот код уже дан."
+      ],
+      [
+        "Получить функцию с явным receiver",
+        "add := (*MetricCounter).Add",
+        "Используем тип (*MetricCounter), а не переменную c. Получаем func(*MetricCounter, int) int: receiver становится первым параметром."
+      ],
+      [
+        "Подготовить результат",
+        "out := make([]int, 0, len(deltas))",
+        "Длина пока 0, ёмкость резервируется для всех изменений."
+      ],
+      [
+        "Перебрать изменения",
+        "for _, delta := range deltas {",
+        "delta — очередное изменение. Индекс не нужен."
+      ],
+      [
+        "Вызвать функцию с receiver",
+        "    out = append(out, add(c, delta))\n}",
+        "Передаём c явно первым аргументом, delta вторым. Add меняет исходный счётчик и возвращает его новое значение, append сохраняет результат."
+      ],
+      [
+        "Вернуть журнал",
+        "return out",
+        "Все изменения применены по порядку. Пустой вход оставляет счётчик неизменным."
+      ]
+    ],
+    "blocks": [
+      "Вернуть журнал",
+      "Вызвать функцию с receiver",
+      "Перебрать изменения",
+      "Подготовить результат",
+      "Получить функцию с явным receiver",
+      "Разобрать готовый метод"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "add := ",
+        "after": "",
+        "options": [
+          "c.Add",
+          "(*MetricCounter).Add",
+          "MetricCounter.Add"
+        ],
+        "correct": 1,
+        "explain": "Выбираем метод у типа указателя."
+      },
+      {
+        "before": "out = append(out, ",
+        "after": ")",
+        "options": [
+          "add(delta)",
+          "add(delta,c)",
+          "add(c,delta)"
+        ],
+        "correct": 2,
+        "explain": "Явно передаём receiver."
+      }
+    ],
+    "partial": "package practice\n\ntype MetricCounter struct { Value int }\nfunc (c *MetricCounter) Add(delta int) int { c.Value += delta; return c.Value }\n\nfunc ApplyMetricDeltas(c *MetricCounter, deltas []int) []int {\n    add := (*MetricCounter).Add\n    out := make([]int, 0, len(deltas))\n    for _, delta := range deltas {\n        // TODO: передай receiver c и delta в add, добавь результат в out\n        _, _ = add, delta\n    }\n    return out\n}\n",
+    "bug": "package practice\n\ntype MetricCounter struct { Value int }\nfunc (c *MetricCounter) Add(delta int) int { c.Value += delta; return c.Value }\n\nfunc ApplyMetricDeltas(c *MetricCounter, deltas []int) []int {\n    add := (*MetricCounter).Add\n    out := make([]int, 0, len(deltas))\n    for _, delta := range deltas {\n        copyCounter := *c\n        out = append(out, add(&copyCounter, delta))\n    }\n    return out\n}\n",
+    "hints": [
+      "Method expression выбирается у типа, не у экземпляра.",
+      "Для pointer receiver запиши add := (*MetricCounter).Add.",
+      "Создай out и перебери deltas через range.",
+      "Функция add принимает c первым аргументом, delta вторым.",
+      "out = append(out, add(c, delta))"
+    ],
+    "related": [
+      [
+        "advanced-method-values",
+        "Method values"
+      ],
+      [
+        "advanced-method-set",
+        "Method set"
+      ]
+    ],
+    "production": "Method expressions удобны, когда одна функция должна работать с разными экземплярами, например в таблице обработчиков или generic-алгоритме. Обычный вызов метода часто проще; method expression полезен там, где действительно нужен явный receiver.",
+    "interview": "Чем c.Add отличается от (*MetricCounter).Add?"
+  },
+  "advanced-embedding-conflict": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "LocalAccess.Enabled=true",
+          "RemoteAccess.Approved=false"
+        ],
+        "AccessSummary",
+        "Два встроенных поля."
+      ],
+      [
+        "Локальная проверка",
+        [
+          "local=true"
+        ],
+        "s.LocalAccess.Allowed()",
+        "Обращаемся к конкретному полю."
+      ],
+      [
+        "Удалённая проверка",
+        [
+          "local=true",
+          "remote=false"
+        ],
+        "s.RemoteAccess.Allowed()",
+        "Вторая проверка независима."
+      ],
+      [
+        "Результат",
+        [
+          "true && false"
+        ],
+        "false",
+        "Обе проверки должны разрешить доступ."
+      ]
+    ],
+    "steps": [
+      [
+        "Разобрать два готовых типа",
+        "type LocalAccess struct { Enabled bool }\nfunc (a LocalAccess) Allowed() bool { return a.Enabled }\ntype RemoteAccess struct { Approved bool }\nfunc (a RemoteAccess) Allowed() bool { return a.Approved }",
+        "Оба типа уже имеют метод Allowed. Первый проверяет локальный флаг, второй — удалённое разрешение. Не переписываем их логику."
+      ],
+      [
+        "Разобрать встраивание",
+        "type AccessSummary struct {\n    LocalAccess\n    RemoteAccess\n}",
+        "Имена типов одновременно служат именами встроенных полей. Методы Allowed находятся на одинаковой глубине: без собственного метода селектор s.Allowed неоднозначен."
+      ],
+      [
+        "Объявить собственный метод",
+        "func (s AccessSummary) Allowed() bool {",
+        "Receiver s — значение составной структуры. Метод на самой структуре имеет приоритет над promoted methods."
+      ],
+      [
+        "Вызвать локальную проверку",
+        "    local := s.LocalAccess.Allowed()",
+        "Сначала выбираем встроенное поле LocalAccess, затем его метод. := объявляет переменную local типа bool."
+      ],
+      [
+        "Вызвать удалённую проверку",
+        "    remote := s.RemoteAccess.Allowed()",
+        "Явно выбираем второе поле. Конфликта имён больше нет."
+      ],
+      [
+        "Объединить результаты",
+        "    return local && remote\n}",
+        "&& возвращает true только при двух true. || разрешил бы доступ при одной успешной проверке, что нарушает условие."
+      ]
+    ],
+    "blocks": [
+      "Объединить результаты",
+      "Вызвать удалённую проверку",
+      "Вызвать локальную проверку",
+      "Объявить собственный метод",
+      "Разобрать встраивание",
+      "Разобрать два готовых типа"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "local := s.",
+        "after": ".Allowed()",
+        "options": [
+          "Allowed",
+          "LocalAccess",
+          "RemoteAccess"
+        ],
+        "correct": 1,
+        "explain": "Выбираем локальный встроенный компонент."
+      },
+      {
+        "before": "return local ",
+        "after": " remote",
+        "options": [
+          "||",
+          "==",
+          "&&"
+        ],
+        "correct": 2,
+        "explain": "Требуются обе проверки."
+      }
+    ],
+    "partial": "package practice\n\ntype LocalAccess struct { Enabled bool }\nfunc (a LocalAccess) Allowed() bool { return a.Enabled }\ntype RemoteAccess struct { Approved bool }\nfunc (a RemoteAccess) Allowed() bool { return a.Approved }\ntype AccessSummary struct { LocalAccess; RemoteAccess }\ntype AccessDecision interface { Allowed() bool }\n\nfunc (s AccessSummary) Allowed() bool {\n    local := s.LocalAccess.Allowed()\n    remote := s.RemoteAccess.Allowed()\n    // TODO: верни true только если обе проверки дали true\n    _, _ = local, remote\n    return false\n}\n",
+    "bug": "package practice\n\ntype LocalAccess struct { Enabled bool }\nfunc (a LocalAccess) Allowed() bool { return a.Enabled }\ntype RemoteAccess struct { Approved bool }\nfunc (a RemoteAccess) Allowed() bool { return a.Approved }\ntype AccessSummary struct { LocalAccess; RemoteAccess }\ntype AccessDecision interface { Allowed() bool }\n\nfunc (s AccessSummary) Allowed() bool {\n    local := s.LocalAccess.Allowed()\n    remote := s.RemoteAccess.Allowed()\n    return local || remote\n}\n",
+    "hints": [
+      "У обоих встроенных типов есть Allowed. Нужно объявить Allowed на AccessSummary.",
+      "Через s.LocalAccess можно выбрать первый встроенный объект.",
+      "local := s.LocalAccess.Allowed()",
+      "Получаем remote аналогично, через s.RemoteAccess.Allowed().",
+      "local := s.LocalAccess.Allowed()\nremote := s.RemoteAccess.Allowed()\nreturn local && remote"
+    ],
+    "related": [
+      [
+        "advanced-embedding",
+        "Встраивание структур"
+      ],
+      [
+        "advanced-method-set",
+        "Method set"
+      ]
+    ],
+    "production": "В составном объекте могут совпасть имена методов нескольких компонентов. Явный выбор поля делает намерение понятным. Упражнение иллюстрирует композицию и AND-условие, а не полноценную систему авторизации.",
+    "interview": "Что произойдёт, если два встроенных типа имеют метод с одним именем на одинаковой глубине?"
+  },
+  "advanced-component-composition": {
+    "frames": [
+      [
+        "Сборка",
+        [
+          "validator=V",
+          "publisher=P"
+        ],
+        "NewPublishWorkflow(V,P)",
+        "Конструктор связывает компоненты."
+      ],
+      [
+        "Вход",
+        [
+          "text=\"event\""
+        ],
+        "V.Validate(text)",
+        "Первая операция — валидация."
+      ],
+      [
+        "Ветка ошибки",
+        [
+          "Validate → error",
+          "Publish calls=0"
+        ],
+        "return err",
+        "Fail fast: следующий компонент не вызывается."
+      ],
+      [
+        "Ветка успеха",
+        [
+          "Validate → nil",
+          "P.Publish(text)"
+        ],
+        "return publisher error",
+        "Делегируем публикацию после успешной проверки."
+      ]
+    ],
+    "steps": [
+      [
+        "Определить два контракта",
+        "type WorkflowValidator interface { Validate(string) error }\ntype WorkflowPublisher interface { Publish(string) error }",
+        "Валидация и публикация — две разные обязанности. Каждому компоненту нужен только один метод."
+      ],
+      [
+        "Хранить компоненты в полях",
+        "type PublishWorkflow struct {\n    validator WorkflowValidator\n    publisher WorkflowPublisher\n}",
+        "Поля именованные, а не встроенные. Сервис сам определяет публичные методы, не продвигая методы зависимостей."
+      ],
+      [
+        "Принять зависимости в конструкторе",
+        "func NewPublishWorkflow(validator WorkflowValidator, publisher WorkflowPublisher) *PublishWorkflow {",
+        "Обе реализации передаём извне. Конструктор не выполняет бизнес-операции."
+      ],
+      [
+        "Сохранить компоненты",
+        "    return &PublishWorkflow{validator: validator, publisher: publisher}\n}",
+        "Литерал заполняет два поля. & возвращает указатель на созданный workflow."
+      ],
+      [
+        "Объявить операцию сервиса",
+        "func (w *PublishWorkflow) Publish(text string) error {",
+        "w — receiver, через него получаем доступ к обоим компонентам. text — исходные данные."
+      ],
+      [
+        "Выполнить валидацию",
+        "    if err := w.validator.Validate(text); err != nil {\n        return err\n    }",
+        "Вызываем Validate один раз, объявляем err в if. При ошибке return завершает весь метод, поэтому публикация не начнётся."
+      ],
+      [
+        "Делегировать публикацию",
+        "    return w.publisher.Publish(text)\n}",
+        "Сюда попадаем только после успешной валидации. Явно выбираем поле publisher, передаём text и возвращаем исходный error."
+      ]
+    ],
+    "blocks": [
+      "Делегировать публикацию",
+      "Выполнить валидацию",
+      "Объявить операцию сервиса",
+      "Сохранить компоненты",
+      "Принять зависимости в конструкторе",
+      "Хранить компоненты в полях",
+      "Определить два контракта"
+    ],
+    "order": [
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if err := w.",
+        "after": ".Validate(text); err != nil {",
+        "options": [
+          "publisher",
+          "validator",
+          "Publish"
+        ],
+        "correct": 1,
+        "explain": "Сначала вызываем валидатор."
+      },
+      {
+        "before": "return w.publisher.",
+        "after": "(text)",
+        "options": [
+          "Validate",
+          "PublishWorkflow",
+          "Publish"
+        ],
+        "correct": 2,
+        "explain": "Делегируем издателю."
+      }
+    ],
+    "partial": "package practice\n\ntype WorkflowValidator interface { Validate(string) error }\ntype WorkflowPublisher interface { Publish(string) error }\ntype PublishWorkflow struct { validator WorkflowValidator; publisher WorkflowPublisher }\n\nfunc NewPublishWorkflow(validator WorkflowValidator, publisher WorkflowPublisher) *PublishWorkflow {\n    return &PublishWorkflow{validator: validator, publisher: publisher}\n}\n\nfunc (w *PublishWorkflow) Publish(text string) error {\n    if err := w.validator.Validate(text); err != nil {\n        return err\n    }\n    // TODO: передай исходный text издателю и верни его error\n    return nil\n}\n",
+    "bug": "package practice\n\ntype WorkflowValidator interface { Validate(string) error }\ntype WorkflowPublisher interface { Publish(string) error }\ntype PublishWorkflow struct { validator WorkflowValidator; publisher WorkflowPublisher }\n\nfunc NewPublishWorkflow(validator WorkflowValidator, publisher WorkflowPublisher) *PublishWorkflow {\n    return &PublishWorkflow{validator: validator, publisher: publisher}\n}\n\nfunc (w *PublishWorkflow) Publish(text string) error {\n    _ = w.validator.Validate(text)\n    return w.publisher.Publish(text)\n}\n",
+    "hints": [
+      "Композиция здесь означает хранение двух независимых зависимостей в именованных полях.",
+      "Конструктор возвращает &PublishWorkflow{validator: validator, publisher: publisher}.",
+      "Начни Publish с if err := w.validator.Validate(text); err != nil { return err }.",
+      "После успешной проверки явно вызови метод поля publisher.",
+      "return w.publisher.Publish(text)"
+    ],
+    "related": [
+      [
+        "advanced-dependency-injection",
+        "Передача зависимостей"
+      ],
+      [
+        "advanced-interface-adapter",
+        "Функциональные адаптеры"
+      ],
+      [
+        "advanced-embedding-conflict",
+        "Конфликты при embedding"
+      ]
+    ],
+    "production": "В backend-сервисах компоненты валидации, сохранения и публикации событий часто соединяют через именованные поля и явные вызовы. Здесь проверяем последовательность и fail-fast; транзакционность, ретраи и outbox требуют отдельных контрактов.",
+    "interview": "Почему именованные поля часто предпочтительнее embedding для зависимостей сервиса?"
+  },
+  "advanced-batch-partial-success": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "A",
+          "B",
+          "C"
+        ],
+        "okIDs=[]; failures=[]",
+        "B завершится ошибкой."
+      ],
+      [
+        "A",
+        [
+          "A"
+        ],
+        "okIDs=[A]",
+        "Первый успех."
+      ],
+      [
+        "B",
+        [
+          "B"
+        ],
+        "failures=[item 1 (B): offline]",
+        "Сохраняем причину и продолжаем."
+      ],
+      [
+        "C",
+        [
+          "C"
+        ],
+        "okIDs=[A,C]",
+        "Следующий элемент обработан."
+      ],
+      [
+        "Выход",
+        [
+          "A",
+          "C"
+        ],
+        "return okIDs, errors.Join(failures...)",
+        "Успехи и ошибки доступны вызывающему коду."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать список успехов",
+        "okIDs := make([]string, 0, len(ids))",
+        "Длина ноль, потому что пока нет успешных операций."
+      ],
+      [
+        "Создать список ошибок",
+        "var failures []error",
+        "Nil-срез поддерживает append; отдельный накопитель сохраняет все причины."
+      ],
+      [
+        "Перебрать ID",
+        "for i, id := range ids {",
+        "Индекс нужен для диагностики, id для вызова операции."
+      ],
+      [
+        "Проверить результат операции",
+        "    if err := deliver(id); err != nil {",
+        "Вызываем callback один раз; err доступна внутри if."
+      ],
+      [
+        "Сохранить причину",
+        "        failures = append(failures, fmt.Errorf(\"item %d (%s): %w\", i, id, err))",
+        "%w сохраняет причину, append возвращает обновлённый срез."
+      ],
+      [
+        "Продолжить пакет",
+        "        continue\n    }",
+        "continue пропускает текущую итерацию, но не завершает цикл."
+      ],
+      [
+        "Сохранить успех",
+        "    okIDs = append(okIDs, id)\n}",
+        "Сюда попадаем только при успешном вызове."
+      ],
+      [
+        "Вернуть результаты",
+        "return okIDs, errors.Join(failures...)",
+        "... раскрывает срез ошибок; Join без причин возвращает nil."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результаты",
+      "Сохранить успех",
+      "Продолжить пакет",
+      "Сохранить причину",
+      "Проверить результат операции",
+      "Перебрать ID",
+      "Создать список ошибок",
+      "Создать список успехов"
+    ],
+    "order": [
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "fmt.Errorf(\"item: ",
+        "after": "\", err)",
+        "options": [
+          "%v",
+          "%w",
+          "%d"
+        ],
+        "correct": 1,
+        "explain": "%w сохраняет исходную причину."
+      },
+      {
+        "before": "",
+        "after": " // действие при ошибке",
+        "options": [
+          "continue",
+          "return nil, err",
+          "break"
+        ],
+        "correct": 0,
+        "explain": "Продолжаем пакет."
+      }
+    ],
+    "partial": "package practice\n\nfunc ProcessDeliveryBatch(ids []string, deliver func(string) error) ([]string, error) {\nokIDs := make([]string, 0, len(ids))\nvar failures []error\nfor i, id := range ids {\n if err := deliver(id); err != nil {\n  // TODO: добавь ошибку с индексом, ID и исходной причиной\n  _, _ = i, err\n  continue\n }\n okIDs = append(okIDs,id)\n}\nreturn okIDs, errors.Join(failures...)\n}\n",
+    "bug": "package practice\n\nfunc ProcessDeliveryBatch(ids []string, deliver func(string) error) ([]string, error) {\nokIDs := make([]string, 0, len(ids))\nvar failures []error\nfor i, id := range ids {\n    if err := deliver(id); err != nil {\n        failures = append(failures, fmt.Errorf(\"item %d (%s): %w\", i, id, err))\n        break\n    }\n    okIDs = append(okIDs, id)\n}\nreturn okIDs, errors.Join(failures...)\n}\n",
+    "hints": [
+      "Длина ноль, потому что пока нет успешных операций.",
+      "okIDs := make([]string, 0, len(ids))",
+      "var failures []error",
+      "Перебрать ID → Проверить результат операции → Сохранить причину → Продолжить пакет → Сохранить успех → Вернуть результаты",
+      "okIDs := make([]string, 0, len(ids))\nvar failures []error\nfor i, id := range ids {\n    if err := deliver(id); err != nil {\n        failures = append(failures, fmt.Errorf(\"item %d (%s): %w\", i, id, err))\n        continue\n    }\n    okIDs = append(okIDs, id)\n}\nreturn okIDs, errors.Join(failures...)"
+    ],
+    "related": [
+      [
+        "advanced-join-errors",
+        "Повторить базовую задачу"
+      ],
+      [
+        "advanced-generic-transform-error",
+        "Сравнить с fail-fast"
+      ]
+    ],
+    "production": "Независимые операции доставки могут завершаться частично успешно. Повтор всего пакета требует идемпотентности.",
+    "interview": "Чем continue отличается от break и return?"
+  },
+  "advanced-generic-transform-error": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "7",
+          "bad",
+          "9"
+        ],
+        "out=[0,0,0]",
+        "Преобразуем строки в числа."
+      ],
+      [
+        "Успех",
+        [
+          "7"
+        ],
+        "out=[7,0,0]",
+        "Первый результат записан."
+      ],
+      [
+        "Ошибка",
+        [
+          "bad"
+        ],
+        "return nil, wrapped error",
+        "Останавливаемся на индексе 1."
+      ],
+      [
+        "Выход",
+        [
+          "9 не обработан"
+        ],
+        "result=nil",
+        "Частичный результат не возвращается."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать результат",
+        "out := make([]R, len(values))",
+        "R — выходной тип. При успехе длина известна заранее."
+      ],
+      [
+        "Перебрать вход",
+        "for i, v := range values {",
+        "i — индекс, v — элемент типа T."
+      ],
+      [
+        "Вызвать преобразование",
+        "    converted, err := convert(v)",
+        "Callback возвращает значение R и error."
+      ],
+      [
+        "Остановиться при ошибке",
+        "    if err != nil {\n        return nil, fmt.Errorf(\"item %d: %w\", i, err)\n    }",
+        "return завершает функцию, nil исключает выдачу частичных данных, %w сохраняет причину."
+      ],
+      [
+        "Записать результат",
+        "    out[i] = converted\n}",
+        "Срез уже имеет нужную длину, поэтому записываем по индексу."
+      ],
+      [
+        "Вернуть полный результат",
+        "return out, nil",
+        "Все элементы успешно обработаны."
+      ]
+    ],
+    "blocks": [
+      "Вернуть полный результат",
+      "Записать результат",
+      "Остановиться при ошибке",
+      "Вызвать преобразование",
+      "Перебрать вход",
+      "Создать результат"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "fmt.Errorf(\"item: ",
+        "after": "\", err)",
+        "options": [
+          "%v",
+          "%w",
+          "%d"
+        ],
+        "correct": 1,
+        "explain": "%w сохраняет исходную причину."
+      },
+      {
+        "before": "",
+        "after": " // действие при ошибке",
+        "options": [
+          "continue",
+          "return nil, err",
+          "break"
+        ],
+        "correct": 1,
+        "explain": "Завершаем функцию."
+      }
+    ],
+    "partial": "package practice\n\nfunc TransformChecked[T any, R any](values []T, convert func(T) (R, error)) ([]R, error) {\nout := make([]R,len(values))\nfor i,v := range values {\n converted,err := convert(v)\n if err != nil {\n  // TODO: оберни ошибку с индексом через %w\n  return nil,err\n }\n out[i]=converted\n}\nreturn out,nil\n}\n",
+    "bug": "package practice\n\nfunc TransformChecked[T any, R any](values []T, convert func(T) (R, error)) ([]R, error) {\nout := make([]R, len(values))\nfor i, v := range values {\n    converted, err := convert(v)\n    if err != nil {\n        continue\n    }\n    out[i] = converted\n}\nreturn out, nil\n}\n",
+    "hints": [
+      "R — выходной тип. При успехе длина известна заранее.",
+      "out := make([]R, len(values))",
+      "for i, v := range values {",
+      "Вызвать преобразование → Остановиться при ошибке → Записать результат → Вернуть полный результат",
+      "out := make([]R, len(values))\nfor i, v := range values {\n    converted, err := convert(v)\n    if err != nil {\n        return nil, fmt.Errorf(\"item %d: %w\", i, err)\n    }\n    out[i] = converted\n}\nreturn out, nil"
+    ],
+    "related": [
+      [
+        "advanced-generic-map",
+        "Повторить базовую задачу"
+      ],
+      [
+        "advanced-batch-partial-success",
+        "Сравнить с partial success"
+      ]
+    ],
+    "production": "Для полностью валидного DTO или конфигурации нужен полный результат. Fail-fast не откатывает внешние действия.",
+    "interview": "Когда выбирать fail-fast вместо частичного успеха?"
   }
 };
