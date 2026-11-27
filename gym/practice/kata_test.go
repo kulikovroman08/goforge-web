@@ -949,3 +949,23 @@ func TestPublishWorkflow(t *testing.T) {
   if got:=w.Publish(tc.text);got!=tc.want||!reflect.DeepEqual(calls,tc.calls){t.Fatal(tc,got,calls)}
  }
 }
+
+func TestProcessDeliveryBatch(t *testing.T) {
+ e1,e2:=errors.New("offline"),errors.New("denied")
+ ids:=[]string{"A","B","C","B"}; var calls []string
+ got,err:=ProcessDeliveryBatch(ids,func(id string)error{calls=append(calls,id);if id=="B"{if len(calls)==2{return e1};return e2};return nil})
+ if !reflect.DeepEqual(got,[]string{"A","C"})||!reflect.DeepEqual(calls,ids)||!reflect.DeepEqual(ids,[]string{"A","B","C","B"})||!errors.Is(err,e1)||!errors.Is(err,e2){t.Fatal(got,err,calls)}
+ joined,ok:=err.(interface{Unwrap() []error});if !ok{t.Fatal(err)}
+ causes:=joined.Unwrap();if len(causes)!=2||causes[0].Error()!="item 1 (B): offline"||causes[1].Error()!="item 3 (B): denied"{t.Fatal(causes)}
+ got[0]="X";if ids[0]!="A"{t.Fatal("alias")}
+ if v,e:=ProcessDeliveryBatch(nil,nil);v==nil||len(v)!=0||e!=nil{t.Fatal(v,e)}
+ if v,e:=ProcessDeliveryBatch([]string{"X"},func(string)error{return nil});!reflect.DeepEqual(v,[]string{"X"})||e!=nil{t.Fatal(v,e)}
+}
+
+func TestTransformChecked(t *testing.T) {
+ cause:=errors.New("invalid"); in:=[]string{"7","bad","9"};var calls []string
+ got,err:=TransformChecked(in,func(v string)(int,error){calls=append(calls,v);if v=="bad"{return 123,cause};return 7,nil})
+ if got!=nil||!errors.Is(err,cause)||err.Error()!="item 1: invalid"||!reflect.DeepEqual(calls,[]string{"7","bad"})||!reflect.DeepEqual(in,[]string{"7","bad","9"}){t.Fatal(got,err,calls)}
+ values:=[]int{2,4};v,e:=TransformChecked(values,func(n int)(int,error){return n*2,nil});if e!=nil||!reflect.DeepEqual(v,[]int{4,8}){t.Fatal(v,e)};v[0]=99;if values[0]!=2{t.Fatal("alias")}
+ if v,e:=TransformChecked([]int(nil),(func(int)(string,error))(nil));v==nil||len(v)!=0||e!=nil{t.Fatal(v,e)}
+}

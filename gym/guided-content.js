@@ -12459,5 +12459,282 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "В backend-сервисах компоненты валидации, сохранения и публикации событий часто соединяют через именованные поля и явные вызовы. Здесь проверяем последовательность и fail-fast; транзакционность, ретраи и outbox требуют отдельных контрактов.",
     "interview": "Почему именованные поля часто предпочтительнее embedding для зависимостей сервиса?"
+  },
+  "advanced-batch-partial-success": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "A",
+          "B",
+          "C"
+        ],
+        "okIDs=[]; failures=[]",
+        "B завершится ошибкой."
+      ],
+      [
+        "A",
+        [
+          "A"
+        ],
+        "okIDs=[A]",
+        "Первый успех."
+      ],
+      [
+        "B",
+        [
+          "B"
+        ],
+        "failures=[item 1 (B): offline]",
+        "Сохраняем причину и продолжаем."
+      ],
+      [
+        "C",
+        [
+          "C"
+        ],
+        "okIDs=[A,C]",
+        "Следующий элемент обработан."
+      ],
+      [
+        "Выход",
+        [
+          "A",
+          "C"
+        ],
+        "return okIDs, errors.Join(failures...)",
+        "Успехи и ошибки доступны вызывающему коду."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать список успехов",
+        "okIDs := make([]string, 0, len(ids))",
+        "Длина ноль, потому что пока нет успешных операций."
+      ],
+      [
+        "Создать список ошибок",
+        "var failures []error",
+        "Nil-срез поддерживает append; отдельный накопитель сохраняет все причины."
+      ],
+      [
+        "Перебрать ID",
+        "for i, id := range ids {",
+        "Индекс нужен для диагностики, id для вызова операции."
+      ],
+      [
+        "Проверить результат операции",
+        "    if err := deliver(id); err != nil {",
+        "Вызываем callback один раз; err доступна внутри if."
+      ],
+      [
+        "Сохранить причину",
+        "        failures = append(failures, fmt.Errorf(\"item %d (%s): %w\", i, id, err))",
+        "%w сохраняет причину, append возвращает обновлённый срез."
+      ],
+      [
+        "Продолжить пакет",
+        "        continue\n    }",
+        "continue пропускает текущую итерацию, но не завершает цикл."
+      ],
+      [
+        "Сохранить успех",
+        "    okIDs = append(okIDs, id)\n}",
+        "Сюда попадаем только при успешном вызове."
+      ],
+      [
+        "Вернуть результаты",
+        "return okIDs, errors.Join(failures...)",
+        "... раскрывает срез ошибок; Join без причин возвращает nil."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результаты",
+      "Сохранить успех",
+      "Продолжить пакет",
+      "Сохранить причину",
+      "Проверить результат операции",
+      "Перебрать ID",
+      "Создать список ошибок",
+      "Создать список успехов"
+    ],
+    "order": [
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "fmt.Errorf(\"item: ",
+        "after": "\", err)",
+        "options": [
+          "%v",
+          "%w",
+          "%d"
+        ],
+        "correct": 1,
+        "explain": "%w сохраняет исходную причину."
+      },
+      {
+        "before": "",
+        "after": " // действие при ошибке",
+        "options": [
+          "continue",
+          "return nil, err",
+          "break"
+        ],
+        "correct": 0,
+        "explain": "Продолжаем пакет."
+      }
+    ],
+    "partial": "package practice\n\nfunc ProcessDeliveryBatch(ids []string, deliver func(string) error) ([]string, error) {\nokIDs := make([]string, 0, len(ids))\nvar failures []error\nfor i, id := range ids {\n if err := deliver(id); err != nil {\n  // TODO: добавь ошибку с индексом, ID и исходной причиной\n  _, _ = i, err\n  continue\n }\n okIDs = append(okIDs,id)\n}\nreturn okIDs, errors.Join(failures...)\n}\n",
+    "bug": "package practice\n\nfunc ProcessDeliveryBatch(ids []string, deliver func(string) error) ([]string, error) {\nokIDs := make([]string, 0, len(ids))\nvar failures []error\nfor i, id := range ids {\n    if err := deliver(id); err != nil {\n        failures = append(failures, fmt.Errorf(\"item %d (%s): %w\", i, id, err))\n        break\n    }\n    okIDs = append(okIDs, id)\n}\nreturn okIDs, errors.Join(failures...)\n}\n",
+    "hints": [
+      "Длина ноль, потому что пока нет успешных операций.",
+      "okIDs := make([]string, 0, len(ids))",
+      "var failures []error",
+      "Перебрать ID → Проверить результат операции → Сохранить причину → Продолжить пакет → Сохранить успех → Вернуть результаты",
+      "okIDs := make([]string, 0, len(ids))\nvar failures []error\nfor i, id := range ids {\n    if err := deliver(id); err != nil {\n        failures = append(failures, fmt.Errorf(\"item %d (%s): %w\", i, id, err))\n        continue\n    }\n    okIDs = append(okIDs, id)\n}\nreturn okIDs, errors.Join(failures...)"
+    ],
+    "related": [
+      [
+        "advanced-join-errors",
+        "Повторить базовую задачу"
+      ]
+    ],
+    "production": "Независимые операции доставки могут завершаться частично успешно. Повтор всего пакета требует идемпотентности.",
+    "interview": "Чем continue отличается от break и return?"
+  },
+  "advanced-generic-transform-error": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "7",
+          "bad",
+          "9"
+        ],
+        "out=[0,0,0]",
+        "Преобразуем строки в числа."
+      ],
+      [
+        "Успех",
+        [
+          "7"
+        ],
+        "out=[7,0,0]",
+        "Первый результат записан."
+      ],
+      [
+        "Ошибка",
+        [
+          "bad"
+        ],
+        "return nil, wrapped error",
+        "Останавливаемся на индексе 1."
+      ],
+      [
+        "Выход",
+        [
+          "9 не обработан"
+        ],
+        "result=nil",
+        "Частичный результат не возвращается."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать результат",
+        "out := make([]R, len(values))",
+        "R — выходной тип. При успехе длина известна заранее."
+      ],
+      [
+        "Перебрать вход",
+        "for i, v := range values {",
+        "i — индекс, v — элемент типа T."
+      ],
+      [
+        "Вызвать преобразование",
+        "    converted, err := convert(v)",
+        "Callback возвращает значение R и error."
+      ],
+      [
+        "Остановиться при ошибке",
+        "    if err != nil {\n        return nil, fmt.Errorf(\"item %d: %w\", i, err)\n    }",
+        "return завершает функцию, nil исключает выдачу частичных данных, %w сохраняет причину."
+      ],
+      [
+        "Записать результат",
+        "    out[i] = converted\n}",
+        "Срез уже имеет нужную длину, поэтому записываем по индексу."
+      ],
+      [
+        "Вернуть полный результат",
+        "return out, nil",
+        "Все элементы успешно обработаны."
+      ]
+    ],
+    "blocks": [
+      "Вернуть полный результат",
+      "Записать результат",
+      "Остановиться при ошибке",
+      "Вызвать преобразование",
+      "Перебрать вход",
+      "Создать результат"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "fmt.Errorf(\"item: ",
+        "after": "\", err)",
+        "options": [
+          "%v",
+          "%w",
+          "%d"
+        ],
+        "correct": 1,
+        "explain": "%w сохраняет исходную причину."
+      },
+      {
+        "before": "",
+        "after": " // действие при ошибке",
+        "options": [
+          "continue",
+          "return nil, err",
+          "break"
+        ],
+        "correct": 1,
+        "explain": "Завершаем функцию."
+      }
+    ],
+    "partial": "package practice\n\nfunc TransformChecked[T any, R any](values []T, convert func(T) (R, error)) ([]R, error) {\nout := make([]R,len(values))\nfor i,v := range values {\n converted,err := convert(v)\n if err != nil {\n  // TODO: оберни ошибку с индексом через %w\n  return nil,err\n }\n out[i]=converted\n}\nreturn out,nil\n}\n",
+    "bug": "package practice\n\nfunc TransformChecked[T any, R any](values []T, convert func(T) (R, error)) ([]R, error) {\nout := make([]R, len(values))\nfor i, v := range values {\n    converted, err := convert(v)\n    if err != nil {\n        continue\n    }\n    out[i] = converted\n}\nreturn out, nil\n}\n",
+    "hints": [
+      "R — выходной тип. При успехе длина известна заранее.",
+      "out := make([]R, len(values))",
+      "for i, v := range values {",
+      "Вызвать преобразование → Остановиться при ошибке → Записать результат → Вернуть полный результат",
+      "out := make([]R, len(values))\nfor i, v := range values {\n    converted, err := convert(v)\n    if err != nil {\n        return nil, fmt.Errorf(\"item %d: %w\", i, err)\n    }\n    out[i] = converted\n}\nreturn out, nil"
+    ],
+    "related": [
+      [
+        "advanced-generic-map",
+        "Повторить базовую задачу"
+      ]
+    ],
+    "production": "Для полностью валидного DTO или конфигурации нужен полный результат. Fail-fast не откатывает внешние действия.",
+    "interview": "Когда выбирать fail-fast вместо частичного успеха?"
   }
 };
