@@ -808,7 +808,12 @@ func TestRunProtectedWork(t *testing.T) {
  if got:=RunProtectedWork(func()error{calls++;panic(cause)});!errors.Is(got,cause)||calls!=4{t.Fatal(got,calls)}
  if got:=RunProtectedWork(func()error{panic(42)});got==nil||got.Error()!="work panic: 42"{t.Fatal(got)}
  if got:=RunProtectedWork(nil);got==nil{t.Fatal("nil callback panic lost")}
- if got:=RunProtectedWork(func()error{panic(nil)});got==nil{t.Fatal("panic(nil) lost")}
+ // The isolated CI runner uses GO111MODULE=off, which can select legacy
+ // panic(nil) behavior even on Go 1.23. Test the documented modern semantics.
+ t.Run("modern panic nil",func(t *testing.T){
+  t.Setenv("GODEBUG","panicnil=0")
+  if got:=RunProtectedWork(func()error{panic(nil)});got==nil{t.Fatal("panic(nil) lost")}
+ })
 }
 
 func TestFilterValues(t *testing.T) {
