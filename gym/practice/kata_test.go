@@ -867,3 +867,16 @@ func TestCommonDistinct(t *testing.T) {
  type Key struct{ID int}
  if v:=CommonDistinct([]Key{{2},{1},{2}},[]Key{{1},{2}});!reflect.DeepEqual(v,[]Key{{2},{1}}){t.Fatal(v)}
 }
+
+func TestDeliveryDependency(t *testing.T) {
+ cause:=errors.New("offline")
+ var messages []string
+ s:=NewDeliveryService(DeliverySenderFunc(func(text string)error{messages=append(messages,text);return cause}))
+ if s==nil{t.Fatal("nil service")}
+ if err:=s.Deliver("hello");err!=cause{t.Fatal(err)}
+ if err:=s.Deliver("");err!=cause{t.Fatal(err)}
+ if !reflect.DeepEqual(messages,[]string{"hello",""}){t.Fatal(messages)}
+ calls:=0
+ other:=NewDeliveryService(DeliverySenderFunc(func(text string)error{calls++;if text!="other"{t.Fatal(text)};return nil}))
+ if other==nil||other.Deliver("other")!=nil||calls!=1||len(messages)!=2{t.Fatal("dependency not isolated")}
+}

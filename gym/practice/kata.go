@@ -372,3 +372,12 @@ func GroupValues[T any, K comparable](values []T, key func(T) K) map[K][]T { ret
 func TransformValues[T any, R any](values []T, convert func(T) R) []R { return nil }
 
 func CommonDistinct[T comparable](first, second []T) []T { return nil }
+
+type DeliverySender interface { Send(string) error }
+type DeliveryService struct { sender DeliverySender }
+
+func NewDeliveryService(sender DeliverySender) *DeliveryService { return nil }
+
+func (s *DeliveryService) Deliver(text string) error { return nil }
+type DeliverySenderFunc func(string) error
+func (f DeliverySenderFunc) Send(text string) error { return f(text) }

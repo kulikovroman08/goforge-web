@@ -11529,5 +11529,137 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "Пересечение списков разрешённых идентификаторов удобно при подготовке выборок. Само по себе упражнение не заменяет полноценную серверную авторизацию и проверки актуальности прав.",
     "interview": "Почему comparable не гарантирует отсутствие panic для любого интерфейсного аргумента?"
+  },
+  "advanced-dependency-injection": {
+    "frames": [
+      [
+        "Сборка",
+        [
+          "fake sender",
+          "NewDeliveryService(fake)"
+        ],
+        "service.sender = fake",
+        "Сохраняем зависимость."
+      ],
+      [
+        "Вызов",
+        [
+          "service.Deliver(\"hello\")"
+        ],
+        "s.sender.Send(\"hello\")",
+        "Текст передаётся без изменения."
+      ],
+      [
+        "Успех",
+        [
+          "calls=1",
+          "err=nil"
+        ],
+        "return nil",
+        "Операция завершена."
+      ],
+      [
+        "Сбой",
+        [
+          "calls=1",
+          "err=offline"
+        ],
+        "return offline",
+        "Сервис возвращает ошибку зависимости."
+      ]
+    ],
+    "steps": [
+      [
+        "Определить контракт",
+        "type DeliverySender interface {\n    Send(string) error\n}",
+        "Сервису нужен один метод отправки текста. Интерфейс описывает его сигнатуру, а не способ отправки."
+      ],
+      [
+        "Хранить зависимость",
+        "type DeliveryService struct {\n    sender DeliverySender\n}",
+        "Поле sender имеет тип интерфейса: в нём может храниться любая подходящая реализация."
+      ],
+      [
+        "Объявить конструктор",
+        "func NewDeliveryService(sender DeliverySender) *DeliveryService {",
+        "Принимаем готовую зависимость снаружи. Результат — указатель на сервис."
+      ],
+      [
+        "Создать структуру",
+        "    return &DeliveryService{sender: sender}\n}",
+        "Слева имя поля, справа параметр. & берёт адрес созданной структуры."
+      ],
+      [
+        "Объявить метод",
+        "func (s *DeliveryService) Deliver(text string) error {",
+        "s — receiver, через него доступно поле sender конкретного сервиса."
+      ],
+      [
+        "Вызвать зависимость",
+        "    return s.sender.Send(text)\n}",
+        "Получаем поле sender, вызываем его метод Send с text и сразу возвращаем исходный error."
+      ]
+    ],
+    "blocks": [
+      "Вызвать зависимость",
+      "Объявить метод",
+      "Создать структуру",
+      "Объявить конструктор",
+      "Хранить зависимость",
+      "Определить контракт"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "return &DeliveryService{sender: ",
+        "after": "}",
+        "options": [
+          "nil",
+          "sender",
+          "text"
+        ],
+        "correct": 1,
+        "explain": "Сохраняем переданный параметр."
+      },
+      {
+        "before": "return ",
+        "after": "(text)",
+        "options": [
+          "sender",
+          "s.Deliver",
+          "s.sender.Send"
+        ],
+        "correct": 2,
+        "explain": "Вызываем метод зависимости."
+      }
+    ],
+    "partial": "package practice\n\ntype DeliverySender interface { Send(string) error }\ntype DeliveryService struct { sender DeliverySender }\n\nfunc NewDeliveryService(sender DeliverySender) *DeliveryService {\n    return &DeliveryService{sender: sender}\n}\n\nfunc (s *DeliveryService) Deliver(text string) error {\n    // TODO: вызови Send через поле sender и верни полученную ошибку\n    return nil\n}\n",
+    "bug": "package practice\n\ntype DeliverySender interface { Send(string) error }\ntype DeliveryService struct { sender DeliverySender }\n\nfunc NewDeliveryService(sender DeliverySender) *DeliveryService {\n    return &DeliveryService{sender: sender}\n}\n\nfunc (s *DeliveryService) Deliver(text string) error {\n    _ = s.sender.Send(text)\n    return nil\n}\n",
+    "hints": [
+      "Сервис получает готовую зависимость, а не создаёт её сам.",
+      "Посмотри на поле sender структуры DeliveryService.",
+      "Создай сервис: return &DeliveryService{sender: sender}.",
+      "В Deliver обратись к s.sender и вызови Send с text.",
+      "return s.sender.Send(text)"
+    ],
+    "related": [
+      [
+        "advanced-repository",
+        "Интерфейс репозитория"
+      ],
+      [
+        "advanced-interface-compose",
+        "Композиция интерфейсов"
+      ]
+    ],
+    "production": "В main или composition root собирают сервис из репозиториев, HTTP-клиентов и publishers. В тестах подставляют fake. Это ручной DI без обязательного фреймворка.",
+    "interview": "Зачем передавать интерфейс через конструктор?"
   }
 };
