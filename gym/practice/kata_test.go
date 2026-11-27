@@ -740,3 +740,26 @@ func TestValueKind(t *testing.T) {
 func TestExtractServiceCode(t *testing.T) {
  e:=&ServiceCodeError{Code:404};var nilErr *ServiceCodeError;for _,tc:=range []struct{err error;code int;ok bool}{{e,404,true},{fmt.Errorf("load: %w",e),404,true},{errors.Join(errors.New("other"),e),404,true},{&ServiceCodeError{Code:0},0,true},{errors.New("service code 404"),0,false},{nil,0,false},{nilErr,0,false}}{code,ok:=ExtractServiceCode(tc.err);if code!=tc.code||ok!=tc.ok{t.Fatal(code,ok,tc.code,tc.ok)}}
 }
+
+func TestResetIfNeeded(t *testing.T) {
+ c:=&ResetCounter{Count:5};if !ResetIfNeeded(c)||c.Count!=0{t.Fatal(c)};if ResetIfNeeded(c)||ResetIfNeeded(nil){t.Fatal("unexpected reset")};c.Count=-2;if !ResetIfNeeded(c)||c.Count!=0{t.Fatal(c)}
+}
+
+type gymLabelStore struct { value,written string; readErr,writeErr error; reads,writes int }
+func (s *gymLabelStore) ReadLabel()(string,error){s.reads++;return s.value,s.readErr}
+func (s *gymLabelStore) WriteLabel(v string)error{s.writes++;s.written=v;return s.writeErr}
+func TestCopyLabel(t *testing.T) {
+ cause:=errors.New("failed");for _,tc:=range []struct{value string;readErr,writeErr,want error;writes int}{{"go",nil,nil,nil,1},{"",nil,nil,nil,1},{"partial",cause,nil,cause,0},{"go",nil,cause,cause,1}}{s:=&gymLabelStore{value:tc.value,readErr:tc.readErr,writeErr:tc.writeErr};if got:=CopyLabel(s);got!=tc.want||s.reads!=1||s.writes!=tc.writes||(s.writes==1&&s.written!=tc.value){t.Fatal(got,s,tc)}}
+}
+
+func TestWrapOperation(t *testing.T) {
+ if WrapOperation("load",nil)!=nil{t.Fatal("nil")};cause:=errors.New("timeout");got:=WrapOperation("load",cause);var target *OperationError;if !errors.As(got,&target)||target==nil||target.Op!="load"||target.Cause!=cause||!errors.Is(got,cause)||got.Error()!="load: timeout"{t.Fatal(got,target)}
+}
+
+func TestLabelErrorStatus(t *testing.T) {
+ for _,tc:=range []struct{err error;want int}{{nil,200},{ErrLabelMissing,404},{fmt.Errorf("load: %w",ErrLabelMissing),404},{ErrLabelConflict,409},{fmt.Errorf("save: %w",ErrLabelConflict),409},{errors.Join(ErrLabelConflict,ErrLabelMissing),404},{errors.New("label missing"),500},{errors.New("unknown"),500}}{if got:=LabelErrorStatus(tc.err);got!=tc.want{t.Fatal(tc.err,got,tc.want)}}
+}
+
+func TestReadStringValue(t *testing.T) {
+ type Label string;type Alias=string;var p *string;for _,tc:=range []struct{v any;s string;ok bool}{{"Go","Go",true},{"","",true},{Alias("alias"),"alias",true},{42,"",false},{nil,"",false},{p,"",false},{Label("Go"),"",false},{[]byte("Go"),"",false}}{s,ok:=ReadStringValue(tc.v);if s!=tc.s||ok!=tc.ok{t.Fatal(tc,s,ok)}}
+}

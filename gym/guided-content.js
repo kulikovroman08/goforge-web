@@ -9620,5 +9620,537 @@ window.GOFORGE_GUIDES = {
     ],
     "production": "Типизированные доменные ошибки могут хранить код, retryability или сведения о нарушенном ограничении. На границе API преобразуй их в публичный ответ, не раскрывая внутренние данные.",
     "interview": "Почему для поиска *MyError в errors.As передают &target, где target имеет тип *MyError?"
+  },
+  "advanced-method-set": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "c → Count=5"
+        ],
+        "c: *ResetCounter",
+        "Reset объявлен с pointer receiver."
+      ],
+      [
+        "Присваивание",
+        [
+          "r: Resettable",
+          "dynamic type: *ResetCounter"
+        ],
+        "var r Resettable=c",
+        "Интерфейс содержит копию указателя."
+      ],
+      [
+        "Вызов",
+        [
+          "Count=0"
+        ],
+        "r.Reset()",
+        "Метод меняет тот же объект."
+      ],
+      [
+        "Выход",
+        [
+          "true",
+          "c.Count=0"
+        ],
+        "return true",
+        "Изменение видно снаружи."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить вход",
+        "if c==nil||c.Count==0 { return false }",
+        "Не разыменовываем nil и не сбрасываем уже пустой счётчик."
+      ],
+      [
+        "Присвоить интерфейсу",
+        "var r Resettable=c",
+        "Method set *ResetCounter включает Reset."
+      ],
+      [
+        "Вызвать метод",
+        "r.Reset()",
+        "Динамический тип определяет реализацию."
+      ],
+      [
+        "Вернуть результат",
+        "return true",
+        "Счётчик сброшен."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Проверить вход",
+      "Присвоить интерфейсу",
+      "Вызвать метод"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "var r Resettable = ",
+        "after": "",
+        "options": [
+          "c",
+          "*c",
+          "c.Count"
+        ],
+        "correct": 0,
+        "explain": "Только *ResetCounter имеет нужный method set."
+      },
+      {
+        "before": "r.",
+        "after": "()",
+        "options": [
+          "Reset",
+          "Count",
+          "Set"
+        ],
+        "correct": 0,
+        "explain": "Вызываем метод контракта."
+      }
+    ],
+    "partial": "package practice\n\ntype Resettable interface { Reset() }\ntype ResetCounter struct { Count int }\nfunc (c *ResetCounter) Reset() { c.Count=0 }\nvar _ Resettable = (*ResetCounter)(nil)\n\nfunc ResetIfNeeded(c *ResetCounter) bool {\n\tif c==nil||c.Count==0 { return false }\n\tvar r Resettable=c\n\t// TODO: вызови Reset через r\n\t_ = r\n\treturn true\n}\n",
+    "bug": "package practice\n\ntype Resettable interface { Reset() }\ntype ResetCounter struct { Count int }\nfunc (c *ResetCounter) Reset() { c.Count=0 }\nvar _ Resettable = (*ResetCounter)(nil)\n\nfunc ResetIfNeeded(c *ResetCounter) bool {\n\tif c==nil||c.Count==0 { return false }\n\tcopyValue:=*c\n\tvar r Resettable=&copyValue\n\tr.Reset()\n\treturn true\n}\n",
+    "hints": [
+      "Если c не nil и Count не равен 0, передай c в переменную типа Resettable, вызови Reset и верни true. При nil или Count==0 верни false. Reset уже реализован.",
+      "Не разыменовываем nil и не сбрасываем уже пустой счётчик.",
+      "Method set *ResetCounter включает Reset.",
+      "Счётчик сброшен.",
+      "if c==nil||c.Count==0 { return false }\nvar r Resettable=c\nr.Reset()\nreturn true"
+    ],
+    "related": [
+      [
+        "advanced-value-receiver",
+        "Обновить конфигурацию без изменения оригинала"
+      ]
+    ],
+    "production": "Compile-time assertion var _ Interface = (*Type)(nil) документирует контракт. Он не создаёт рабочий объект и не доказывает, что nil receiver безопасен.",
+    "interview": "Почему c.Reset() может компилироваться для адресуемого значения c, но c нельзя присвоить Resettable?"
+  },
+  "advanced-interface-compose": {
+    "frames": [
+      [
+        "Контракт",
+        [
+          "LabelReader",
+          "LabelWriter"
+        ],
+        "LabelStore",
+        "Композиция включает методы обоих интерфейсов."
+      ],
+      [
+        "Чтение",
+        [
+          "ReadLabel → go,nil"
+        ],
+        "label=\"go\"",
+        "Читаем данные один раз."
+      ],
+      [
+        "Проверка",
+        [
+          "err=nil"
+        ],
+        "переход к записи",
+        "Если чтение не удалось, останавливаемся."
+      ],
+      [
+        "Запись",
+        [
+          "WriteLabel(\"go\")"
+        ],
+        "return error",
+        "Передаём результат записи вызывающему коду."
+      ]
+    ],
+    "steps": [
+      [
+        "Прочитать данные",
+        "label,err:=store.ReadLabel()",
+        "Встроенный интерфейс предоставляет ReadLabel."
+      ],
+      [
+        "Проверить ошибку",
+        "if err!=nil { return err }",
+        "Не выполняем запись после сбоя чтения."
+      ],
+      [
+        "Записать значение",
+        "return store.WriteLabel(label)",
+        "Возвращаем ошибку записи без потери причины."
+      ]
+    ],
+    "blocks": [
+      "Записать значение",
+      "Прочитать данные",
+      "Проверить ошибку"
+    ],
+    "order": [
+      1,
+      2,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "type LabelStore interface { LabelReader; ",
+        "after": " }",
+        "options": [
+          "LabelWriter",
+          "string",
+          "error"
+        ],
+        "correct": 0,
+        "explain": "Объединяем два набора методов."
+      },
+      {
+        "before": "if err!=nil { return ",
+        "after": " }",
+        "options": [
+          "err",
+          "nil",
+          "label"
+        ],
+        "correct": 0,
+        "explain": "Ошибка чтения прерывает операцию."
+      }
+    ],
+    "partial": "package practice\n\ntype LabelReader interface { ReadLabel() (string,error) }\ntype LabelWriter interface { WriteLabel(string) error }\ntype LabelStore interface { LabelReader; LabelWriter }\n\nfunc CopyLabel(store LabelStore) error {\n\tlabel,err:=store.ReadLabel()\n\tif err!=nil { return err }\n\t// TODO: запиши прочитанное значение\n\t_ = label\n\treturn nil\n}\n",
+    "bug": "package practice\n\ntype LabelReader interface { ReadLabel() (string,error) }\ntype LabelWriter interface { WriteLabel(string) error }\ntype LabelStore interface { LabelReader; LabelWriter }\n\nfunc CopyLabel(store LabelStore) error {\n\tlabel,err:=store.ReadLabel()\n\t_ = err\n\treturn store.WriteLabel(label)\n}\n",
+    "hints": [
+      "Вызови ReadLabel один раз. Если чтение успешно, передай прочитанную строку в WriteLabel один раз, включая пустую. Ошибки возвращай без замены. При ошибке чтения запись не выполняй. store — корректная реализация.",
+      "Встроенный интерфейс предоставляет ReadLabel.",
+      "Не выполняем запись после сбоя чтения.",
+      "Возвращаем ошибку записи без потери причины.",
+      "label,err:=store.ReadLabel()\nif err!=nil { return err }\nreturn store.WriteLabel(label)"
+    ],
+    "related": [
+      [
+        "advanced-repository",
+        "Загрузить имя пользователя через Repository"
+      ]
+    ],
+    "production": "Композиция маленьких интерфейсов позволяет потребителю запрашивать только нужные возможности. Не объединяй интерфейсы без необходимости: это усложняет fake и связывает независимые компоненты.",
+    "interview": "Что означает embedding интерфейса в интерфейс?"
+  },
+  "advanced-domain-error": {
+    "frames": [
+      [
+        "Причина",
+        [
+          "cause: timeout"
+        ],
+        "op=\"load\"",
+        "Есть исходный объект ошибки."
+      ],
+      [
+        "Обёртка",
+        [
+          "OperationError",
+          "Op=load",
+          "Cause → timeout"
+        ],
+        "&OperationError{Op:op,Cause:cause}",
+        "Сохраняем метаданные и исходную причину."
+      ],
+      [
+        "Извлечение",
+        [
+          "errors.As → OperationError"
+        ],
+        "target.Op == \"load\"",
+        "Типизированная ошибка доступна вызывающему коду."
+      ],
+      [
+        "Классификация",
+        [
+          "errors.Is → true"
+        ],
+        "Unwrap() → cause",
+        "Цепочка не потеряна."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить nil",
+        "if cause==nil { return nil }",
+        "Отсутствие ошибки не нужно оборачивать."
+      ],
+      [
+        "Создать типизированную обёртку",
+        "return &OperationError{Op:op,Cause:cause}",
+        "Сохраняем исходное error, а не новый объект с таким же текстом."
+      ]
+    ],
+    "blocks": [
+      "Создать типизированную обёртку",
+      "Проверить nil"
+    ],
+    "order": [
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "func (e *OperationError) ",
+        "after": "() error",
+        "options": [
+          "Unwrap",
+          "Error",
+          "String"
+        ],
+        "correct": 0,
+        "explain": "Unwrap предоставляет следующую причину."
+      },
+      {
+        "before": "Cause: ",
+        "after": "",
+        "options": [
+          "cause",
+          "errors.New(cause.Error())",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем оригинальную ошибку."
+      }
+    ],
+    "partial": "package practice\n\ntype OperationError struct { Op string; Cause error }\nfunc (e *OperationError) Error() string { return e.Op+\": \"+e.Cause.Error() }\nfunc (e *OperationError) Unwrap() error { return e.Cause }\n\nfunc WrapOperation(op string,cause error) error {\n\tif cause==nil { return nil }\n\t// TODO: верни типизированную ошибку\n\treturn cause\n}\n",
+    "bug": "package practice\n\ntype OperationError struct { Op string; Cause error }\nfunc (e *OperationError) Error() string { return e.Op+\": \"+e.Cause.Error() }\nfunc (e *OperationError) Unwrap() error { return e.Cause }\n\nfunc WrapOperation(op string,cause error) error {\n\tif cause==nil { return nil }\n\treturn &OperationError{Op:op,Cause:errors.New(cause.Error())}\n}\n",
+    "hints": [
+      "Если cause==nil, верни nil. Иначе верни *OperationError с исходными Op и Cause. Тип уже реализует Error и Unwrap. Ошибка должна находиться через errors.As, а причина через errors.Is.",
+      "Отсутствие ошибки не нужно оборачивать.",
+      "Сохраняем исходное error, а не новый объект с таким же текстом.",
+      "Сохраняем исходное error, а не новый объект с таким же текстом.",
+      "if cause==nil { return nil }\nreturn &OperationError{Op:op,Cause:cause}"
+    ],
+    "related": [
+      [
+        "advanced-errors-as",
+        "Извлечь код типизированной ошибки"
+      ]
+    ],
+    "production": "Доменная ошибка может хранить структурированные поля для логирования и преобразования в API-ответ. Определяй инварианты: Cause в данной обёртке не nil; не публикуй внутренние тексты ошибок клиентам.",
+    "interview": "Зачем реализовывать Unwrap у собственного error?"
+  },
+  "advanced-sentinel-errors": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "load label",
+          "ErrLabelMissing"
+        ],
+        "wrapped error",
+        "Внешний текст не определяет категорию."
+      ],
+      [
+        "Проверка",
+        [
+          "errors.Is → true"
+        ],
+        "ErrLabelMissing",
+        "Стандартный обход находит sentinel."
+      ],
+      [
+        "Приоритет",
+        [
+          "missing + conflict"
+        ],
+        "404",
+        "Порядок проверок фиксирует приоритет."
+      ],
+      [
+        "Неизвестная ошибка",
+        [
+          "errors.Is → false"
+        ],
+        "500",
+        "Не раскрываем внутреннюю причину в статусе."
+      ]
+    ],
+    "steps": [
+      [
+        "Обработать успех",
+        "if err==nil { return 200 }",
+        "Нет ошибки — успешный статус."
+      ],
+      [
+        "Проверить отсутствие",
+        "if errors.Is(err,ErrLabelMissing) { return 404 }",
+        "Эта причина имеет приоритет."
+      ],
+      [
+        "Проверить конфликт",
+        "if errors.Is(err,ErrLabelConflict) { return 409 }",
+        "Учитываем и обёрнутые ошибки."
+      ],
+      [
+        "Вернуть общий статус",
+        "return 500",
+        "Неизвестная ошибка — внутренний сбой по контракту."
+      ]
+    ],
+    "blocks": [
+      "Вернуть общий статус",
+      "Обработать успех",
+      "Проверить отсутствие",
+      "Проверить конфликт"
+    ],
+    "order": [
+      1,
+      2,
+      3,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "errors.",
+        "after": "(err,ErrLabelMissing)",
+        "options": [
+          "Is",
+          "As",
+          "New"
+        ],
+        "correct": 0,
+        "explain": "Is проверяет конкретную причину."
+      },
+      {
+        "before": "if errors.Is(err,ErrLabelConflict) { return ",
+        "after": " }",
+        "options": [
+          "409",
+          "404",
+          "200"
+        ],
+        "correct": 0,
+        "explain": "Конфликт соответствует 409."
+      }
+    ],
+    "partial": "package practice\n\nfunc LabelErrorStatus(err error) int {\n\tif err==nil { return 200 }\n\tif errors.Is(err,ErrLabelMissing) { return 404 }\n\t// TODO: обработай конфликт\n\treturn 500\n}\n",
+    "bug": "package practice\n\nfunc LabelErrorStatus(err error) int {\n\tif err==nil { return 200 }\n\tif err==ErrLabelMissing { return 404 }\n\tif err==ErrLabelConflict { return 409 }\n\treturn 500\n}\n",
+    "hints": [
+      "Верни 200 для nil, 404 если errors.Is(err,ErrLabelMissing), 409 если errors.Is(err,ErrLabelConflict), иначе 500. Если обе причины есть в errors.Join, приоритет 404. Не сравнивай текст ошибки.",
+      "Нет ошибки — успешный статус.",
+      "Эта причина имеет приоритет.",
+      "Неизвестная ошибка — внутренний сбой по контракту.",
+      "if err==nil { return 200 }\nif errors.Is(err,ErrLabelMissing) { return 404 }\nif errors.Is(err,ErrLabelConflict) { return 409 }\nreturn 500"
+    ],
+    "related": [
+      [
+        "advanced-domain-error",
+        "Создать доменную ошибку с причиной"
+      ]
+    ],
+    "production": "Преобразование доменных ошибок в HTTP-статусы удобно делать на границе API. Реальные правила статусов, приоритетов и публичных сообщений должны быть согласованы с контрактом сервиса.",
+    "interview": "Чем sentinel error отличается от типизированной ошибки?"
+  },
+  "advanced-safe-assertion": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "any",
+          "dynamic type=string",
+          "value=Go"
+        ],
+        "value.(string)",
+        "Assertion проверяет динамический тип."
+      ],
+      [
+        "Успех",
+        [
+          "s=Go",
+          "ok=true"
+        ],
+        "s,ok:=value.(string)",
+        "Возвращаем значение."
+      ],
+      [
+        "Несовпадение",
+        [
+          "dynamic type=int",
+          "s=\"\"",
+          "ok=false"
+        ],
+        "value=42",
+        "Comma-ok не вызывает panic."
+      ],
+      [
+        "Пустая строка",
+        [
+          "s=\"\"",
+          "ok=true"
+        ],
+        "value=\"\"",
+        "Bool отличает успех от несовпадения."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить динамический тип",
+        "s,ok:=value.(string)",
+        "Два результата защищают от panic при несовпадении."
+      ],
+      [
+        "Вернуть оба результата",
+        "return s,ok",
+        "Пустая строка при успехе отличается от отсутствия по bool."
+      ]
+    ],
+    "blocks": [
+      "Вернуть оба результата",
+      "Проверить динамический тип"
+    ],
+    "order": [
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "s,ok:=value.(",
+        "after": ")",
+        "options": [
+          "string",
+          "[]byte",
+          "any"
+        ],
+        "correct": 0,
+        "explain": "Проверяем конкретный встроенный string."
+      },
+      {
+        "before": "return s,",
+        "after": "",
+        "options": [
+          "ok",
+          "true",
+          "false"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем признак совпадения типа."
+      }
+    ],
+    "partial": "package practice\n\nfunc ReadStringValue(value any) (string,bool) {\n\t// TODO: извлеки string через comma-ok\n\treturn \"\",false\n}\n",
+    "bug": "package practice\n\nfunc ReadStringValue(value any) (string,bool) {\n\tif value==nil { return \"\",false }\n\treturn fmt.Sprint(value),true\n}\n",
+    "hints": [
+      "Верни строку и true только если динамический тип value — встроенный string. Для остальных типов, включая nil, typed nil, определённые типы с underlying string и []byte, верни пустую строку,false без panic. Пустой string допустим.",
+      "Два результата защищают от panic при несовпадении.",
+      "Пустая строка при успехе отличается от отсутствия по bool.",
+      "Пустая строка при успехе отличается от отсутствия по bool.",
+      "s,ok:=value.(string)\nreturn s,ok"
+    ],
+    "related": [
+      [
+        "advanced-type-switch",
+        "Классифицировать входное значение через type switch"
+      ]
+    ],
+    "production": "Comma-ok полезен в адаптерах динамических данных. Для JSON и доменных объектов предпочтительнее заранее определённая структура и явная валидация, а не неявное преобразование через fmt.Sprint.",
+    "interview": "Чем type assertion отличается от преобразования типа?"
   }
 };

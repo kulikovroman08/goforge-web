@@ -328,3 +328,25 @@ func ValueKind(v any) string { return "other" }
 type ServiceCodeError struct { Code int }
 func (e *ServiceCodeError) Error() string { return fmt.Sprintf("service code %d",e.Code) }
 func ExtractServiceCode(err error) (int,bool) { return 0,false }
+
+type Resettable interface { Reset() }
+type ResetCounter struct { Count int }
+func (c *ResetCounter) Reset() { c.Count=0 }
+var _ Resettable = (*ResetCounter)(nil)
+func ResetIfNeeded(c *ResetCounter) bool { return false }
+
+type LabelReader interface { ReadLabel() (string,error) }
+type LabelWriter interface { WriteLabel(string) error }
+type LabelStore interface { LabelReader; LabelWriter }
+func CopyLabel(store LabelStore) error { return nil }
+
+type OperationError struct { Op string; Cause error }
+func (e *OperationError) Error() string { return e.Op+": "+e.Cause.Error() }
+func (e *OperationError) Unwrap() error { return e.Cause }
+func WrapOperation(op string,cause error) error { return nil }
+
+var ErrLabelMissing = errors.New("label missing")
+var ErrLabelConflict = errors.New("label conflict")
+func LabelErrorStatus(err error) int { return 500 }
+
+func ReadStringValue(value any) (string,bool) { return "",false }
