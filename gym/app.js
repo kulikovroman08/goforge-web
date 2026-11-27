@@ -96,7 +96,7 @@ save();
 }
 document.addEventListener('click',async e=>{
 let x=e.target.closest('[data-group]');if(x){state.openGroups=state.openGroups||{};state.openGroups[x.dataset.group]=x.getAttribute('aria-expanded')!=='true';render();return}
-let x=e.target.closest('[data-task]');if(x){state.selected=x.dataset.task;state.tab='learn';render();return}
+x=e.target.closest('[data-task]');if(x){state.selected=x.dataset.task;state.tab='learn';render();return}
 x=e.target.closest('[data-tab],[data-goto]');if(x){state.tab=x.dataset.tab||x.dataset.goto;render();return}
 const task=getTask(),p=itemState();
 x=e.target.closest('[data-question]');if(x){p.answers[Number(x.dataset.question)]=Number(x.dataset.choice);render();return}
