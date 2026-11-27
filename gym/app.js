@@ -20,6 +20,7 @@ const entryParams=new URLSearchParams(window.location.search);
 const entryTask=entryParams.get('task');
 if(catalog.some(t=>t.id===entryTask)){
  state.selected=entryTask;
+ state.openGroups={};
  const entryTab=entryParams.get('tab');
  state.tab=['learn','quiz','code','repeat'].includes(entryTab)?entryTab:'learn';
 }
@@ -56,7 +57,17 @@ function render(){
 const task=getTask();if(!task){$('view').textContent='Каталог пока пуст';return}
 const p=itemState(),questions=getQuestions(task),topic=getTheory(task.id);
 const correct=questions.filter((q,i)=>p.answers[i]===q[2]).length;
-$('task-nav').innerHTML=['Go Core','Runtime','Concurrency','Backend'].map(group=>'<h3>'+escape(group)+'</h3>'+catalog.filter(t=>(getTheory(t.id)?.category||'Go Core')===group).map(t=>'<button class="taskpick '+(t.id===task.id?'active':'')+'" data-task="'+escape(t.id)+'">'+escape(getTheory(t.id)?.section||t.title)+'<small>'+escape(t.topic)+' · '+getQuestions(t).length+' вопросов · '+t.minutes+' мин</small></button>').join('')).join('')+'<details class="card" style="padding:11px"><summary>Следующие темы курса (в разработке)</summary><p class="muted tiny">Reflection · GC/pprof глубже · тесты с реальной PostgreSQL · Redis · интеграционный gRPC · Kafka consumer/rebalance · Docker/CI · System Design</p><a href="https://github.com/kulikovroman08/goforge-web/blob/main/gym/CURRICULUM.md" target="_blank" rel="noopener noreferrer">Полный учебный план</a></details>';
+const nav=$('task-nav'),scroll=nav.scrollTop;
+const groups=['Go Core','Advanced Go','Runtime','Concurrency','Backend'];
+const categoryOf=t=>getTheory(t.id)?.category||'Go Core';
+state.openGroups=state.openGroups||{};
+const selectedGroup=categoryOf(task);
+nav.innerHTML=groups.map(group=>{
+ const tasks=catalog.filter(t=>categoryOf(t)===group);
+ const open=state.openGroups[group]??(group===selectedGroup);
+ return '<section class="nav-group"><button class="nav-group-toggle" data-group="'+escape(group)+'" aria-expanded="'+open+'"><span>'+escape(group)+'</span><small>'+tasks.length+' задач</small><span aria-hidden="true">'+(open?'▾':'▸')+'</span></button><div class="nav-group-items"'+(open?'':' hidden')+'>'+tasks.map(t=>'<button class="taskpick '+(t.id===task.id?'active':'')+'" data-task="'+escape(t.id)+'">'+escape(getTheory(t.id)?.section||t.title)+'<small>'+escape(t.topic)+' · '+getQuestions(t).length+' вопросов · '+t.minutes+' мин</small></button>').join('')+'</div></section>';
+}).join('')+'<details class="card" style="padding:11px"><summary>Следующие темы курса (в разработке)</summary><p class="muted tiny">Reflection · GC/pprof глубже · тесты с реальной PostgreSQL · Redis · интеграционный gRPC · Kafka consumer/rebalance · Docker/CI · System Design</p><a href="https://github.com/kulikovroman08/goforge-web/blob/main/gym/CURRICULUM.md" target="_blank" rel="noopener noreferrer">Полный учебный план</a></details>';
+nav.scrollTop=scroll;
 $('heading').innerHTML='<div class="chips"><span class="chip">'+escape(task.topic)+'</span><span class="chip">'+escape(task.level)+'</span><span class="chip">'+task.minutes+' минут</span></div><h1>'+escape(task.title)+'</h1><p class="muted">'+escape(task.role)+'</p>';
 $('tabs').querySelectorAll('[data-tab]').forEach(btn=>btn.classList.toggle('active',btn.dataset.tab===state.tab));
 if(state.tab==='learn'){
@@ -84,6 +95,7 @@ $('view').innerHTML='<section class="card"><h2>Повторяй, пока реш
 save();
 }
 document.addEventListener('click',async e=>{
+let x=e.target.closest('[data-group]');if(x){state.openGroups=state.openGroups||{};state.openGroups[x.dataset.group]=x.getAttribute('aria-expanded')!=='true';render();return}
 let x=e.target.closest('[data-task]');if(x){state.selected=x.dataset.task;state.tab='learn';render();return}
 x=e.target.closest('[data-tab],[data-goto]');if(x){state.tab=x.dataset.tab||x.dataset.goto;render();return}
 const task=getTask(),p=itemState();
