@@ -404,3 +404,24 @@ type MetricCounter struct { Value int }
 func (c *MetricCounter) Add(delta int) int { c.Value += delta; return c.Value }
 
 func ApplyMetricDeltas(c *MetricCounter, deltas []int) []int { return nil }
+
+type LocalAccess struct { Enabled bool }
+func (a LocalAccess) Allowed() bool { return a.Enabled }
+type RemoteAccess struct { Approved bool }
+func (a RemoteAccess) Allowed() bool { return a.Approved }
+type AccessSummary struct { LocalAccess; RemoteAccess }
+type AccessDecision interface { Allowed() bool }
+
+func (s AccessSummary) Allowed() bool { return false }
+
+type WorkflowValidator interface { Validate(string) error }
+type WorkflowPublisher interface { Publish(string) error }
+type PublishWorkflow struct { validator WorkflowValidator; publisher WorkflowPublisher }
+
+func NewPublishWorkflow(validator WorkflowValidator, publisher WorkflowPublisher) *PublishWorkflow { return nil }
+
+func (w *PublishWorkflow) Publish(text string) error { return nil }
+type WorkflowValidatorFunc func(string) error
+func (f WorkflowValidatorFunc) Validate(text string) error { return f(text) }
+type WorkflowPublisherFunc func(string) error
+func (f WorkflowPublisherFunc) Publish(text string) error { return f(text) }

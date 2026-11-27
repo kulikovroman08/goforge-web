@@ -12185,5 +12185,279 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "Method expressions удобны, когда одна функция должна работать с разными экземплярами, например в таблице обработчиков или generic-алгоритме. Обычный вызов метода часто проще; method expression полезен там, где действительно нужен явный receiver.",
     "interview": "Чем c.Add отличается от (*MetricCounter).Add?"
+  },
+  "advanced-embedding-conflict": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "LocalAccess.Enabled=true",
+          "RemoteAccess.Approved=false"
+        ],
+        "AccessSummary",
+        "Два встроенных поля."
+      ],
+      [
+        "Локальная проверка",
+        [
+          "local=true"
+        ],
+        "s.LocalAccess.Allowed()",
+        "Обращаемся к конкретному полю."
+      ],
+      [
+        "Удалённая проверка",
+        [
+          "local=true",
+          "remote=false"
+        ],
+        "s.RemoteAccess.Allowed()",
+        "Вторая проверка независима."
+      ],
+      [
+        "Результат",
+        [
+          "true && false"
+        ],
+        "false",
+        "Обе проверки должны разрешить доступ."
+      ]
+    ],
+    "steps": [
+      [
+        "Разобрать два готовых типа",
+        "type LocalAccess struct { Enabled bool }\nfunc (a LocalAccess) Allowed() bool { return a.Enabled }\ntype RemoteAccess struct { Approved bool }\nfunc (a RemoteAccess) Allowed() bool { return a.Approved }",
+        "Оба типа уже имеют метод Allowed. Первый проверяет локальный флаг, второй — удалённое разрешение. Не переписываем их логику."
+      ],
+      [
+        "Разобрать встраивание",
+        "type AccessSummary struct {\n    LocalAccess\n    RemoteAccess\n}",
+        "Имена типов одновременно служат именами встроенных полей. Методы Allowed находятся на одинаковой глубине: без собственного метода селектор s.Allowed неоднозначен."
+      ],
+      [
+        "Объявить собственный метод",
+        "func (s AccessSummary) Allowed() bool {",
+        "Receiver s — значение составной структуры. Метод на самой структуре имеет приоритет над promoted methods."
+      ],
+      [
+        "Вызвать локальную проверку",
+        "    local := s.LocalAccess.Allowed()",
+        "Сначала выбираем встроенное поле LocalAccess, затем его метод. := объявляет переменную local типа bool."
+      ],
+      [
+        "Вызвать удалённую проверку",
+        "    remote := s.RemoteAccess.Allowed()",
+        "Явно выбираем второе поле. Конфликта имён больше нет."
+      ],
+      [
+        "Объединить результаты",
+        "    return local && remote\n}",
+        "&& возвращает true только при двух true. || разрешил бы доступ при одной успешной проверке, что нарушает условие."
+      ]
+    ],
+    "blocks": [
+      "Объединить результаты",
+      "Вызвать удалённую проверку",
+      "Вызвать локальную проверку",
+      "Объявить собственный метод",
+      "Разобрать встраивание",
+      "Разобрать два готовых типа"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "local := s.",
+        "after": ".Allowed()",
+        "options": [
+          "Allowed",
+          "LocalAccess",
+          "RemoteAccess"
+        ],
+        "correct": 1,
+        "explain": "Выбираем локальный встроенный компонент."
+      },
+      {
+        "before": "return local ",
+        "after": " remote",
+        "options": [
+          "||",
+          "==",
+          "&&"
+        ],
+        "correct": 2,
+        "explain": "Требуются обе проверки."
+      }
+    ],
+    "partial": "package practice\n\ntype LocalAccess struct { Enabled bool }\nfunc (a LocalAccess) Allowed() bool { return a.Enabled }\ntype RemoteAccess struct { Approved bool }\nfunc (a RemoteAccess) Allowed() bool { return a.Approved }\ntype AccessSummary struct { LocalAccess; RemoteAccess }\ntype AccessDecision interface { Allowed() bool }\n\nfunc (s AccessSummary) Allowed() bool {\n    local := s.LocalAccess.Allowed()\n    remote := s.RemoteAccess.Allowed()\n    // TODO: верни true только если обе проверки дали true\n    _, _ = local, remote\n    return false\n}\n",
+    "bug": "package practice\n\ntype LocalAccess struct { Enabled bool }\nfunc (a LocalAccess) Allowed() bool { return a.Enabled }\ntype RemoteAccess struct { Approved bool }\nfunc (a RemoteAccess) Allowed() bool { return a.Approved }\ntype AccessSummary struct { LocalAccess; RemoteAccess }\ntype AccessDecision interface { Allowed() bool }\n\nfunc (s AccessSummary) Allowed() bool {\n    local := s.LocalAccess.Allowed()\n    remote := s.RemoteAccess.Allowed()\n    return local || remote\n}\n",
+    "hints": [
+      "У обоих встроенных типов есть Allowed. Нужно объявить Allowed на AccessSummary.",
+      "Через s.LocalAccess можно выбрать первый встроенный объект.",
+      "local := s.LocalAccess.Allowed()",
+      "Получаем remote аналогично, через s.RemoteAccess.Allowed().",
+      "local := s.LocalAccess.Allowed()\nremote := s.RemoteAccess.Allowed()\nreturn local && remote"
+    ],
+    "related": [
+      [
+        "advanced-embedding",
+        "Встраивание структур"
+      ],
+      [
+        "advanced-method-set",
+        "Method set"
+      ]
+    ],
+    "production": "В составном объекте могут совпасть имена методов нескольких компонентов. Явный выбор поля делает намерение понятным. Упражнение иллюстрирует композицию и AND-условие, а не полноценную систему авторизации.",
+    "interview": "Что произойдёт, если два встроенных типа имеют метод с одним именем на одинаковой глубине?"
+  },
+  "advanced-component-composition": {
+    "frames": [
+      [
+        "Сборка",
+        [
+          "validator=V",
+          "publisher=P"
+        ],
+        "NewPublishWorkflow(V,P)",
+        "Конструктор связывает компоненты."
+      ],
+      [
+        "Вход",
+        [
+          "text=\"event\""
+        ],
+        "V.Validate(text)",
+        "Первая операция — валидация."
+      ],
+      [
+        "Ветка ошибки",
+        [
+          "Validate → error",
+          "Publish calls=0"
+        ],
+        "return err",
+        "Fail fast: следующий компонент не вызывается."
+      ],
+      [
+        "Ветка успеха",
+        [
+          "Validate → nil",
+          "P.Publish(text)"
+        ],
+        "return publisher error",
+        "Делегируем публикацию после успешной проверки."
+      ]
+    ],
+    "steps": [
+      [
+        "Определить два контракта",
+        "type WorkflowValidator interface { Validate(string) error }\ntype WorkflowPublisher interface { Publish(string) error }",
+        "Валидация и публикация — две разные обязанности. Каждому компоненту нужен только один метод."
+      ],
+      [
+        "Хранить компоненты в полях",
+        "type PublishWorkflow struct {\n    validator WorkflowValidator\n    publisher WorkflowPublisher\n}",
+        "Поля именованные, а не встроенные. Сервис сам определяет публичные методы, не продвигая методы зависимостей."
+      ],
+      [
+        "Принять зависимости в конструкторе",
+        "func NewPublishWorkflow(validator WorkflowValidator, publisher WorkflowPublisher) *PublishWorkflow {",
+        "Обе реализации передаём извне. Конструктор не выполняет бизнес-операции."
+      ],
+      [
+        "Сохранить компоненты",
+        "    return &PublishWorkflow{validator: validator, publisher: publisher}\n}",
+        "Литерал заполняет два поля. & возвращает указатель на созданный workflow."
+      ],
+      [
+        "Объявить операцию сервиса",
+        "func (w *PublishWorkflow) Publish(text string) error {",
+        "w — receiver, через него получаем доступ к обоим компонентам. text — исходные данные."
+      ],
+      [
+        "Выполнить валидацию",
+        "    if err := w.validator.Validate(text); err != nil {\n        return err\n    }",
+        "Вызываем Validate один раз, объявляем err в if. При ошибке return завершает весь метод, поэтому публикация не начнётся."
+      ],
+      [
+        "Делегировать публикацию",
+        "    return w.publisher.Publish(text)\n}",
+        "Сюда попадаем только после успешной валидации. Явно выбираем поле publisher, передаём text и возвращаем исходный error."
+      ]
+    ],
+    "blocks": [
+      "Делегировать публикацию",
+      "Выполнить валидацию",
+      "Объявить операцию сервиса",
+      "Сохранить компоненты",
+      "Принять зависимости в конструкторе",
+      "Хранить компоненты в полях",
+      "Определить два контракта"
+    ],
+    "order": [
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if err := w.",
+        "after": ".Validate(text); err != nil {",
+        "options": [
+          "publisher",
+          "validator",
+          "Publish"
+        ],
+        "correct": 1,
+        "explain": "Сначала вызываем валидатор."
+      },
+      {
+        "before": "return w.publisher.",
+        "after": "(text)",
+        "options": [
+          "Validate",
+          "PublishWorkflow",
+          "Publish"
+        ],
+        "correct": 2,
+        "explain": "Делегируем издателю."
+      }
+    ],
+    "partial": "package practice\n\ntype WorkflowValidator interface { Validate(string) error }\ntype WorkflowPublisher interface { Publish(string) error }\ntype PublishWorkflow struct { validator WorkflowValidator; publisher WorkflowPublisher }\n\nfunc NewPublishWorkflow(validator WorkflowValidator, publisher WorkflowPublisher) *PublishWorkflow {\n    return &PublishWorkflow{validator: validator, publisher: publisher}\n}\n\nfunc (w *PublishWorkflow) Publish(text string) error {\n    if err := w.validator.Validate(text); err != nil {\n        return err\n    }\n    // TODO: передай исходный text издателю и верни его error\n    return nil\n}\n",
+    "bug": "package practice\n\ntype WorkflowValidator interface { Validate(string) error }\ntype WorkflowPublisher interface { Publish(string) error }\ntype PublishWorkflow struct { validator WorkflowValidator; publisher WorkflowPublisher }\n\nfunc NewPublishWorkflow(validator WorkflowValidator, publisher WorkflowPublisher) *PublishWorkflow {\n    return &PublishWorkflow{validator: validator, publisher: publisher}\n}\n\nfunc (w *PublishWorkflow) Publish(text string) error {\n    _ = w.validator.Validate(text)\n    return w.publisher.Publish(text)\n}\n",
+    "hints": [
+      "Композиция здесь означает хранение двух независимых зависимостей в именованных полях.",
+      "Конструктор возвращает &PublishWorkflow{validator: validator, publisher: publisher}.",
+      "Начни Publish с if err := w.validator.Validate(text); err != nil { return err }.",
+      "После успешной проверки явно вызови метод поля publisher.",
+      "return w.publisher.Publish(text)"
+    ],
+    "related": [
+      [
+        "advanced-dependency-injection",
+        "Передача зависимостей"
+      ],
+      [
+        "advanced-interface-adapter",
+        "Функциональные адаптеры"
+      ],
+      [
+        "advanced-embedding-conflict",
+        "Конфликты при embedding"
+      ]
+    ],
+    "production": "В backend-сервисах компоненты валидации, сохранения и публикации событий часто соединяют через именованные поля и явные вызовы. Здесь проверяем последовательность и fail-fast; транзакционность, ретраи и outbox требуют отдельных контрактов.",
+    "interview": "Почему именованные поля часто предпочтительнее embedding для зависимостей сервиса?"
   }
 };

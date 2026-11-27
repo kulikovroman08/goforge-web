@@ -922,3 +922,30 @@ func TestApplyMetricDeltas(t *testing.T) {
  other:=&MetricCounter{Value:-2}
  if v:=ApplyMetricDeltas(other,[]int{0,-4});!reflect.DeepEqual(v,[]int{-2,-6})||other.Value!=-6||c.Value!=14{t.Fatal(v,other.Value,c.Value)}
 }
+
+func TestAccessSummaryAllowed(t *testing.T) {
+ for _,tc:=range []struct{local,remote,want bool}{{true,true,true},{true,false,false},{false,true,false},{false,false,false}} {
+  s:=AccessSummary{LocalAccess:LocalAccess{Enabled:tc.local},RemoteAccess:RemoteAccess{Approved:tc.remote}}
+  var decision AccessDecision=s
+  if got:=decision.Allowed();got!=tc.want{t.Fatal(tc,got)}
+  if s.Enabled!=tc.local||s.Approved!=tc.remote{t.Fatal("input changed")}
+ }
+}
+
+func TestPublishWorkflow(t *testing.T) {
+ invalid:=errors.New("invalid")
+ failed:=errors.New("publish failed")
+ for _,tc:=range []struct{text string; validateErr,publishErr,want error; calls []string}{
+ {"event",nil,nil,nil,[]string{"validate:event","publish:event"}},
+ {"bad",invalid,nil,invalid,[]string{"validate:bad"}},
+ {"event",nil,failed,failed,[]string{"validate:event","publish:event"}},
+ {"",nil,nil,nil,[]string{"validate:","publish:"}},
+ } {
+  var calls []string
+  v:=WorkflowValidatorFunc(func(text string)error{calls=append(calls,"validate:"+text);return tc.validateErr})
+  p:=WorkflowPublisherFunc(func(text string)error{calls=append(calls,"publish:"+text);return tc.publishErr})
+  w:=NewPublishWorkflow(v,p)
+  if w==nil||len(calls)!=0{t.Fatal("constructor must only store dependencies")}
+  if got:=w.Publish(tc.text);got!=tc.want||!reflect.DeepEqual(calls,tc.calls){t.Fatal(tc,got,calls)}
+ }
+}
