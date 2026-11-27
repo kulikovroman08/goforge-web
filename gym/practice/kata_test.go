@@ -808,6 +808,7 @@ func TestRunProtectedWork(t *testing.T) {
  if got:=RunProtectedWork(func()error{calls++;panic(cause)});!errors.Is(got,cause)||calls!=4{t.Fatal(got,calls)}
  if got:=RunProtectedWork(func()error{panic(42)});got==nil||got.Error()!="work panic: 42"{t.Fatal(got)}
  if got:=RunProtectedWork(nil);got==nil{t.Fatal("nil callback panic lost")}
+ if got:=RunProtectedWork(func()error{panic(nil)});got==nil{t.Fatal("panic(nil) lost")}
 }
 
 func TestFilterValues(t *testing.T) {
@@ -960,6 +961,7 @@ func TestProcessDeliveryBatch(t *testing.T) {
  got[0]="X";if ids[0]!="A"{t.Fatal("alias")}
  if v,e:=ProcessDeliveryBatch(nil,nil);v==nil||len(v)!=0||e!=nil{t.Fatal(v,e)}
  if v,e:=ProcessDeliveryBatch([]string{"X"},func(string)error{return nil});!reflect.DeepEqual(v,[]string{"X"})||e!=nil{t.Fatal(v,e)}
+ if v,e:=ProcessDeliveryBatch([]string{"X","Y"},func(string)error{return e1});v==nil||len(v)!=0||!errors.Is(e,e1){t.Fatal(v,e)}
 }
 
 func TestTransformChecked(t *testing.T) {
