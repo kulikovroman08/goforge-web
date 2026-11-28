@@ -40,7 +40,15 @@
       if (c === '/' && next === '/') { line = true; i++; continue; }
       if (c === '/' && next === '*') { block = true; i++; continue; }
       if (c === '"' || c === "'" || c === String.fromCharCode(96)) { quote = c; continue; }
-      if (c === '{') { depth++; hasBrace = true; continue; }
+      if (c === '{') {
+        // Empty struct types in a function signature are not function bodies.
+        if (!hasBrace && /^func\b/.test(text.slice(start)) &&
+            /\bstruct\s*$/.test(text.slice(start,i)) && /^\{\s*\}/.test(text.slice(i))) {
+          i += text.slice(i).match(/^\{\s*\}/)[0].length - 1;
+          continue;
+        }
+        depth++; hasBrace = true; continue;
+      }
       if (c === '}') {
         depth--;
         if (hasBrace && depth === 0) return i + 1;
