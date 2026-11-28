@@ -14018,5 +14018,652 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "Направленные каналы документируют ownership на уровне типов. Для production-потока требуется отмена, если потребитель может прекратить чтение раньше конца; это отдельная следующая тема.",
     "interview": "Можно ли закрыть send-only канал и почему нельзя закрыть receive-only?"
+  },
+  "concurrency-select-ready": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "a: empty",
+          "b: [42]"
+        ],
+        "select ждёт готовность",
+        "a открыт, но данных нет. b уже содержит значение."
+      ],
+      [
+        "Выбор",
+        [
+          "a: not ready",
+          "b: ready"
+        ],
+        "case v,ok := <-b",
+        "Ветка b готова, поэтому выполняется чтение b."
+      ],
+      [
+        "Результат",
+        [
+          "v=42",
+          "source=b",
+          "ok=true"
+        ],
+        "return 42,\"b\",true",
+        "Функция читает ровно один элемент."
+      ],
+      [
+        "Другой сценарий",
+        [
+          "a: ready",
+          "b: ready"
+        ],
+        "любая готовая ветка",
+        "Порядок веток в исходнике не устанавливает приоритет."
+      ]
+    ],
+    "steps": [
+      [
+        "Описать ожидание",
+        "select {",
+        "select ждёт готовности одной из коммуникаций. Это не последовательная проверка первого канала, затем второго."
+      ],
+      [
+        "Обработать первый источник",
+        "case v, ok := <-a:\n    return v, \"a\", ok",
+        "Чтение получает значение и статус. Имя источника задаётся контрактом; при закрытии возвращаем false."
+      ],
+      [
+        "Обработать второй источник",
+        "case v, ok := <-b:\n    return v, \"b\", ok\n}",
+        "Вторая ветка симметрична. Если обе готовы, Go выбирает одну готовую операцию псевдослучайно, а не по порядку case."
+      ]
+    ],
+    "blocks": [
+      "Обработать второй источник",
+      "Обработать первый источник",
+      "Описать ожидание"
+    ],
+    "order": [
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "",
+        "after": " {",
+        "options": [
+          "select",
+          "switch",
+          "range"
+        ],
+        "correct": 0,
+        "explain": "select работает с коммуникациями каналов."
+      },
+      {
+        "before": "case v, ok := ",
+        "after": "b:",
+        "options": [
+          "<-",
+          "->",
+          "close("
+        ],
+        "correct": 0,
+        "explain": "Два результата чтения включают статус."
+      },
+      {
+        "before": "return v, \"b\", ",
+        "after": "",
+        "options": [
+          "ok",
+          "true",
+          "v!=0"
+        ],
+        "correct": 0,
+        "explain": "Передаём фактический статус чтения."
+      }
+    ],
+    "partial": "package practice\n\nfunc ReceiveEither(a, b <-chan int) (int, string, bool) {\n\tselect {\n\tcase v, ok := <-a:\n\t    return v, \"a\", ok\n\tcase v, ok := <-b:\n\t    // TODO: верни правильное имя второго источника\n\t    return v, \"a\", ok\n\t}\n}\n",
+    "bug": "package practice\n\nfunc ReceiveEither(a, b <-chan int) (int, string, bool) {\n\tselect {\n\tcase v := <-a:\n\t    return v, \"a\", true\n\tcase v := <-b:\n\t    return v, \"b\", true\n\t}\n}\n",
+    "hints": [
+      "Нужен select, а не два последовательных чтения.",
+      "Добавь case v, ok := <-a.",
+      "Верни v, \"a\", ok; сделай симметричную ветку b.",
+      "Не добавляй default: функция должна ждать готовую операцию.",
+      "select {\ncase v,ok:=<-a: return v,\"a\",ok\ncase v,ok:=<-b: return v,\"b\",ok\n}"
+    ],
+    "related": [
+      [
+        "concurrency-receive-value",
+        "Повторить comma-ok"
+      ],
+      [
+        "select-first",
+        "Связь с context и production"
+      ]
+    ],
+    "production": "Два независимых источника событий можно обслуживать одним select. Для постоянного цикла нужно дополнительно отключать закрытые каналы и учитывать отмену, иначе готовый закрытый канал может создавать busy loop.",
+    "interview": "Есть ли приоритет у первого case в select?"
+  },
+  "concurrency-try-send": {
+    "frames": [
+      [
+        "Свободное место",
+        [
+          "out: [7, _]",
+          "value=8"
+        ],
+        "cap=2; len=1",
+        "Отправка готова."
+      ],
+      [
+        "Успех",
+        [
+          "out: [7,8]"
+        ],
+        "return true",
+        "Событие действительно записано."
+      ],
+      [
+        "Переполнение",
+        [
+          "out: [7,8]",
+          "value=9"
+        ],
+        "default → false",
+        "Нет места; очередь не изменяется."
+      ],
+      [
+        "Отключённый выход",
+        [
+          "out=nil"
+        ],
+        "default → false",
+        "Операция с nil не готова."
+      ]
+    ],
+    "steps": [
+      [
+        "Начать select",
+        "select {",
+        "Нужна одна операция с возможностью немедленного отказа, а не ожидание свободного места."
+      ],
+      [
+        "Попытаться отправить",
+        "case out <- value:\n    return true",
+        "Если коммуникация готова, select выполняет её и возвращаем true. Для небуферизованного канала требуется готовый получатель."
+      ],
+      [
+        "Обработать перегрузку",
+        "default:\n    return false\n}",
+        "default выбирается только если ни одна коммуникация не готова. Это не отправка и не отмена уже выполненной отправки."
+      ]
+    ],
+    "blocks": [
+      "Обработать перегрузку",
+      "Попытаться отправить",
+      "Начать select"
+    ],
+    "order": [
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "case out ",
+        "after": " value:",
+        "options": [
+          "<-",
+          "=",
+          "->"
+        ],
+        "correct": 0,
+        "explain": "Отправка — канал слева от <-."
+      },
+      {
+        "before": "",
+        "after": " :\n    return false",
+        "options": [
+          "default",
+          "else",
+          "case false"
+        ],
+        "correct": 0,
+        "explain": "default позволяет не ждать."
+      }
+    ],
+    "partial": "package practice\n\nfunc TrySendEvent(out chan<- int, value int) bool {\n\tselect {\n\tcase out <- value:\n\t    // TODO: сообщи об успешной отправке\n\t    return false\n\tdefault:\n\t    return false\n\t}\n}\n",
+    "bug": "package practice\n\nfunc TrySendEvent(out chan<- int, value int) bool {\n\tif len(out) < cap(out) {\n\t    return true\n\t}\n\treturn false\n}\n",
+    "hints": [
+      "Нужна неблокирующая попытка, не проверка len.",
+      "Используй select с одной отправкой.",
+      "В case out <- value верни true.",
+      "Добавь default с return false.",
+      "select {case out<-value:return true;default:return false}"
+    ],
+    "related": [
+      [
+        "concurrency-receive-value",
+        "Повторить comma-ok"
+      ],
+      [
+        "select-first",
+        "Связь с context и production"
+      ]
+    ],
+    "production": "Для необязательной телеметрии можно отклонять событие при переполнении и считать потери. Для бизнес-событий silent drop часто недопустим: нужен явный отказ, повтор или надёжная очередь. default не защищает от panic при отправке в закрытый канал.",
+    "interview": "Почему if len(ch)<cap(ch) не заменяет select с default?"
+  },
+  "concurrency-try-receive": {
+    "frames": [
+      [
+        "Данные",
+        [
+          "in: [0]",
+          "open"
+        ],
+        "0,true,false",
+        "Получили реальный ноль."
+      ],
+      [
+        "Временно пуст",
+        [
+          "in: []",
+          "open"
+        ],
+        "0,false,false",
+        "default, можно продолжить другую работу."
+      ],
+      [
+        "Закрыт",
+        [
+          "in: []",
+          "closed"
+        ],
+        "0,false,true",
+        "Чтение готово, но значения больше нет."
+      ],
+      [
+        "Nil",
+        [
+          "in=nil"
+        ],
+        "0,false,false",
+        "Ветка чтения отключена."
+      ]
+    ],
+    "steps": [
+      [
+        "Описать попытку",
+        "select {",
+        "Одна операция чтения с альтернативой default не ждёт появления будущих данных."
+      ],
+      [
+        "Получить значение и статус",
+        "case v, ok := <-in:",
+        "Comma-ok нужен, потому что закрытый канал также готов к чтению."
+      ],
+      [
+        "Распознать закрытие",
+        "    if !ok {\n        return 0, false, true\n    }",
+        "ok=false означает, что закрытый канал исчерпан. Это отдельное состояние, не пустой открытый буфер."
+      ],
+      [
+        "Вернуть данные",
+        "    return v, true, false",
+        "Даже v=0 является полученным событием, если ok=true."
+      ],
+      [
+        "Распознать ожидание",
+        "default:\n    return 0, false, false\n}",
+        "Если чтение не готово, никаких данных не получено. Nil канал попадает сюда тоже."
+      ]
+    ],
+    "blocks": [
+      "Распознать ожидание",
+      "Вернуть данные",
+      "Распознать закрытие",
+      "Получить значение и статус",
+      "Описать попытку"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "case v, ",
+        "after": " := <-in:",
+        "options": [
+          "ok",
+          "err",
+          "cap"
+        ],
+        "correct": 0,
+        "explain": "Второй результат чтения — bool."
+      },
+      {
+        "before": "return 0, false, ",
+        "after": " // канал закрыт",
+        "options": [
+          "true",
+          "false",
+          "ok"
+        ],
+        "correct": 0,
+        "explain": "Третий флаг отмечает закрытие."
+      }
+    ],
+    "partial": "package practice\n\nfunc TryReceiveEvent(in <-chan int) (int, bool, bool) {\n\tselect {\n\tcase v, ok := <-in:\n\t    if !ok {\n\t        // TODO: отличи закрытие от отсутствия данных\n\t        return 0,false,false\n\t    }\n\t    return v,true,false\n\tdefault:\n\t    return 0,false,false\n\t}\n}\n",
+    "bug": "package practice\n\nfunc TryReceiveEvent(in <-chan int) (int, bool, bool) {\n\tselect {\n\tcase v := <-in:\n\t    return v,true,false\n\tdefault:\n\t    return 0,false,false\n\t}\n}\n",
+    "hints": [
+      "У функции три разных исхода, не два.",
+      "Используй select и comma-ok в ветке чтения.",
+      "При !ok верни 0,false,true.",
+      "При данных верни v,true,false; в default — 0,false,false.",
+      "select {case v,ok:=<-in:if !ok{return 0,false,true};return v,true,false;default:return 0,false,false}"
+    ],
+    "related": [
+      [
+        "concurrency-receive-value",
+        "Повторить comma-ok"
+      ],
+      [
+        "select-first",
+        "Связь с context и production"
+      ]
+    ],
+    "production": "Неблокирующая проверка полезна в отдельных циклах обслуживания и тестах. Не строй бесконечный цикл из default без ожидания: он будет потреблять CPU. Обычно лучше блокирующий select с отменой.",
+    "interview": "Чем пустой открытый канал отличается от закрытого при неблокирующем чтении?"
+  },
+  "concurrency-disable-closed": {
+    "frames": [
+      [
+        "Два источника",
+        [
+          "a:[1]",
+          "b:[0,2]"
+        ],
+        "first=[]; second=[]",
+        "a и b независимо становятся готовы."
+      ],
+      [
+        "a завершился",
+        [
+          "a: closed",
+          "b: [0,2]"
+        ],
+        "first=[1]; a=nil",
+        "Чтение конца a отключает его ветку."
+      ],
+      [
+        "Остался b",
+        [
+          "a: disabled",
+          "b: [2]"
+        ],
+        "second=[0]",
+        "Цикл продолжает работать, пока хотя бы один канал доступен."
+      ],
+      [
+        "Оба завершены",
+        [
+          "a=nil",
+          "b=nil"
+        ],
+        "first=[1]; second=[0,2]",
+        "Условие цикла false, возвращаем результаты."
+      ]
+    ],
+    "steps": [
+      [
+        "Подготовить два результата",
+        "first, second := make([]int, 0), make([]int, 0)",
+        "Храним результаты раздельно: порядок между независимыми источниками не определён."
+      ],
+      [
+        "Продолжать пока есть источник",
+        "for a != nil || b != nil {",
+        "Логическое ИЛИ означает, что достаточно одного действующего канала. Nil — маркер отсутствующего источника."
+      ],
+      [
+        "Начать select",
+        "    select {",
+        "Читаем только готовые коммуникации; без default цикл не крутится на пустых открытых каналах."
+      ],
+      [
+        "Обработать a",
+        "    case v, ok := <-a:\n        if !ok {\n            a = nil\n            continue\n        }\n        first = append(first, v)",
+        "После исчерпания a присваиваем nil локальной переменной. Закрытый канал был постоянно готов, nil никогда не готов. continue не позволяет записать синтетический ноль."
+      ],
+      [
+        "Обработать b",
+        "    case v, ok := <-b:\n        if !ok {\n            b = nil\n            continue\n        }\n        second = append(second, v)\n    }\n}",
+        "Вторая ветка работает симметрично. Изменение локальной переменной не закрывает канал и не меняет переменную вызывающего."
+      ],
+      [
+        "Вернуть результаты",
+        "return first, second",
+        "Оба источника теперь nil, цикл завершён. Пустой результат не nil."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результаты",
+      "Обработать b",
+      "Обработать a",
+      "Начать select",
+      "Продолжать пока есть источник",
+      "Подготовить два результата"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "for a != nil ",
+        "after": " b != nil {",
+        "options": [
+          "||",
+          "&&",
+          "=="
+        ],
+        "correct": 0,
+        "explain": "Нужно дочитать даже один оставшийся источник."
+      },
+      {
+        "before": "if !ok { a = ",
+        "after": "; continue }",
+        "options": [
+          "nil",
+          "b",
+          "a"
+        ],
+        "correct": 0,
+        "explain": "Nil отключает ветку select."
+      },
+      {
+        "before": "first = append(first, ",
+        "after": ")",
+        "options": [
+          "v",
+          "0",
+          "b"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем реальные значения источника a."
+      }
+    ],
+    "partial": "package practice\n\nfunc DrainTwoSources(a, b <-chan int) ([]int, []int) {\n\tfirst,second:=make([]int,0),make([]int,0)\n\tfor a!=nil || b!=nil {\n\t select {\n\t case v,ok:=<-a:\n\t  if !ok { a=nil;continue }\n\t  // TODO: сохрани событие первого источника\n\t  _=v\n\t case v,ok:=<-b:\n\t  if !ok {b=nil;continue}\n\t  second=append(second,v)\n\t }\n\t}\n\treturn first,second\n}\n",
+    "bug": "package practice\n\nfunc DrainTwoSources(a, b <-chan int) ([]int, []int) {\n\tfirst,second:=make([]int,0),make([]int,0)\n\tfor a!=nil && b!=nil {\n\t select {\n\t case v,ok:=<-a:\n\t  if !ok {a=nil;continue}\n\t  first=append(first,v)\n\t case v,ok:=<-b:\n\t  if !ok {b=nil;continue}\n\t  second=append(second,v)\n\t }\n\t}\n\treturn first,second\n}\n",
+    "hints": [
+      "Два независимых результата и два локальных указателя на каналы.",
+      "Цикл продолжается пока a!=nil || b!=nil.",
+      "В каждом case читай v,ok.",
+      "При !ok отключай только этот источник через nil и continue.",
+      "first,second:=make([]int,0),make([]int,0)\nfor a!=nil||b!=nil{select{case v,ok:=<-a:if !ok{a=nil;continue};first=append(first,v);case v,ok:=<-b:if !ok{b=nil;continue};second=append(second,v)}}\nreturn first,second"
+    ],
+    "related": [
+      [
+        "concurrency-receive-value",
+        "Повторить comma-ok"
+      ],
+      [
+        "select-first",
+        "Связь с context и production"
+      ]
+    ],
+    "production": "При объединении источников в одном цикле отключение закрытого канала предотвращает постоянное срабатывание его ветки. Для неограниченных потоков нужен дополнительный case отмены; эта задача ограничена конечными входами.",
+    "interview": "Зачем присваивать закрытому каналу nil в select?"
+  },
+  "concurrency-timer-wait": {
+    "frames": [
+      [
+        "Старт",
+        [
+          "in: empty",
+          "timer: armed"
+        ],
+        "timeout=50ms",
+        "Создаём одноразовый таймер."
+      ],
+      [
+        "Событие раньше",
+        [
+          "in: [12]",
+          "timer: not ready"
+        ],
+        "return 12,nil; Stop",
+        "Готова ветка входа."
+      ],
+      [
+        "Альтернативный исход",
+        [
+          "in: empty",
+          "timer.C: ready"
+        ],
+        "0, DeadlineExceeded",
+        "Ожидание ограничено таймером."
+      ],
+      [
+        "Закрытие входа",
+        [
+          "in: closed",
+          "timer: armed"
+        ],
+        "0, event channel closed",
+        "Это отдельная причина завершения."
+      ]
+    ],
+    "steps": [
+      [
+        "Обработать невалидный бюджет",
+        "if timeout <= 0 {\n    return 0, context.DeadlineExceeded\n}",
+        "Контракт задаёт немедленный отказ без чтения. Так готовое значение не выигрывает случайно у уже истёкшего бюджета."
+      ],
+      [
+        "Создать таймер",
+        "timer := time.NewTimer(timeout)",
+        "Timer предоставляет канал C, который становится готов после истечения интервала. Это одноразовый таймер, не ticker."
+      ],
+      [
+        "Запланировать остановку",
+        "defer timer.Stop()",
+        "Если получим событие раньше, больше не нужен активный таймер. Здесь нет Reset или повторного чтения C; Stop выполняется на всех путях."
+      ],
+      [
+        "Ожидать событие",
+        "select {\ncase v, ok := <-in:",
+        "При входных данных читаем реальное значение и статус канала."
+      ],
+      [
+        "Обработать закрытие и успех",
+        "    if !ok {\n        return 0, errors.New(\"event channel closed\")\n    }\n    return v, nil",
+        "Закрытие источника отличается от таймаута и не считается успешным нулевым событием."
+      ],
+      [
+        "Обработать истечение",
+        "case <-timer.C:\n    return 0, context.DeadlineExceeded\n}",
+        "Таймер ограничивает ожидание коммуникации. Если обе ветки готовы, select не гарантирует приоритет таймера."
+      ]
+    ],
+    "blocks": [
+      "Обработать истечение",
+      "Обработать закрытие и успех",
+      "Ожидать событие",
+      "Запланировать остановку",
+      "Создать таймер",
+      "Обработать невалидный бюджет"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "timer := time.",
+        "after": "(timeout)",
+        "options": [
+          "NewTimer",
+          "NewTicker",
+          "Sleep"
+        ],
+        "correct": 0,
+        "explain": "Нужен одноразовый таймер с каналом."
+      },
+      {
+        "before": "defer timer.",
+        "after": "()",
+        "options": [
+          "Stop",
+          "Reset",
+          "Close"
+        ],
+        "correct": 0,
+        "explain": "Останавливаем ненужный таймер при выходе."
+      },
+      {
+        "before": "case <-timer.",
+        "after": " :",
+        "options": [
+          "C",
+          "Done",
+          "Err"
+        ],
+        "correct": 0,
+        "explain": "Timer.C — канал события таймера."
+      }
+    ],
+    "partial": "package practice\n\nfunc ReceiveBeforeTimeout(in <-chan int, timeout time.Duration) (int, error) {\n\tif timeout<=0 {return 0,context.DeadlineExceeded}\n\ttimer:=time.NewTimer(timeout)\n\tdefer timer.Stop()\n\tselect {\n\tcase v,ok:=<-in:\n\t if !ok{return 0,errors.New(\"event channel closed\")}\n\t return v,nil\n\tcase <-timer.C:\n\t // TODO: верни причину таймаута\n\t return 0,nil\n\t}\n}\n",
+    "bug": "package practice\n\nfunc ReceiveBeforeTimeout(in <-chan int, timeout time.Duration) (int, error) {\n\tif timeout<=0{return 0,nil}\n\ttimer:=time.NewTimer(timeout)\n\tdefer timer.Stop()\n\tselect {\n\tcase v:=<-in:return v,nil\n\tcase <-timer.C:return 0,context.DeadlineExceeded\n\t}\n}\n",
+    "hints": [
+      "Для timeout<=0 обработай отказ до select.",
+      "Создай time.NewTimer(timeout), defer timer.Stop().",
+      "В select читай in через comma-ok.",
+      "Ветка <-timer.C возвращает context.DeadlineExceeded.",
+      "if timeout<=0{return 0,context.DeadlineExceeded}\ntimer:=time.NewTimer(timeout);defer timer.Stop()\nselect{case v,ok:=<-in:if !ok{return 0,errors.New(\"event channel closed\")};return v,nil;case <-timer.C:return 0,context.DeadlineExceeded}"
+    ],
+    "related": [
+      [
+        "concurrency-receive-value",
+        "Повторить comma-ok"
+      ],
+      [
+        "select-first",
+        "Связь с context и production"
+      ]
+    ],
+    "production": "Локальный таймер подходит для ограниченного ожидания одного события. Для цепочки вызовов обычно передают context с общим deadline, чтобы не начинать новый полный бюджет на каждой зависимости. Таймер не прекращает чужую работу автоматически.",
+    "interview": "Чем time.NewTimer отличается от time.Sleep в задаче ожидания канала?"
   }
 };
