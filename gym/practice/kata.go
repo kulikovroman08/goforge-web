@@ -512,3 +512,23 @@ func (q *QuotaStore) ReserveQuota(amount int)bool{return false}
 func (q *QuotaStore) Remaining()int{return 0}
 
 var _ atomic.Int64 // keep import available when the atomic counter is replaced
+
+func StartCancelableWorker(parent context.Context, work func(context.Context)) (context.CancelFunc, <-chan struct{}) {
+	return nil,nil
+}
+
+func CallWithTimeout(parent context.Context, timeout time.Duration, call func(context.Context) error) error {
+	return nil
+}
+
+type requestIDKey struct{}
+func WithRequestID(ctx context.Context,id string)context.Context{return ctx}
+func RequestIDFromContext(ctx context.Context)(string,bool){return "",false}
+
+func RunWithCancelCause(parent context.Context, work func(context.Context) error) error {
+	return nil
+}
+
+func SendWithContext(ctx context.Context, out chan<- int, value int) error {
+	return nil
+}
