@@ -980,10 +980,11 @@ func TestTransformChecked(t *testing.T) {
 func TestStartBackgroundWork(t *testing.T) {
  started,release,finished,returned:=make(chan struct{}),make(chan struct{}),make(chan struct{}),make(chan struct{})
  var calls atomic.Int32
- go func(){StartBackgroundWork(func(){if calls.Add(1)==1{close(started)};<-release;select{case finished<-struct{}{}:default:}});close(returned)}()
+ go func(){StartBackgroundWork(func(){if calls.Add(1)==1{close(started)};<-release;close(finished)});close(returned)}()
  select{case <-started:case <-time.After(time.Second):close(release);t.Fatal("callback not started")}
  select{case <-returned:case <-time.After(time.Second):close(release);t.Fatal("caller blocked by callback")}
  close(release)
+ select{case <-finished:case <-time.After(time.Second):t.Fatal("callback not finished")}
  if calls.Load()!=1{t.Fatal(calls.Load())}
 }
 
