@@ -976,3 +976,66 @@ func TestTransformChecked(t *testing.T) {
  values:=[]int{2,4};v,e:=TransformChecked(values,func(n int)(int,error){return n*2,nil});if e!=nil||!reflect.DeepEqual(v,[]int{4,8}){t.Fatal(v,e)};v[0]=99;if values[0]!=2{t.Fatal("alias")}
  if v,e:=TransformChecked([]int(nil),(func(int)(string,error))(nil));v==nil||len(v)!=0||e!=nil{t.Fatal(v,e)}
 }
+
+func TestStartBackgroundWork(t *testing.T) {
+ started,release,finished,returned:=make(chan struct{}),make(chan struct{}),make(chan struct{}),make(chan struct{})
+ var calls atomic.Int32
+ go func(){StartBackgroundWork(func(){if calls.Add(1)==1{close(started)};<-release;select{case finished<-struct{}{}:default:}});close(returned)}()
+ select{case <-started:case <-time.After(time.Second):close(release);t.Fatal("callback not started")}
+ select{case <-returned:case <-time.After(time.Second):close(release);t.Fatal("caller blocked by callback")}
+ close(release)
+ if calls.Load()!=1{t.Fatal(calls.Load())}
+}
+
+func TestRunWithDone(t *testing.T) {
+ started,release:=make(chan struct{}),make(chan struct{})
+ var calls atomic.Int32
+ result:=make(chan (<-chan struct{}),1)
+ go func(){result<-RunWithDone(func(){calls.Add(1);close(started);<-release})}()
+ var done <-chan struct{}
+ select{case done=<-result:case <-time.After(time.Second):close(release);t.Fatal("call blocked")}
+ if done==nil{close(release);t.Fatal("nil done")}
+ select{case <-started:case <-time.After(time.Second):close(release);t.Fatal("work not started")}
+ select{case <-done:close(release);t.Fatal("premature completion");default:}
+ close(release)
+ for i:=0;i<2;i++{select{case _,ok:=<-done:if ok{t.Fatal("expected close, not send")};case <-time.After(time.Second):t.Fatal("done not closed")}}
+ if calls.Load()!=1{t.Fatal(calls.Load())}
+}
+
+func TestComputeAsync(t *testing.T) {
+ for _,want:=range []int{0,42,-7}{
+  var calls atomic.Int32
+  out:=ComputeAsync(func()int{calls.Add(1);return want})
+  if out==nil||cap(out)!=1{t.Fatal("expected capacity one")}
+  select{case v,ok:=<-out:if !ok||v!=want{t.Fatal(v,ok,want)};case <-time.After(time.Second):t.Fatal("missing result")}
+  select{case _,ok:=<-out:if ok{t.Fatal("duplicate result")};case <-time.After(time.Second):t.Fatal("not closed")}
+  if calls.Load()!=1{t.Fatal(calls.Load())}
+ }
+}
+
+func TestRunAllWork(t *testing.T) {
+ entered:=make(chan int,3);release:=make(chan struct{});done:=make(chan struct{})
+ var jobs []func()
+ var completed atomic.Int32
+ for i:=0;i<3;i++{i:=i;jobs=append(jobs,func(){entered<-i;<-release;completed.Add(1)})}
+ go func(){RunAllWork(jobs);close(done)}()
+ seen:=map[int]bool{}
+ for i:=0;i<3;i++{select{case n:=<-entered:if seen[n]{close(release);t.Fatal("duplicate job")};seen[n]=true;case <-time.After(time.Second):close(release);t.Fatal("jobs not concurrent")}}
+ select{case <-done:close(release);t.Fatal("returned before completion");case <-time.After(50*time.Millisecond):}
+ close(release)
+ select{case <-done:case <-time.After(time.Second):t.Fatal("did not return")}
+ if completed.Load()!=3{t.Fatal(completed.Load())}
+ empty:=make(chan struct{});go func(){RunAllWork(nil);close(empty)}()
+ select{case <-empty:case <-time.After(time.Second):t.Fatal("empty input blocked")}
+}
+
+func TestMapInGoroutines(t *testing.T) {
+ values:=[]int{2,5,3};entered:=make(chan int,3);release:=make(chan struct{});result:=make(chan []int,1)
+ go func(){result<-MapInGoroutines(values,func(v int)int{entered<-v;<-release;return v*2})}()
+ seen:=map[int]int{}
+ for i:=0;i<3;i++{select{case v:=<-entered:seen[v]++;case <-time.After(time.Second):close(release);t.Fatal("callbacks not concurrent")}}
+ close(release)
+ if !reflect.DeepEqual(seen,map[int]int{2:1,5:1,3:1}){t.Fatal(seen)}
+ select{case got:=<-result:if !reflect.DeepEqual(got,[]int{4,10,6})||!reflect.DeepEqual(values,[]int{2,5,3}){t.Fatal(got,values)};got[0]=99;if values[0]!=2{t.Fatal("alias")};case <-time.After(time.Second):t.Fatal("did not finish")}
+ if got:=MapInGoroutines(nil,nil);got==nil||len(got)!=0{t.Fatal(got)}
+}
