@@ -1040,3 +1040,61 @@ func TestMapInGoroutines(t *testing.T) {
  select{case got:=<-result:if !reflect.DeepEqual(got,[]int{4,10,6})||!reflect.DeepEqual(values,[]int{2,5,3}){t.Fatal(got,values)};got[0]=99;if values[0]!=2{t.Fatal("alias")};case <-time.After(time.Second):t.Fatal("did not finish")}
  if got:=MapInGoroutines(nil,nil);got==nil||len(got)!=0{t.Fatal(got)}
 }
+
+func TestExchangeValue(t *testing.T) {
+ for _,want:=range []int{0,42,-7}{
+  type observation struct{cap int; values []int}
+  observed:=make(chan observation,2);returned:=make(chan struct{})
+  go func(){ExchangeValue(want,func(ch <-chan int){v:=observation{cap:cap(ch)};for x:=range ch{v.values=append(v.values,x)};observed<-v});close(returned)}()
+  select{case <-returned:case <-time.After(time.Second):t.Fatal("exchange blocked")}
+  select{case got:=<-observed:if got.cap!=0||!reflect.DeepEqual(got.values,[]int{want}){t.Fatal(got)};default:t.Fatal("callback not finished")}
+  select{case <-observed:t.Fatal("callback called twice");default:}
+ }
+}
+
+func TestBufferEvents(t *testing.T) {
+ for _,input:=range [][]int{nil,{}, {4,0,9},{7,7}}{
+  result:=make(chan (<-chan int),1);go func(){result<-BufferEvents(input)}()
+  var out <-chan int
+  select{case out=<-result:case <-time.After(time.Second):t.Fatal("buffer blocked")}
+  if out==nil||cap(out)!=len(input)||len(out)!=len(input){t.Fatal("wrong buffer size")}
+  for _,want:=range input{select{case got,ok:=<-out:if !ok||got!=want{t.Fatal(got,ok,want)};case <-time.After(time.Second):t.Fatal("missing value")}}
+  select{case _,ok:=<-out:if ok{t.Fatal("extra value")};default:t.Fatal("not closed before return")}
+ }
+}
+
+func TestCollectEvents(t *testing.T) {
+ for _,input:=range [][]int{nil,{7,0,7},{0},{-1,2}}{
+  in:=make(chan int,len(input));for _,v:=range input{in<-v};close(in)
+  result:=make(chan []int,1);go func(){result<-CollectEvents(in)}()
+  select{case got:=<-result:if got==nil||!reflect.DeepEqual(got,append([]int{},input...)){t.Fatal(got,input)};case <-time.After(time.Second):t.Fatal("did not finish")}
+ }
+ in:=make(chan int);result:=make(chan []int,1)
+ go func(){result<-CollectEvents(in)}()
+ select{case in<-9:case <-time.After(time.Second):t.Fatal("not reading")}
+ close(in)
+ select{case got:=<-result:if !reflect.DeepEqual(got,[]int{9}){t.Fatal(got)};case <-time.After(time.Second):t.Fatal("not finished")}
+}
+
+func TestReceiveValue(t *testing.T) {
+ in:=make(chan int,2);in<-0;in<-8;close(in)
+ for _,want:=range []struct{v int;ok bool}{{0,true},{8,true},{0,false},{0,false}}{
+  got,ok:=ReceiveValue(in);if got!=want.v||ok!=want.ok{t.Fatal(got,ok,want)}
+ }
+ open:=make(chan int);type result struct{v int;ok bool};out:=make(chan result,1)
+ go func(){v,ok:=ReceiveValue(open);out<-result{v,ok}}()
+ select{case open<-13:case <-out:t.Fatal("returned before receive");case <-time.After(time.Second):t.Fatal("not receiving")}
+ close(open)
+ select{case got:=<-out:if got!=(result{13,true}){t.Fatal(got)};case <-time.After(time.Second):t.Fatal("missing result")}
+}
+
+func TestProduceEvents(t *testing.T) {
+ for _,input:=range [][]int{nil,{3,0,5},{7,7}}{
+  result:=make(chan (<-chan int),1);go func(){result<-ProduceEvents(input)}()
+  var out <-chan int
+  select{case out=<-result:case <-time.After(time.Second):t.Fatal("producer did not return")}
+  if out==nil||cap(out)!=0{t.Fatal("expected unbuffered channel")}
+  for _,want:=range input{select{case v,ok:=<-out:if !ok||v!=want{t.Fatal(v,ok,want)};case <-time.After(time.Second):t.Fatal("missing event")}}
+  select{case _,ok:=<-out:if ok{t.Fatal("extra event")};case <-time.After(time.Second):t.Fatal("producer did not close")}
+ }
+}
