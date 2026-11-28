@@ -449,3 +449,23 @@ func RunAllWork(jobs []func()) {
 func MapInGoroutines(values []int, transform func(int) int) []int {
 	return nil
 }
+
+func ExchangeValue(value int, receive func(<-chan int)) {
+	
+}
+
+func BufferEvents(events []int) <-chan int {
+	return nil
+}
+
+func CollectEvents(in <-chan int) []int {
+	return nil
+}
+
+func ReceiveValue(in <-chan int) (int, bool) {
+	return 0,false
+}
+
+func ProduceEvents(events []int) <-chan int {
+	return nil
+}
