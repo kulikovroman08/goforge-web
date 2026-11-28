@@ -469,3 +469,23 @@ func ReceiveValue(in <-chan int) (int, bool) {
 func ProduceEvents(events []int) <-chan int {
 	return nil
 }
+
+func ReceiveEither(a, b <-chan int) (int, string, bool) {
+	return 0,"",false
+}
+
+func TrySendEvent(out chan<- int, value int) bool {
+	return false
+}
+
+func TryReceiveEvent(in <-chan int) (int, bool, bool) {
+	return 0,false,false
+}
+
+func DrainTwoSources(a, b <-chan int) ([]int, []int) {
+	return nil,nil
+}
+
+func ReceiveBeforeTimeout(in <-chan int, timeout time.Duration) (int, error) {
+	return 0,nil
+}
