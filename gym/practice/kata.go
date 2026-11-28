@@ -429,3 +429,23 @@ func (f WorkflowPublisherFunc) Publish(text string) error { return f(text) }
 func ProcessDeliveryBatch(ids []string, deliver func(string) error) ([]string, error) { return nil,nil }
 
 func TransformChecked[T any, R any](values []T, convert func(T) (R, error)) ([]R, error) { return nil,nil }
+
+func StartBackgroundWork(work func()) {
+	
+}
+
+func RunWithDone(work func()) <-chan struct{} {
+	return nil
+}
+
+func ComputeAsync(work func() int) <-chan int {
+	return nil
+}
+
+func RunAllWork(jobs []func()) {
+	
+}
+
+func MapInGoroutines(values []int, transform func(int) int) []int {
+	return nil
+}
