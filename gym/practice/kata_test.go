@@ -1247,3 +1247,94 @@ func TestQuotaStore(t *testing.T) {
  select{case <-done:case <-time.After(time.Second):t.Fatal("blocked")}
  if accepted.Load()!=17||q.Remaining()!=0{t.Fatal(accepted.Load(),q.Remaining())}
 }
+
+func TestStartCancelableWorker(t *testing.T) {
+ parent, stop := context.WithCancel(context.Background()); defer stop()
+ seen:=make(chan context.Context,1)
+ release:=make(chan struct{})
+ cancel,done:=StartCancelableWorker(parent,func(ctx context.Context){seen<-ctx;select{case <-ctx.Done():case <-release:}})
+ defer close(release)
+ if cancel==nil||done==nil{t.Fatal("missing cancellation or completion")}
+ defer cancel()
+ var child context.Context
+ select{case child=<-seen:case <-time.After(time.Second):t.Fatal("work not started")}
+ cancel();cancel()
+ select{case <-done:case <-time.After(time.Second):t.Fatal("worker did not finish")}
+ if !errors.Is(child.Err(),context.Canceled)||parent.Err()!=nil{t.Fatal("wrong cancellation propagation")}
+ p2,stop2:=context.WithCancel(context.Background())
+ c2,d2:=StartCancelableWorker(p2,func(ctx context.Context){<-ctx.Done()})
+ defer stop2();if c2==nil||d2==nil{t.Fatal("missing handles")};defer c2()
+ stop2()
+ select{case <-d2:case <-time.After(time.Second):t.Fatal("parent cancellation not propagated")}
+ seen3:=make(chan context.Context,1)
+ c3,d3:=StartCancelableWorker(parent,func(ctx context.Context){seen3<-ctx})
+ if c3==nil||d3==nil{t.Fatal("missing handles")};defer c3()
+ select{case <-d3:case <-time.After(time.Second):t.Fatal("normal completion blocked")}
+ if ctx:=<-seen3;ctx.Err()!=context.Canceled{t.Fatal("child not released")}
+}
+
+func TestCallWithTimeout(t *testing.T) {
+ parent,stop:=context.WithTimeout(context.Background(),time.Second);defer stop()
+ pd,_:=parent.Deadline()
+ var observed context.Context
+ marker:=errors.New("dependency error")
+ err:=CallWithTimeout(parent,2*time.Second,func(ctx context.Context)error{observed=ctx;d,ok:=ctx.Deadline();if !ok||d.After(pd){return errors.New("wrong deadline")};return marker})
+ if err!=marker||observed==nil||observed==parent||observed.Err()!=context.Canceled||parent.Err()!=nil{t.Fatal("deadline or error contract",err)}
+ called:=false
+ if err:=CallWithTimeout(parent,0,func(context.Context)error{called=true;return nil});!errors.Is(err,context.DeadlineExceeded)||called{t.Fatal(err,called)}
+ p2,c2:=context.WithCancel(context.Background());c2()
+ if err:=CallWithTimeout(p2,0,func(context.Context)error{called=true;return nil});!errors.Is(err,context.Canceled)||called{t.Fatal(err,called)}
+ out:=make(chan error,1)
+ go func(){out<-CallWithTimeout(context.Background(),5*time.Millisecond,func(ctx context.Context)error{<-ctx.Done();return ctx.Err()})}()
+ select{case err:=<-out:if !errors.Is(err,context.DeadlineExceeded){t.Fatal(err)};case <-time.After(time.Second):t.Fatal("timeout not propagated")}
+}
+
+func TestRequestIDFromContext(t *testing.T) {
+ parent,stop:=context.WithTimeout(context.Background(),time.Second);defer stop()
+ p:=context.WithValue(parent,"request_id","foreign")
+ if v,ok:=RequestIDFromContext(p);v!=""||ok{t.Fatal("string key collision",v,ok)}
+ child:=WithRequestID(p,"req-42")
+ if v,ok:=RequestIDFromContext(child);v!="req-42"||!ok{t.Fatal(v,ok)}
+ if child.Value("request_id")!="foreign"{t.Fatal("parent metadata lost")}
+ pd,_:=p.Deadline();cd,ok:=child.Deadline();if !ok||!cd.Equal(pd){t.Fatal("deadline lost")}
+ if v,ok:=RequestIDFromContext(p);v!=""||ok{t.Fatal("parent modified")}
+ empty:=WithRequestID(child,"")
+ if v,ok:=RequestIDFromContext(empty);v!=""||!ok{t.Fatal("empty id",v,ok)}
+ wrong:=context.WithValue(child,requestIDKey{},123)
+ if v,ok:=RequestIDFromContext(wrong);v!=""||ok{t.Fatal("wrong type",v,ok)}
+ stop()
+ select{case <-child.Done():case <-time.After(time.Second):t.Fatal("cancellation lost")}
+}
+
+func TestRunWithCancelCause(t *testing.T) {
+ marker:=errors.New("storage failed")
+ var child context.Context
+ err:=RunWithCancelCause(context.Background(),func(ctx context.Context)error{child=ctx;return marker})
+ if err!=marker||child==nil||child.Err()!=context.Canceled||context.Cause(child)!=marker{t.Fatal("cause lost",err)}
+ p,cancel:=context.WithCancelCause(context.Background());defer cancel(nil)
+ parentErr:=errors.New("client stopped");cancel(parentErr)
+ called:=false
+ if got:=RunWithCancelCause(p,func(context.Context)error{called=true;return marker});got!=parentErr||called{t.Fatal(got,called)}
+ p2,cancel2:=context.WithCancelCause(context.Background());defer cancel2(nil)
+ if got:=RunWithCancelCause(p2,func(ctx context.Context)error{cancel2(parentErr);<-ctx.Done();return marker});got!=parentErr{t.Fatal("first cause overwritten",got)}
+ var success context.Context
+ if got:=RunWithCancelCause(context.Background(),func(ctx context.Context)error{success=ctx;return nil});got!=nil||success==nil||success.Err()!=context.Canceled{t.Fatal("success cleanup",got)}
+}
+
+func TestSendWithContext(t *testing.T) {
+ out:=make(chan int,1)
+ if err:=SendWithContext(context.Background(),out,7);err!=nil||len(out)!=1{t.Fatal(err)}
+ p,cancel:=context.WithCancel(context.Background())
+ done:=make(chan error,1);go func(){done<-SendWithContext(p,out,9)}()
+ cancel()
+ select{case err:=<-done:if !errors.Is(err,context.Canceled){t.Fatal(err)};case <-time.After(time.Second):t.Fatal("blocked send not canceled")}
+ if len(out)!=1||<-out!=7{t.Fatal("unexpected send")}
+ if err:=SendWithContext(p,out,8);!errors.Is(err,context.Canceled)||len(out)!=0{t.Fatal("pre-canceled send",err)}
+ ctx,stop:=context.WithTimeout(context.Background(),5*time.Millisecond);defer stop()
+ wait:=make(chan error,1);go func(){wait<-SendWithContext(ctx,nil,1)}()
+ select{case err:=<-wait:if !errors.Is(err,context.DeadlineExceeded){t.Fatal(err)};case <-time.After(time.Second):t.Fatal("nil channel blocked")}
+ ch:=make(chan int);result:=make(chan error,1)
+ go func(){result<-SendWithContext(context.Background(),ch,42)}()
+ select{case v:=<-ch:if v!=42{t.Fatal(v)};case err:=<-result:t.Fatal("returned without sending",err);case <-time.After(time.Second):t.Fatal("missing send")}
+ select{case err:=<-result:if err!=nil{t.Fatal(err)};case <-time.After(time.Second):t.Fatal("did not return")}
+}
