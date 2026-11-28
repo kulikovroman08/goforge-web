@@ -12744,5 +12744,641 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "Для полностью валидного DTO или конфигурации нужен полный результат. Fail-fast не откатывает внешние действия.",
     "interview": "Когда выбирать fail-fast вместо частичного успеха?"
+  },
+  "concurrency-start-goroutine": {
+    "frames": [
+      [
+        "Вызов",
+        [
+          "G1: StartBackgroundWork",
+          "work: готов"
+        ],
+        "work ещё не вызван",
+        "Передаём функцию, не результат её вызова."
+      ],
+      [
+        "Запуск",
+        [
+          "G1: go work()",
+          "G2: runnable"
+        ],
+        "Создана G2",
+        "Планировщик может запустить G2 до или после возврата G1."
+      ],
+      [
+        "Возврат",
+        [
+          "G1: продолжает",
+          "G2: выполняет work"
+        ],
+        "Нет ожидания",
+        "Это один возможный порядок; завершение G2 не гарантировано к моменту возврата."
+      ],
+      [
+        "Завершение",
+        [
+          "G2: done"
+        ],
+        "work завершилась",
+        "Для ожидания нужен явный сигнал или WaitGroup."
+      ]
+    ],
+    "steps": [
+      [
+        "Получить callback",
+        "work func()",
+        "Функция приходит как аргумент. Её тело ещё не выполнено."
+      ],
+      [
+        "Запустить горутину",
+        "go work()",
+        "go вычисляет функцию и аргументы в вызывающей горутине, а тело выполняется конкурентно."
+      ],
+      [
+        "Вернуть управление",
+        "// конец функции",
+        "Не ждём work. Планировщик не гарантирует, какая горутина продолжит первой."
+      ]
+    ],
+    "blocks": [
+      "Вернуть управление",
+      "Запустить горутину",
+      "Получить callback"
+    ],
+    "order": [
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "",
+        "after": " work()",
+        "options": [
+          "go",
+          "defer",
+          "return"
+        ],
+        "correct": 0,
+        "explain": "go запускает вызов конкурентно."
+      },
+      {
+        "before": "go ",
+        "after": "()",
+        "options": [
+          "work",
+          "nil",
+          "close"
+        ],
+        "correct": 0,
+        "explain": "Вызываем переданный callback."
+      }
+    ],
+    "partial": "package practice\n\nfunc StartBackgroundWork(work func()) {\n\t// TODO: запусти work в отдельной горутине\n}\n",
+    "bug": "package practice\n\nfunc StartBackgroundWork(work func()) {\n\twork()\n}\n",
+    "hints": [
+      "Нужно вызвать callback, но не в текущей горутине.",
+      "В Go отдельный конкурентный вызов начинается с ключевого слова go.",
+      "Напиши вызов work() после go.",
+      "Не добавляй Wait, Sleep или повторный вызов.",
+      "go work()"
+    ],
+    "related": [
+      [
+        "concurrency-done-signal",
+        "Повторить запуск горутины"
+      ],
+      [
+        "race",
+        "Связь с синхронизацией"
+      ]
+    ],
+    "production": "Фоновая работа должна иметь владельца жизненного цикла. Не запускай неконтролируемую горутину на каждый HTTP-запрос: нужны отмена, лимиты и политика ошибок.",
+    "interview": "Гарантирует ли go, что новая горутина начнёт или завершит работу до возврата?"
+  },
+  "concurrency-done-signal": {
+    "frames": [
+      [
+        "Создание",
+        [
+          "done: open",
+          "G1: ready"
+        ],
+        "done := make(chan struct{})",
+        "Нет сообщения о завершении."
+      ],
+      [
+        "Работа",
+        [
+          "G2: work()",
+          "done: open"
+        ],
+        "G1 получает done",
+        "Получатель может ждать <-done."
+      ],
+      [
+        "Завершение",
+        [
+          "G2: return",
+          "done: closed"
+        ],
+        "defer close(done)",
+        "Закрытие происходит только после возврата work."
+      ],
+      [
+        "Получение сигнала",
+        [
+          "G1: unblocked",
+          "done: closed"
+        ],
+        "_, ok := <-done → ok=false",
+        "Все ожидающие чтения могут продолжить."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать сигнал",
+        "done := make(chan struct{})",
+        "struct{} не содержит данных. Канал нужен только как сигнал."
+      ],
+      [
+        "Запустить исполнителя",
+        "go func() {",
+        "Анонимная функция выполняется в отдельной горутине и захватывает done и work."
+      ],
+      [
+        "Запланировать закрытие",
+        "    defer close(done)",
+        "Закрытие произойдёт при выходе из этой функции, после work. Закрывает владелец сигнала."
+      ],
+      [
+        "Выполнить работу",
+        "    work()\n}()",
+        "Скобки () вызывают анонимную функцию; без них go statement невалиден."
+      ],
+      [
+        "Вернуть канал",
+        "return done",
+        "<-chan struct{} позволяет получателю читать, но не закрывать канал. <-done ожидает завершения."
+      ]
+    ],
+    "blocks": [
+      "Вернуть канал",
+      "Выполнить работу",
+      "Запланировать закрытие",
+      "Запустить исполнителя",
+      "Создать сигнал"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "done := make(",
+        "after": " )",
+        "options": [
+          "chan struct{}",
+          "struct{}",
+          "[]struct{}"
+        ],
+        "correct": 0,
+        "explain": "Создаём канал сигнала."
+      },
+      {
+        "before": "defer ",
+        "after": "(done)",
+        "options": [
+          "close",
+          "delete",
+          "len"
+        ],
+        "correct": 0,
+        "explain": "Закрытие сигнализирует о завершении."
+      }
+    ],
+    "partial": "package practice\n\nfunc RunWithDone(work func()) <-chan struct{} {\n\tdone := make(chan struct{})\n\tgo func() {\n\t    work()\n\t    // TODO: закрой done после выполнения\n\t}()\n\treturn done\n}\n",
+    "bug": "package practice\n\nfunc RunWithDone(work func()) <-chan struct{} {\n\tdone := make(chan struct{})\n\tclose(done)\n\tgo work()\n\treturn done\n}\n",
+    "hints": [
+      "Сначала создай канал без полезной нагрузки.",
+      "Верни канал только для чтения.",
+      "Запусти анонимную функцию через go func(){...}().",
+      "Внутри неё зарегистрируй defer close(done), затем вызови work.",
+      "done := make(chan struct{})\ngo func(){defer close(done);work()}()\nreturn done"
+    ],
+    "related": [
+      [
+        "concurrency-start-goroutine",
+        "Повторить запуск горутины"
+      ],
+      [
+        "race",
+        "Связь с синхронизацией"
+      ]
+    ],
+    "production": "Сигнал закрытия удобно использовать для ожидания завершения worker-а. Для остановки обычно нужен отдельный сигнал отмены: done сообщает о фактическом завершении, а не просит остановиться.",
+    "interview": "Почему закрытый done-канал лучше одиночной отправки для нескольких ожидающих?"
+  },
+  "concurrency-result-channel": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "work → 42",
+          "out: cap=1"
+        ],
+        "len=0",
+        "Создаём место для одного результата."
+      ],
+      [
+        "Вычисление",
+        [
+          "G2: work()",
+          "G1: продолжает"
+        ],
+        "out: open, len=0",
+        "Работа выполняется конкурентно."
+      ],
+      [
+        "Отправка",
+        [
+          "out: [42]",
+          "G2: done"
+        ],
+        "close(out), len=1",
+        "Даже без читателя единственное значение помещается в буфер."
+      ],
+      [
+        "Чтение",
+        [
+          "v=42, ok=true",
+          "len=0"
+        ],
+        "следующее чтение: 0,false",
+        "Закрытие не удаляет накопленные данные."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать буфер",
+        "out := make(chan int, 1)",
+        "Ёмкость 1 позволяет сохранить один результат без готового получателя."
+      ],
+      [
+        "Запустить вычисление",
+        "go func() {",
+        "Вызов возвращает канал, пока вычисление может продолжаться."
+      ],
+      [
+        "Запланировать закрытие",
+        "    defer close(out)",
+        "Получатель увидит конец потока после получения единственного значения."
+      ],
+      [
+        "Отправить результат",
+        "    out <- work()\n}()",
+        "Сначала вычисляется work(), затем результат записывается в канал. Ноль тоже допустим."
+      ],
+      [
+        "Вернуть поток",
+        "return out",
+        "Получатель читает значение; после опустошения закрытого канала ok=false."
+      ]
+    ],
+    "blocks": [
+      "Вернуть поток",
+      "Отправить результат",
+      "Запланировать закрытие",
+      "Запустить вычисление",
+      "Создать буфер"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out := make(chan int, ",
+        "after": ")",
+        "options": [
+          "0",
+          "1",
+          "2"
+        ],
+        "correct": 1,
+        "explain": "Контракт требует ёмкость ровно 1."
+      },
+      {
+        "before": "out ",
+        "after": " work()",
+        "options": [
+          "<-",
+          "=",
+          "->"
+        ],
+        "correct": 0,
+        "explain": "Оператор <- отправляет результат."
+      }
+    ],
+    "partial": "package practice\n\nfunc ComputeAsync(work func() int) <-chan int {\n\tout := make(chan int, 1)\n\tgo func() {\n\t    defer close(out)\n\t    // TODO: отправь результат callback\n\t}()\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc ComputeAsync(work func() int) <-chan int {\n\tout := make(chan int)\n\tgo func() {\n\t    defer close(out)\n\t    out <- work()\n\t}()\n\treturn out\n}\n",
+    "hints": [
+      "Нужен канал с одним местом для результата.",
+      "Создай out через make(chan int, 1).",
+      "Внутри go func(){...}() зарегистрируй defer close(out).",
+      "Отправь результат вызова work() через out <- work().",
+      "out := make(chan int,1)\ngo func(){defer close(out);out<-work()}()\nreturn out"
+    ],
+    "related": [
+      [
+        "concurrency-start-goroutine",
+        "Повторить запуск горутины"
+      ],
+      [
+        "race",
+        "Связь с синхронизацией"
+      ]
+    ],
+    "production": "Буфер на один результат предотвращает зависание отправителя после завершения вычисления, если читатель ушёл. Но он не отменяет само вычисление и не подходит для бесконечного потока.",
+    "interview": "Почему буфер 1 подходит для одноразового результата?"
+  },
+  "concurrency-wait-group": {
+    "frames": [
+      [
+        "Регистрация",
+        [
+          "A",
+          "B",
+          "C"
+        ],
+        "wg=3",
+        "Регистрируем всех работников до запуска."
+      ],
+      [
+        "Запуск",
+        [
+          "G-A: running",
+          "G-B: running",
+          "G-C: running"
+        ],
+        "wg=3; G1: Wait",
+        "Один из возможных порядков."
+      ],
+      [
+        "B завершилась",
+        [
+          "A: running",
+          "B: done",
+          "C: running"
+        ],
+        "wg=2",
+        "Done уменьшает счётчик."
+      ],
+      [
+        "Все завершились",
+        [
+          "A: done",
+          "B: done",
+          "C: done"
+        ],
+        "wg=0; Wait returns",
+        "Возвращаем управление после всех callback."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать счётчик",
+        "var wg sync.WaitGroup",
+        "Zero value WaitGroup готов к использованию."
+      ],
+      [
+        "Зарегистрировать задачи",
+        "wg.Add(len(jobs))",
+        "Add выполняется до запуска, иначе Wait может увидеть ноль слишком рано."
+      ],
+      [
+        "Перебрать операции",
+        "for _, job := range jobs {",
+        "Берём callback из среза, индекс не нужен."
+      ],
+      [
+        "Запустить работника",
+        "    go func(fn func()) {",
+        "Передадим callback параметром, чтобы привязать конкретную функцию к вызову."
+      ],
+      [
+        "Отметить завершение",
+        "        defer wg.Done()\n        fn()\n    }(job)\n}",
+        "Done уменьшает счётчик после окончания callback, а не перед ним."
+      ],
+      [
+        "Дождаться всех",
+        "wg.Wait()",
+        "Wait возвращается при нулевом счётчике. Он не защищает общую изменяемую память."
+      ]
+    ],
+    "blocks": [
+      "Дождаться всех",
+      "Отметить завершение",
+      "Запустить работника",
+      "Перебрать операции",
+      "Зарегистрировать задачи",
+      "Создать счётчик"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "wg.Add(",
+        "after": " )",
+        "options": [
+          "len(jobs)",
+          "1",
+          "0"
+        ],
+        "correct": 0,
+        "explain": "Одна регистрация на callback."
+      },
+      {
+        "before": "defer wg.",
+        "after": "()",
+        "options": [
+          "Done",
+          "Wait",
+          "Add"
+        ],
+        "correct": 0,
+        "explain": "Уменьшаем счётчик после работы."
+      }
+    ],
+    "partial": "package practice\n\nfunc RunAllWork(jobs []func()) {\n\tvar wg sync.WaitGroup\n\twg.Add(len(jobs))\n\tfor _, job := range jobs {\n\t    go func(fn func()) {\n\t        defer wg.Done()\n\t        fn()\n\t    }(job)\n\t}\n\t// TODO: дождись всех операций\n}\n",
+    "bug": "package practice\n\nfunc RunAllWork(jobs []func()) {\n\tfor _, job := range jobs { job() }\n}\n",
+    "hints": [
+      "Нужен sync.WaitGroup для учёта завершения.",
+      "Зарегистрируй len(jobs) до запуска.",
+      "Передавай job параметром в анонимную горутину.",
+      "Внутри defer wg.Done(); после цикла wg.Wait().",
+      "var wg sync.WaitGroup\nwg.Add(len(jobs))\nfor _,job:=range jobs{go func(fn func()){defer wg.Done();fn()}(job)}\nwg.Wait()"
+    ],
+    "related": [
+      [
+        "concurrency-start-goroutine",
+        "Повторить запуск горутины"
+      ],
+      [
+        "race",
+        "Связь с синхронизацией"
+      ]
+    ],
+    "production": "WaitGroup удобен для небольшого фиксированного набора независимых операций. Для тысяч задач нужен лимит; для ошибок и отмены — дополнительный механизм.",
+    "interview": "Почему WaitGroup не заменяет Mutex?"
+  },
+  "concurrency-loop-arguments": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "i=0:v=2",
+          "i=1:v=5",
+          "i=2:v=3"
+        ],
+        "out=[0,0,0]; wg=3",
+        "Пусть transform удваивает число."
+      ],
+      [
+        "Запуск",
+        [
+          "G0(0,2)",
+          "G1(1,5)",
+          "G2(2,3)"
+        ],
+        "out=[0,0,0]",
+        "Аргументы вычислены при каждом go-вызове."
+      ],
+      [
+        "Один возможный порядок",
+        [
+          "G1: done",
+          "G2: done",
+          "G0: running"
+        ],
+        "out=[0,10,6]; wg=1",
+        "Порядок завершения произвольный."
+      ],
+      [
+        "Результат",
+        [
+          "G0: done",
+          "wg=0"
+        ],
+        "out=[4,10,6]",
+        "Wait завершён; порядок входа сохранён."
+      ]
+    ],
+    "steps": [
+      [
+        "Выделить результат",
+        "out := make([]int, len(values))",
+        "Каждому входному индексу соответствует отдельное место; append не нужен."
+      ],
+      [
+        "Зарегистрировать работы",
+        "var wg sync.WaitGroup\nwg.Add(len(values))",
+        "WaitGroup обеспечивает завершение всех записей до чтения результата."
+      ],
+      [
+        "Получить индекс и значение",
+        "for i, v := range values {",
+        "Индекс сохраняет порядок независимо от порядка завершения горутин."
+      ],
+      [
+        "Передать аргументы",
+        "    go func(index, value int) {",
+        "Явные параметры делают привязку понятной в любой версии Go; Go 1.22+ также создаёт отдельные range-переменные при := при соответствующей версии языка."
+      ],
+      [
+        "Записать результат",
+        "        defer wg.Done()\n        out[index] = transform(value)\n    }(i, v)\n}",
+        "Каждая горутина пишет в отдельный элемент заранее выделенного среза. Заголовок среза не меняется."
+      ],
+      [
+        "Дождаться и вернуть",
+        "wg.Wait()\nreturn out",
+        "Читаем результат после завершения всех записей. Никакой гарантии порядка выполнения callback нет."
+      ]
+    ],
+    "blocks": [
+      "Дождаться и вернуть",
+      "Записать результат",
+      "Передать аргументы",
+      "Получить индекс и значение",
+      "Зарегистрировать работы",
+      "Выделить результат"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "go func(index, value int){ ... }(",
+        "after": " )",
+        "options": [
+          "i,v",
+          "v,i",
+          "0,0"
+        ],
+        "correct": 0,
+        "explain": "Передаём текущую пару индекса и значения."
+      },
+      {
+        "before": "out[",
+        "after": "] = transform(value)",
+        "options": [
+          "index",
+          "value",
+          "0"
+        ],
+        "correct": 0,
+        "explain": "Индекс задаёт позицию результата."
+      }
+    ],
+    "partial": "package practice\n\nfunc MapInGoroutines(values []int, transform func(int) int) []int {\n\tout := make([]int,len(values))\n\tvar wg sync.WaitGroup\n\twg.Add(len(values))\n\tfor i,v:=range values {\n\t    go func(index,value int){\n\t        defer wg.Done()\n\t        // TODO: запиши результат transform(value) по index\n\t        _ = index; _ = value\n\t    }(i,v)\n\t}\n\twg.Wait()\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc MapInGoroutines(values []int, transform func(int) int) []int {\n\tout := make([]int,len(values))\n\tvar wg sync.WaitGroup\n\twg.Add(len(values))\n\tfor i,v:=range values {\n\t    go func(index,value int){\n\t        defer wg.Done()\n\t        out[index] = transform(values[0])\n\t    }(i,v)\n\t}\n\twg.Wait()\n\treturn out\n}\n",
+    "hints": [
+      "Выдели выходной срез нужной длины заранее.",
+      "Для каждой горутины передай i и v отдельными параметрами.",
+      "Регистрируй WaitGroup до запуска; внутри defer Done.",
+      "Записывай результат в out[index], а не append.",
+      "out:=make([]int,len(values))\nvar wg sync.WaitGroup\nwg.Add(len(values))\nfor i,v:=range values{go func(index,value int){defer wg.Done();out[index]=transform(value)}(i,v)}\nwg.Wait()\nreturn out"
+    ],
+    "related": [
+      [
+        "concurrency-start-goroutine",
+        "Повторить запуск горутины"
+      ],
+      [
+        "race",
+        "Связь с синхронизацией"
+      ]
+    ],
+    "production": "Для небольших независимых преобразований индекс помогает сохранить порядок. Для большой партии используй ограниченную конкурентность; callback обязан самостоятельно защищать общие зависимости.",
+    "interview": "Почему отдельные индексы можно записывать без mutex, а общий append — нет?"
   }
 };
