@@ -16012,5 +16012,681 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "Каждая потенциально блокирующая отправка в отменяемом pipeline должна учитывать уход downstream. Context не делает безопасной отправку в закрытый канал: закрытие координируется отдельно владельцем.",
     "interview": "Почему проверка ctx.Err перед обычным out<-value недостаточна?"
+  },
+  "concurrency-bounded-queue": {
+    "frames": [
+      [
+        "Очередь заполнена",
+        [
+          "7",
+          "8"
+        ],
+        "capacity=2; incoming=9",
+        "Новая задача ждёт свободного места."
+      ],
+      [
+        "Потребитель читает",
+        [
+          "8",
+          "_"
+        ],
+        "dequeue=7,true",
+        "Освобождается место."
+      ],
+      [
+        "Производитель продолжает",
+        [
+          "8",
+          "9"
+        ],
+        "Enqueue returns nil",
+        "Задача действительно принята."
+      ],
+      [
+        "Альтернативный исход",
+        [
+          "7",
+          "8"
+        ],
+        "ctx отменён → error",
+        "Очередь не увеличивается и задача не теряется незаметно."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать ограниченную очередь",
+        "type BoundedQueue struct { jobs chan int }\nfunc NewBoundedQueue(capacity int)*BoundedQueue {\n if capacity<1 {capacity=1}\n return &BoundedQueue{jobs:make(chan int,capacity)}\n}",
+        "Буфер — фиксированное число ожидающих задач. Минимальная ёмкость 1 позволяет хранить хотя бы одну задачу."
+      ],
+      [
+        "Проверить отмену",
+        "func (q *BoundedQueue) Enqueue(ctx context.Context,job int)error{\n if err:=ctx.Err();err!=nil{return err}",
+        "До начала отправки исключаем уже отменённый запрос."
+      ],
+      [
+        "Дождаться места или отмены",
+        " select{\n case q.jobs<-job:return nil\n case <-ctx.Done():return ctx.Err()\n }\n}",
+        "При заполнении производитель ждёт, а не создаёт неограниченную очередь. Если клиент уйдёт, Done разблокирует ожидание."
+      ],
+      [
+        "Забрать задачу без ожидания",
+        "func (q *BoundedQueue) TryDequeue()(int,bool){\n select{\n case v:=<-q.jobs:return v,true\n default:return 0,false\n }\n}",
+        "Получение освобождает место. default сообщает, что сейчас задач нет; нулевое значение не означает пустую очередь."
+      ]
+    ],
+    "blocks": [
+      "Забрать задачу без ожидания",
+      "Дождаться места или отмены",
+      "Проверить отмену",
+      "Создать ограниченную очередь"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "make(chan int,",
+        "after": ")",
+        "options": [
+          "capacity",
+          "0",
+          "capacity+1"
+        ],
+        "correct": 0,
+        "explain": "Ёмкость ограничена заданным значением."
+      },
+      {
+        "before": "case <-ctx.",
+        "after": "():",
+        "options": [
+          "Done",
+          "Err",
+          "Value"
+        ],
+        "correct": 0,
+        "explain": "Сигнал отмены позволяет выйти из ожидания."
+      },
+      {
+        "before": "default:return 0,",
+        "after": "",
+        "options": [
+          "false",
+          "true",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Нет полученной задачи."
+      }
+    ],
+    "partial": "package practice\n\ntype BoundedQueue struct { jobs chan int }\nfunc NewBoundedQueue(capacity int)*BoundedQueue{\n if capacity<1{capacity=1}\n return &BoundedQueue{jobs:make(chan int,capacity)}\n}\nfunc(q *BoundedQueue) Enqueue(ctx context.Context,job int)error{\n if err:=ctx.Err();err!=nil{return err}\n select{\n case q.jobs<-job:return nil\n case <-ctx.Done():\n  // TODO: верни ошибку отмены\n  return nil\n }\n}\nfunc(q *BoundedQueue) TryDequeue()(int,bool){select{case v:=<-q.jobs:return v,true;default:return 0,false}}\n",
+    "bug": "package practice\n\ntype BoundedQueue struct { jobs chan int }\nfunc NewBoundedQueue(capacity int)*BoundedQueue{\n if capacity<1{capacity=1}\n return &BoundedQueue{jobs:make(chan int,capacity)}\n}\nfunc(q *BoundedQueue) Enqueue(ctx context.Context,job int)error{\n if err:=ctx.Err();err!=nil{return err}\n select{\n case q.jobs<-job:return nil\n default:return nil\n }\n}\nfunc(q *BoundedQueue) TryDequeue()(int,bool){select{case v:=<-q.jobs:return v,true;default:return 0,false}}\n",
+    "hints": [
+      "Храни chan int в структуре.",
+      "Создай буфер заданной ёмкости, минимум 1.",
+      "Enqueue: предварительный Err, затем send или Done.",
+      "TryDequeue: receive или default.",
+      "Enqueue: select{case q.jobs<-job:return nil;case <-ctx.Done():return ctx.Err()}\nTryDequeue: select{case v:=<-q.jobs:return v,true;default:return 0,false}"
+    ],
+    "related": [
+      [
+        "concurrency-send-context",
+        "Повторить отменяемую отправку"
+      ],
+      [
+        "concurrency-wait-group",
+        "Повторить ожидание группы"
+      ]
+    ],
+    "production": "Backpressure ограничивает накопление памяти и передаёт сигнал перегрузки производителю. Буфер ограничивает ожидающие элементы, а не число активных workers. Важные события требуют явного результата при отказе.",
+    "interview": "Чем bounded queue отличается от ограничения числа workers?"
+  },
+  "concurrency-ordered-fanout": {
+    "frames": [
+      [
+        "Задания",
+        [
+          "i=0:4",
+          "i=1:2",
+          "i=2:9"
+        ],
+        "limit=2; out=[0,0,0]",
+        "Два worker получают первые индексы."
+      ],
+      [
+        "Второй завершился раньше",
+        [
+          "W1: i=0",
+          "W2: i=1 done"
+        ],
+        "out=[0,4,0]",
+        "Записываем результат на индекс 1, не append."
+      ],
+      [
+        "Следующее задание",
+        [
+          "W2: i=2",
+          "W1: i=0 done"
+        ],
+        "out=[8,4,0]",
+        "Не больше двух активных вызовов."
+      ],
+      [
+        "Все завершены",
+        [
+          "jobs: closed",
+          "wg: 0"
+        ],
+        "out=[8,4,18]",
+        "Порядок соответствует входу."
+      ]
+    ],
+    "steps": [
+      [
+        "Нормализовать лимит и выделить результат",
+        "if limit<1 {limit=1}\nif limit>len(values){limit=len(values)}\nout:=make([]int,len(values))",
+        "Число работников ограничено входом и лимитом. Пустой вход даёт непустой по nil-семантике срез длины 0."
+      ],
+      [
+        "Создать очередь и зарегистрировать workers",
+        "jobs:=make(chan int)\nvar wg sync.WaitGroup\nwg.Add(limit)",
+        "Передаём индексы, а не просто значения. WaitGroup регистрируется до запуска горутин."
+      ],
+      [
+        "Запустить фиксированное число работников",
+        "for w:=0;w<limit;w++{\n go func(){\n  defer wg.Done()\n  for i:=range jobs{out[i]=work(values[i])}\n }()\n}",
+        "Каждый индекс выдаётся одному worker. Запись в разные элементы заранее выделенного среза безопасна при отсутствии конкурентной мутации заголовка."
+      ],
+      [
+        "Передать задания и закрыть вход",
+        "for i:=range values{jobs<-i}\nclose(jobs)",
+        "Единственный отправитель закрывает очередь после всех индексов; workers заканчивают range."
+      ],
+      [
+        "Дождаться всех результатов",
+        "wg.Wait()\nreturn out",
+        "Wait гарантирует завершение записей до чтения результата вызывающим. Порядок завершения не влияет на исходные индексы."
+      ]
+    ],
+    "blocks": [
+      "Дождаться всех результатов",
+      "Передать задания и закрыть вход",
+      "Запустить фиксированное число работников",
+      "Создать очередь и зарегистрировать workers",
+      "Нормализовать лимит и выделить результат"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "wg.Add(",
+        "after": ")",
+        "options": [
+          "limit",
+          "len(values)",
+          "0"
+        ],
+        "correct": 0,
+        "explain": "Регистрируем число workers, не задач."
+      },
+      {
+        "before": "out[",
+        "after": "] = work(values[i])",
+        "options": [
+          "i",
+          "0",
+          "w"
+        ],
+        "correct": 0,
+        "explain": "Индекс сохраняет порядок."
+      },
+      {
+        "before": "",
+        "after": "(jobs)",
+        "options": [
+          "close",
+          "clear",
+          "delete"
+        ],
+        "correct": 0,
+        "explain": "Завершает чтение workers."
+      }
+    ],
+    "partial": "package practice\n\nfunc OrderedFanOut(values []int, limit int, work func(int) int) []int {\n\tif limit<1{limit=1}\n\tif limit>len(values){limit=len(values)}\n\tout:=make([]int,len(values))\n\tjobs:=make(chan int)\n\tvar wg sync.WaitGroup\n\twg.Add(limit)\n\tfor w:=0;w<limit;w++{\n\t go func(){defer wg.Done();for i:=range jobs{\n\t  // TODO: сохрани результат на исходном индексе\n\t  _=work(values[i])\n\t }}()\n\t}\n\tfor i:=range values{jobs<-i}\n\tclose(jobs)\n\twg.Wait()\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc OrderedFanOut(values []int, limit int, work func(int) int) []int {\n\tout:=make([]int,len(values))\n\tfor i,v:=range values{out[i]=work(v)}\n\treturn out\n}\n",
+    "hints": [
+      "Создай выходной срез длины входа.",
+      "Ограничь число workers и передавай им индексы через канал.",
+      "Каждый worker пишет только out[i].",
+      "Закрой jobs после передачи всех индексов и дождись WaitGroup.",
+      "wg.Add(limit); for w:=0;w<limit;w++{go func(){defer wg.Done();for i:=range jobs{out[i]=work(values[i])}}()}\nfor i:=range values{jobs<-i};close(jobs);wg.Wait();return out"
+    ],
+    "related": [
+      [
+        "concurrency-send-context",
+        "Повторить отменяемую отправку"
+      ],
+      [
+        "concurrency-wait-group",
+        "Повторить ожидание группы"
+      ]
+    ],
+    "production": "Фиксированный пул ограничивает число активных goroutines и нагрузку на зависимости. Для бесконечного потока, ошибок и отмены нужны дополнительные контракты; эта задача обрабатывает конечный пакет без ошибок.",
+    "interview": "Почему semaphore внутри горутины на каждый элемент не равен фиксированному пулу?"
+  },
+  "concurrency-partial-batch": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "4",
+          "-1",
+          "0",
+          "-2"
+        ],
+        "limit=2",
+        "Все четыре элемента должны быть обработаны."
+      ],
+      [
+        "После workers",
+        [
+          "8,nil",
+          "0,errA",
+          "0,nil",
+          "0,errB"
+        ],
+        "wg=0",
+        "Ошибки сохранены по исходным индексам."
+      ],
+      [
+        "Фильтрация",
+        [
+          "8",
+          "0"
+        ],
+        "out=[8,0]",
+        "Успешный ноль остаётся."
+      ],
+      [
+        "Результат",
+        [
+          "errors.Join(errA,errB)"
+        ],
+        "errors.Is обоих → true",
+        "Частичный успех не скрывает ошибки."
+      ]
+    ],
+    "steps": [
+      [
+        "Ограничить workers и выделить слоты",
+        "if limit<1{limit=1}\nif limit>len(values){limit=len(values)}\nresults:=make([]int,len(values))\nerrs:=make([]error,len(values))",
+        "У каждого входного индекса два слота: значение и ошибка. Ноль результата не означает ошибку."
+      ],
+      [
+        "Создать пул",
+        "jobs:=make(chan int)\nvar wg sync.WaitGroup\nwg.Add(limit)\nfor w:=0;w<limit;w++{\n go func(){defer wg.Done();for i:=range jobs{results[i],errs[i]=work(values[i])}}()\n}",
+        "Каждый индекс обрабатывается одним worker. Ошибка сохраняется, но не останавливает пул."
+      ],
+      [
+        "Передать все задачи и дождаться",
+        "for i:=range values{jobs<-i}\nclose(jobs)\nwg.Wait()",
+        "Все задания обрабатываются, даже если некоторые завершились ошибками."
+      ],
+      [
+        "Собрать только успехи",
+        "out:=make([]int,0,len(values))\nfor i,v:=range results{if errs[i]==nil{out=append(out,v)}}",
+        "После Wait последовательно фильтруем результаты по ошибкам, сохраняя исходный порядок и успешные нули."
+      ],
+      [
+        "Объединить ошибки",
+        "return out,errors.Join(errs...)",
+        "Join пропускает nil и возвращает nil, если ошибок нет. errors.Is работает для каждой исходной ошибки."
+      ]
+    ],
+    "blocks": [
+      "Объединить ошибки",
+      "Собрать только успехи",
+      "Передать все задачи и дождаться",
+      "Создать пул",
+      "Ограничить workers и выделить слоты"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "results[i],errs[i] = ",
+        "after": "(values[i])",
+        "options": [
+          "work",
+          "append",
+          "close"
+        ],
+        "correct": 0,
+        "explain": "Записываем оба результата."
+      },
+      {
+        "before": "if errs[i] ",
+        "after": " nil",
+        "options": [
+          "==",
+          "!=",
+          "<"
+        ],
+        "correct": 0,
+        "explain": "Успех определяется отсутствием ошибки."
+      },
+      {
+        "before": "errors.",
+        "after": "(errs...)",
+        "options": [
+          "Join",
+          "Is",
+          "As"
+        ],
+        "correct": 0,
+        "explain": "Объединяем все причины."
+      }
+    ],
+    "partial": "package practice\n\nfunc ProcessConcurrentBatch(values []int, limit int, work func(int) (int,error)) ([]int,error) {\n\tif limit<1{limit=1}\n\tif limit>len(values){limit=len(values)}\n\tresults:=make([]int,len(values))\n\terrs:=make([]error,len(values))\n\tjobs:=make(chan int)\n\tvar wg sync.WaitGroup\n\twg.Add(limit)\n\tfor w:=0;w<limit;w++{go func(){defer wg.Done();for i:=range jobs{results[i],errs[i]=work(values[i])}}()}\n\tfor i:=range values{jobs<-i}\n\tclose(jobs);wg.Wait()\n\tout:=make([]int,0,len(values))\n\tfor i,v:=range results{if errs[i]==nil{out=append(out,v)}}\n\t// TODO: объедини все ошибки\n\treturn out,nil\n}\n",
+    "bug": "package practice\n\nfunc ProcessConcurrentBatch(values []int, limit int, work func(int) (int,error)) ([]int,error) {\n\tif limit<1{limit=1}\n\tif limit>len(values){limit=len(values)}\n\tresults:=make([]int,len(values))\n\terrs:=make([]error,len(values))\n\tjobs:=make(chan int)\n\tvar wg sync.WaitGroup\n\twg.Add(limit)\n\tfor w:=0;w<limit;w++{go func(){defer wg.Done();for i:=range jobs{results[i],errs[i]=work(values[i])}}()}\n\tfor i:=range values{jobs<-i}\n\tclose(jobs);wg.Wait()\n\treturn results,errors.Join(errs...)\n}\n",
+    "hints": [
+      "Используй пул индексов как в OrderedFanOut.",
+      "Выдели два среза одинаковой длины.",
+      "В worker сохраняй results[i],errs[i], не выходи при ошибке.",
+      "После Wait собери только элементы с errs[i]==nil.",
+      "out:=make([]int,0,len(values));for i,v:=range results{if errs[i]==nil{out=append(out,v)}};return out,errors.Join(errs...)"
+    ],
+    "related": [
+      [
+        "concurrency-send-context",
+        "Повторить отменяемую отправку"
+      ],
+      [
+        "concurrency-wait-group",
+        "Повторить ожидание группы"
+      ],
+      [
+        "advanced-batch-partial-success",
+        "Сравнить последовательную обработку"
+      ]
+    ],
+    "production": "Независимые операции часто требуют частичного успеха, например batch-уведомления. Не применяй fail-fast, если бизнес-контракт требует попытки каждого элемента. Для повторов отдельно проектируй идемпотентность.",
+    "interview": "Когда частичный успех предпочтительнее fail-fast?"
+  },
+  "concurrency-graceful-shutdown": {
+    "frames": [
+      [
+        "Начало",
+        [
+          "workers: active",
+          "done: open"
+        ],
+        "shutdown ctx: active",
+        "Есть отдельный бюджет на остановку."
+      ],
+      [
+        "Запрос отмены",
+        [
+          "cancel()",
+          "workers: finishing"
+        ],
+        "done: open",
+        "Остановка ещё не подтверждена."
+      ],
+      [
+        "Успех",
+        [
+          "workers: exited",
+          "done: closed"
+        ],
+        "return nil",
+        "Все workers завершились."
+      ],
+      [
+        "Альтернативный исход",
+        [
+          "done: open",
+          "shutdown ctx: expired"
+        ],
+        "DeadlineExceeded",
+        "Ожидание прекращено, но работники могут ещё работать."
+      ]
+    ],
+    "steps": [
+      [
+        "Запросить остановку",
+        "cancel()",
+        "Сначала уведомляем работников, что пора завершаться. CancelFunc не ждёт их фактического выхода."
+      ],
+      [
+        "Проверить уже завершившуюся работу",
+        "select{\ncase <-done:return nil\ndefault:\n}",
+        "Если сигнал завершения уже закрыт, работа закончилась. По контракту это успех даже при истёкшем бюджете."
+      ],
+      [
+        "Ожидать с бюджетом",
+        "select{\ncase <-done:return nil\ncase <-ctx.Done():return ctx.Err()\n}",
+        "Отдельный контекст ограничивает ожидание shutdown. Если workers не завершились, вызывающий получает ошибку, а не ложное подтверждение остановки."
+      ]
+    ],
+    "blocks": [
+      "Ожидать с бюджетом",
+      "Проверить уже завершившуюся работу",
+      "Запросить остановку"
+    ],
+    "order": [
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "",
+        "after": "() // запрос остановки",
+        "options": [
+          "cancel",
+          "close",
+          "ctx.Err"
+        ],
+        "correct": 0,
+        "explain": "Вызываем предоставленную CancelFunc."
+      },
+      {
+        "before": "case <-",
+        "after": " :return nil",
+        "options": [
+          "done",
+          "ctx.Done()",
+          "cancel"
+        ],
+        "correct": 0,
+        "explain": "Done подтверждает фактический выход."
+      },
+      {
+        "before": "return ctx.",
+        "after": "()",
+        "options": [
+          "Err",
+          "Done",
+          "Value"
+        ],
+        "correct": 0,
+        "explain": "Возвращаем ошибку бюджета ожидания."
+      }
+    ],
+    "partial": "package practice\n\nfunc ShutdownWorkers(ctx context.Context, cancel context.CancelFunc, done <-chan struct{}) error {\n\tcancel()\n\tselect{case <-done:return nil;default:}\n\tselect{\n\tcase <-done:return nil\n\tcase <-ctx.Done():\n\t // TODO: верни ошибку истечения бюджета shutdown\n\t return nil\n\t}\n}\n",
+    "bug": "package practice\n\nfunc ShutdownWorkers(ctx context.Context, cancel context.CancelFunc, done <-chan struct{}) error {\n\tcancel()\n\treturn nil\n}\n",
+    "hints": [
+      "Cancel и фактическое завершение — разные сигналы.",
+      "Сначала вызови cancel.",
+      "Проверь done через неблокирующий select.",
+      "Потом блокирующий select между done и ctx.Done.",
+      "cancel();select{case <-done:return nil;default:};select{case <-done:return nil;case <-ctx.Done():return ctx.Err()}"
+    ],
+    "related": [
+      [
+        "concurrency-send-context",
+        "Повторить отменяемую отправку"
+      ],
+      [
+        "concurrency-wait-group",
+        "Повторить ожидание группы"
+      ]
+    ],
+    "production": "Сервис сначала прекращает принимать новые задания, затем сигнализирует работникам и ждёт их в отдельном shutdown-бюджете. Эта функция покрывает только фазу cancel-and-wait, не дренирование очереди и не остановку HTTP listener.",
+    "interview": "Почему нельзя использовать уже отменённый рабочий контекст как бюджет shutdown?"
+  },
+  "concurrency-fail-fast-group": {
+    "frames": [
+      [
+        "Запуск",
+        [
+          "job A",
+          "job B",
+          "job C"
+        ],
+        "ctx active; wg=3",
+        "Три зависимые операции стартуют."
+      ],
+      [
+        "Ошибка A",
+        [
+          "A: storage error",
+          "B,C: observe Done"
+        ],
+        "cancel(storage error)",
+        "Первая ошибка отменяет общий контекст."
+      ],
+      [
+        "Остановка",
+        [
+          "B: returns Canceled",
+          "C: cleanup"
+        ],
+        "Cause=storage error",
+        "Поздние ошибки не заменяют первую причину."
+      ],
+      [
+        "Завершение",
+        [
+          "wg=0"
+        ],
+        "return storage error",
+        "Все операции закончили работу."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать общий контекст группы",
+        "ctx,cancel:=context.WithCancelCause(parent)\ndefer cancel(nil)\nif ctx.Err()!=nil{return context.Cause(ctx)}",
+        "Все операции получают один отменяемый контекст. Уже отменённый родитель исключает запуск. Deferred cleanup освобождает ресурсы."
+      ],
+      [
+        "Зарегистрировать задачи",
+        "var wg sync.WaitGroup\nwg.Add(len(jobs))",
+        "WaitGroup отслеживает фактическое завершение всех операций, а не только сигнал отмены."
+      ],
+      [
+        "Запустить операции",
+        "for _,job:=range jobs{\n go func(run func(context.Context)error){\n  defer wg.Done()",
+        "Передаём callback параметром, чтобы каждый запуск получил свой job. Все зарегистрированные jobs запускаются даже если кто-то уже успел отменить контекст."
+      ],
+      [
+        "Отменить группу при ошибке",
+        "  if err:=run(ctx);err!=nil{cancel(err)}\n }(job)\n}",
+        "Первый сигнал отмены фиксирует причину. Другие jobs наблюдают ctx.Done и могут завершиться. Повторный cancel не перезаписывает причину."
+      ],
+      [
+        "Дождаться и вернуть причину",
+        "wg.Wait()\nreturn context.Cause(ctx)",
+        "Не возвращаемся, пока jobs не вышли. Причина вычисляется до deferred cancel(nil), поэтому успешная группа возвращает nil."
+      ]
+    ],
+    "blocks": [
+      "Дождаться и вернуть причину",
+      "Отменить группу при ошибке",
+      "Запустить операции",
+      "Зарегистрировать задачи",
+      "Создать общий контекст группы"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "context.",
+        "after": "(parent)",
+        "options": [
+          "WithCancelCause",
+          "WithValue",
+          "Background"
+        ],
+        "correct": 0,
+        "explain": "Нужен общий контекст с причиной."
+      },
+      {
+        "before": "if err:=run(ctx);err!=nil{cancel(",
+        "after": ")}",
+        "options": [
+          "err",
+          "nil",
+          "ctx"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем исходную ошибку."
+      },
+      {
+        "before": "return context.",
+        "after": "(ctx)",
+        "options": [
+          "Cause",
+          "TODO",
+          "Background"
+        ],
+        "correct": 0,
+        "explain": "Возвращаем детальную причину, а не только категорию."
+      }
+    ],
+    "partial": "package practice\n\nfunc RunFailFastGroup(parent context.Context, jobs []func(context.Context) error) error {\n\tctx,cancel:=context.WithCancelCause(parent)\n\tdefer cancel(nil)\n\tif ctx.Err()!=nil{return context.Cause(ctx)}\n\tvar wg sync.WaitGroup\n\twg.Add(len(jobs))\n\tfor _,job:=range jobs{\n\t go func(run func(context.Context)error){\n\t  defer wg.Done()\n\t  if err:=run(ctx);err!=nil{\n\t   // TODO: передай исходную ошибку в отмену группы\n\t   cancel(nil)\n\t  }\n\t }(job)\n\t}\n\twg.Wait()\n\treturn context.Cause(ctx)\n}\n",
+    "bug": "package practice\n\nfunc RunFailFastGroup(parent context.Context, jobs []func(context.Context) error) error {\n\tctx,cancel:=context.WithCancelCause(parent)\n\tdefer cancel(nil)\n\tif ctx.Err()!=nil{return context.Cause(ctx)}\n\tvar wg sync.WaitGroup\n\twg.Add(len(jobs))\n\tfor _,job:=range jobs{\n\t go func(run func(context.Context)error){\n\t  defer wg.Done()\n\t  if err:=run(ctx);err!=nil{cancel(err)}\n\t }(job)\n\t}\n\twg.Wait()\n\treturn ctx.Err()\n}\n",
+    "hints": [
+      "Создай общий WithCancelCause.",
+      "При уже отменённом parent верни Cause.",
+      "Зарегистрируй все jobs и запусти каждый с общим ctx.",
+      "На ошибке вызови cancel(err); дождись всех через Wait.",
+      "ctx,cancel:=context.WithCancelCause(parent);defer cancel(nil)\nif ctx.Err()!=nil{return context.Cause(ctx)}\nvar wg sync.WaitGroup;wg.Add(len(jobs));for _,job:=range jobs{go func(run func(context.Context)error){defer wg.Done();if err:=run(ctx);err!=nil{cancel(err)}}(job)};wg.Wait();return context.Cause(ctx)"
+    ],
+    "related": [
+      [
+        "concurrency-send-context",
+        "Повторить отменяемую отправку"
+      ],
+      [
+        "concurrency-wait-group",
+        "Повторить ожидание группы"
+      ],
+      [
+        "concurrency-partial-batch",
+        "Сравнить с частичным успехом"
+      ]
+    ],
+    "production": "Это учебный аналог fail-fast группы на стандартной библиотеке, не полная замена golang.org/x/sync/errgroup. Подходит для небольшой группы зависимых запросов. Для большого списка нужен лимит конкурентности, а для независимых задач — возможно partial success.",
+    "interview": "Почему fail-fast не означает немедленный return при первой ошибке?"
   }
 };
