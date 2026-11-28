@@ -11,6 +11,7 @@ import (
  "encoding/json"
  "strings"
  "sync"
+ "sync/atomic"
  "net/http"
  "time"
 )
@@ -429,3 +430,126 @@ func (f WorkflowPublisherFunc) Publish(text string) error { return f(text) }
 func ProcessDeliveryBatch(ids []string, deliver func(string) error) ([]string, error) { return nil,nil }
 
 func TransformChecked[T any, R any](values []T, convert func(T) (R, error)) ([]R, error) { return nil,nil }
+
+func StartBackgroundWork(work func()) {
+	
+}
+
+func RunWithDone(work func()) <-chan struct{} {
+	return nil
+}
+
+func ComputeAsync(work func() int) <-chan int {
+	return nil
+}
+
+func RunAllWork(jobs []func()) {
+	
+}
+
+func MapInGoroutines(values []int, transform func(int) int) []int {
+	return nil
+}
+
+func ExchangeValue(value int, receive func(<-chan int)) {
+	
+}
+
+func BufferEvents(events []int) <-chan int {
+	return nil
+}
+
+func CollectEvents(in <-chan int) []int {
+	return nil
+}
+
+func ReceiveValue(in <-chan int) (int, bool) {
+	return 0,false
+}
+
+func ProduceEvents(events []int) <-chan int {
+	return nil
+}
+
+func ReceiveEither(a, b <-chan int) (int, string, bool) {
+	return 0,"",false
+}
+
+func TrySendEvent(out chan<- int, value int) bool {
+	return false
+}
+
+func TryReceiveEvent(in <-chan int) (int, bool, bool) {
+	return 0,false,false
+}
+
+func DrainTwoSources(a, b <-chan int) ([]int, []int) {
+	return nil,nil
+}
+
+func ReceiveBeforeTimeout(in <-chan int, timeout time.Duration) (int, error) {
+	return 0,nil
+}
+
+type SafeStore struct {mu sync.Mutex; values map[string]int}
+func (s *SafeStore) Set(key string,value int){}
+func (s *SafeStore) Get(key string)(int,bool){return 0,false}
+
+type ConfigStore struct {mu sync.RWMutex; host string; port int}
+func (s *ConfigStore) Update(host string,port int){}
+func (s *ConfigStore) Snapshot()(string,int){return "",0}
+
+type AtomicCounter struct {value atomic.Int64}
+func (c *AtomicCounter) Add(delta int64)int64{return 0}
+func (c *AtomicCounter) Value()int64{return 0}
+
+type LazyConfig struct {once sync.Once; value string}
+func (c *LazyConfig) Get(load func()string)string{return ""}
+
+type QuotaStore struct {mu sync.Mutex; remaining int}
+func NewQuotaStore(limit int)*QuotaStore{return &QuotaStore{}}
+func (q *QuotaStore) ReserveQuota(amount int)bool{return false}
+func (q *QuotaStore) Remaining()int{return 0}
+
+var _ atomic.Int64 // keep import available when the atomic counter is replaced
+
+func StartCancelableWorker(parent context.Context, work func(context.Context)) (context.CancelFunc, <-chan struct{}) {
+	return nil,nil
+}
+
+func CallWithTimeout(parent context.Context, timeout time.Duration, call func(context.Context) error) error {
+	return nil
+}
+
+type requestIDKey struct{}
+func WithRequestID(ctx context.Context,id string)context.Context{return ctx}
+func RequestIDFromContext(ctx context.Context)(string,bool){return "",false}
+
+func RunWithCancelCause(parent context.Context, work func(context.Context) error) error {
+	return nil
+}
+
+func SendWithContext(ctx context.Context, out chan<- int, value int) error {
+	return nil
+}
+
+type BoundedQueue struct { jobs chan int }
+func NewBoundedQueue(capacity int)*BoundedQueue{return &BoundedQueue{jobs:make(chan int,1)}}
+func (q *BoundedQueue) Enqueue(ctx context.Context,job int)error{return nil}
+func (q *BoundedQueue) TryDequeue()(int,bool){return 0,false}
+
+func OrderedFanOut(values []int, limit int, work func(int) int) []int {
+	return nil
+}
+
+func ProcessConcurrentBatch(values []int, limit int, work func(int) (int,error)) ([]int,error) {
+	return nil,nil
+}
+
+func ShutdownWorkers(ctx context.Context, cancel context.CancelFunc, done <-chan struct{}) error {
+	return nil
+}
+
+func RunFailFastGroup(parent context.Context, jobs []func(context.Context) error) error {
+	return nil
+}

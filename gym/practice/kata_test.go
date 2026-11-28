@@ -976,3 +976,631 @@ func TestTransformChecked(t *testing.T) {
  values:=[]int{2,4};v,e:=TransformChecked(values,func(n int)(int,error){return n*2,nil});if e!=nil||!reflect.DeepEqual(v,[]int{4,8}){t.Fatal(v,e)};v[0]=99;if values[0]!=2{t.Fatal("alias")}
  if v,e:=TransformChecked([]int(nil),(func(int)(string,error))(nil));v==nil||len(v)!=0||e!=nil{t.Fatal(v,e)}
 }
+
+func TestStartBackgroundWork(t *testing.T) {
+ started,release,finished,returned:=make(chan struct{}),make(chan struct{}),make(chan struct{}),make(chan struct{})
+ var calls atomic.Int32
+ go func(){StartBackgroundWork(func(){if calls.Add(1)==1{close(started)};<-release;close(finished)});close(returned)}()
+ select{case <-started:case <-time.After(time.Second):close(release);t.Fatal("callback not started")}
+ select{case <-returned:case <-time.After(time.Second):close(release);t.Fatal("caller blocked by callback")}
+ close(release)
+ select{case <-finished:case <-time.After(time.Second):t.Fatal("callback not finished")}
+ if calls.Load()!=1{t.Fatal(calls.Load())}
+}
+
+func TestRunWithDone(t *testing.T) {
+ started,release:=make(chan struct{}),make(chan struct{})
+ var calls atomic.Int32
+ result:=make(chan (<-chan struct{}),1)
+ go func(){result<-RunWithDone(func(){calls.Add(1);close(started);<-release})}()
+ var done <-chan struct{}
+ select{case done=<-result:case <-time.After(time.Second):close(release);t.Fatal("call blocked")}
+ if done==nil{close(release);t.Fatal("nil done")}
+ select{case <-started:case <-time.After(time.Second):close(release);t.Fatal("work not started")}
+ select{case <-done:close(release);t.Fatal("premature completion");default:}
+ close(release)
+ for i:=0;i<2;i++{select{case _,ok:=<-done:if ok{t.Fatal("expected close, not send")};case <-time.After(time.Second):t.Fatal("done not closed")}}
+ if calls.Load()!=1{t.Fatal(calls.Load())}
+}
+
+func TestComputeAsync(t *testing.T) {
+ for _,want:=range []int{0,42,-7}{
+  var calls atomic.Int32
+  out:=ComputeAsync(func()int{calls.Add(1);return want})
+  if out==nil||cap(out)!=1{t.Fatal("expected capacity one")}
+  select{case v,ok:=<-out:if !ok||v!=want{t.Fatal(v,ok,want)};case <-time.After(time.Second):t.Fatal("missing result")}
+  select{case _,ok:=<-out:if ok{t.Fatal("duplicate result")};case <-time.After(time.Second):t.Fatal("not closed")}
+  if calls.Load()!=1{t.Fatal(calls.Load())}
+ }
+
+ {
+  started, release := make(chan struct{}), make(chan struct{})
+  defer close(release)
+  result := make(chan (<-chan int), 1)
+  go func(){result<-ComputeAsync(func()int{close(started);<-release;return 13})}()
+  select{case <-started:case <-time.After(time.Second):t.Fatal("work not started")}
+  select{case out:=<-result:if out==nil||cap(out)!=1{t.Fatal("wrong result channel")};case <-time.After(time.Second):t.Fatal("ComputeAsync waited for work")}
+ }
+}
+
+func TestRunAllWork(t *testing.T) {
+ entered:=make(chan int,3);release:=make(chan struct{});done:=make(chan struct{})
+ var jobs []func()
+ var completed atomic.Int32
+ for i:=0;i<3;i++{i:=i;jobs=append(jobs,func(){entered<-i;<-release;completed.Add(1)})}
+ go func(){RunAllWork(jobs);close(done)}()
+ seen:=map[int]bool{}
+ for i:=0;i<3;i++{select{case n:=<-entered:if seen[n]{close(release);t.Fatal("duplicate job")};seen[n]=true;case <-time.After(time.Second):close(release);t.Fatal("jobs not concurrent")}}
+ select{case <-done:close(release);t.Fatal("returned before completion");case <-time.After(50*time.Millisecond):}
+ close(release)
+ select{case <-done:case <-time.After(time.Second):t.Fatal("did not return")}
+ if completed.Load()!=3{t.Fatal(completed.Load())}
+ empty:=make(chan struct{});go func(){RunAllWork(nil);close(empty)}()
+ select{case <-empty:case <-time.After(time.Second):t.Fatal("empty input blocked")}
+}
+
+func TestMapInGoroutines(t *testing.T) {
+ values:=[]int{2,5,3};entered:=make(chan int,3);release:=make(chan struct{});result:=make(chan []int,1)
+ go func(){result<-MapInGoroutines(values,func(v int)int{entered<-v;<-release;return v*2})}()
+ seen:=map[int]int{}
+ for i:=0;i<3;i++{select{case v:=<-entered:seen[v]++;case <-time.After(time.Second):close(release);t.Fatal("callbacks not concurrent")}}
+ close(release)
+ if !reflect.DeepEqual(seen,map[int]int{2:1,5:1,3:1}){t.Fatal(seen)}
+ select{case got:=<-result:if !reflect.DeepEqual(got,[]int{4,10,6})||!reflect.DeepEqual(values,[]int{2,5,3}){t.Fatal(got,values)};got[0]=99;if values[0]!=2{t.Fatal("alias")};case <-time.After(time.Second):t.Fatal("did not finish")}
+ if got:=MapInGoroutines(nil,nil);got==nil||len(got)!=0{t.Fatal(got)}
+}
+
+func TestExchangeValue(t *testing.T) {
+ for _,want:=range []int{0,42,-7}{
+  type observation struct{cap int; values []int}
+  observed:=make(chan observation,2);returned:=make(chan struct{})
+  go func(){ExchangeValue(want,func(ch <-chan int){v:=observation{cap:cap(ch)};for x:=range ch{v.values=append(v.values,x)};observed<-v});close(returned)}()
+  select{case <-returned:case <-time.After(time.Second):t.Fatal("exchange blocked")}
+  select{case got:=<-observed:if got.cap!=0||!reflect.DeepEqual(got.values,[]int{want}){t.Fatal(got)};default:t.Fatal("callback not finished")}
+  select{case <-observed:t.Fatal("callback called twice");default:}
+ }
+
+ {
+  started, release, returned := make(chan struct{}), make(chan struct{}), make(chan struct{})
+  go func(){ExchangeValue(3,func(ch <-chan int){for range ch{};close(started);<-release});close(returned)}()
+  select{case <-started:case <-time.After(time.Second):close(release);t.Fatal("callback not started")}
+  select{case <-returned:close(release);t.Fatal("returned before callback");case <-time.After(20*time.Millisecond):}
+  close(release)
+  select{case <-returned:case <-time.After(time.Second):t.Fatal("callback completion not observed")}
+ }
+}
+
+func TestBufferEvents(t *testing.T) {
+ for _,input:=range [][]int{nil,{}, {4,0,9},{7,7}}{
+  result:=make(chan (<-chan int),1);go func(){result<-BufferEvents(input)}()
+  var out <-chan int
+  select{case out=<-result:case <-time.After(time.Second):t.Fatal("buffer blocked")}
+  if out==nil||cap(out)!=len(input)||len(out)!=len(input){t.Fatal("wrong buffer size")}
+  for _,want:=range input{select{case got,ok:=<-out:if !ok||got!=want{t.Fatal(got,ok,want)};case <-time.After(time.Second):t.Fatal("missing value")}}
+  select{case _,ok:=<-out:if ok{t.Fatal("extra value")};default:t.Fatal("not closed before return")}
+ }
+}
+
+func TestCollectEvents(t *testing.T) {
+ for _,input:=range [][]int{nil,{7,0,7},{0},{-1,2}}{
+  in:=make(chan int,len(input));for _,v:=range input{in<-v};close(in)
+  result:=make(chan []int,1);go func(){result<-CollectEvents(in)}()
+  select{case got:=<-result:if got==nil||!reflect.DeepEqual(got,append([]int{},input...)){t.Fatal(got,input)};case <-time.After(time.Second):t.Fatal("did not finish")}
+ }
+ in:=make(chan int);result:=make(chan []int,1)
+ go func(){result<-CollectEvents(in)}()
+ select{case in<-9:case <-time.After(time.Second):t.Fatal("not reading")}
+ close(in)
+ select{case got:=<-result:if !reflect.DeepEqual(got,[]int{9}){t.Fatal(got)};case <-time.After(time.Second):t.Fatal("not finished")}
+}
+
+func TestReceiveValue(t *testing.T) {
+ in:=make(chan int,2);in<-0;in<-8;close(in)
+ for _,want:=range []struct{v int;ok bool}{{0,true},{8,true},{0,false},{0,false}}{
+  got,ok:=ReceiveValue(in);if got!=want.v||ok!=want.ok{t.Fatal(got,ok,want)}
+ }
+ open:=make(chan int);type result struct{v int;ok bool};out:=make(chan result,1)
+ go func(){v,ok:=ReceiveValue(open);out<-result{v,ok}}()
+ select{case open<-13:case <-out:t.Fatal("returned before receive");case <-time.After(time.Second):t.Fatal("not receiving")}
+ close(open)
+ select{case got:=<-out:if got!=(result{13,true}){t.Fatal(got)};case <-time.After(time.Second):t.Fatal("missing result")}
+}
+
+func TestProduceEvents(t *testing.T) {
+ for _,input:=range [][]int{nil,{3,0,5},{7,7}}{
+  result:=make(chan (<-chan int),1);go func(){result<-ProduceEvents(input)}()
+  var out <-chan int
+  select{case out=<-result:case <-time.After(time.Second):t.Fatal("producer did not return")}
+  if out==nil||cap(out)!=0{t.Fatal("expected unbuffered channel")}
+  for _,want:=range input{select{case v,ok:=<-out:if !ok||v!=want{t.Fatal(v,ok,want)};case <-time.After(time.Second):t.Fatal("missing event")}}
+  select{case _,ok:=<-out:if ok{t.Fatal("extra event")};case <-time.After(time.Second):t.Fatal("producer did not close")}
+ }
+}
+
+func TestReceiveEither(t *testing.T) {
+ type result struct{v int;source string;ok bool}
+ run:=func(a,b <-chan int) result {
+  ch:=make(chan result,1);go func(){v,s,ok:=ReceiveEither(a,b);ch<-result{v,s,ok}}()
+  select{case r:=<-ch:return r;case <-time.After(time.Second):t.Fatal("select blocked");return result{}}
+ }
+ a,b:=make(chan int,1),make(chan int,1)
+ b<-42
+ if got:=run(a,b);got!=(result{42,"b",true}){t.Fatal(got)}
+ a<-0
+ if got:=run(a,nil);got!=(result{0,"a",true}){t.Fatal(got)}
+ close(b)
+ if got:=run(nil,b);got!=(result{0,"b",false}){t.Fatal(got)}
+ a<-7;c:=make(chan int,1);c<-9
+ got:=run(a,c)
+ if got!=(result{7,"a",true})&&got!=(result{9,"b",true}){t.Fatal(got)}
+ if len(a)+len(c)!=1{t.Fatal("expected exactly one receive")}
+
+ {
+  delayed:=make(chan int);got:=make(chan result,1)
+  go func(){got<-run(nil,delayed)}()
+  select{case delayed<-19:case r:=<-got:t.Fatal("returned before data",r);case <-time.After(time.Second):t.Fatal("not receiving")}
+  select{case r:=<-got:if r!=(result{19,"b",true}){t.Fatal(r)};case <-time.After(time.Second):t.Fatal("missing result")}
+ }
+}
+
+func TestTrySendEvent(t *testing.T) {
+ out:=make(chan int,2);out<-7
+ if !TrySendEvent(out,8){t.Fatal("ready send rejected")}
+ if TrySendEvent(out,9){t.Fatal("full buffer accepted")}
+ if len(out)!=2||<-out!=7||<-out!=8{t.Fatal("wrong buffer contents")}
+ if TrySendEvent(nil,1){t.Fatal("nil accepted")}
+ blocked:=make(chan int)
+ result:=make(chan bool,1);go func(){result<-TrySendEvent(blocked,5)}()
+ select{case ok:=<-result:if ok{t.Fatal("no receiver")};case <-time.After(time.Second):t.Fatal("blocked")}
+
+ {
+  ch:=make(chan int);received:=make(chan int,1);ready:=make(chan struct{});stop:=make(chan struct{})
+  defer close(stop)
+  go func(){close(ready);select{case v:=<-ch:received<-v;case <-stop:}}()
+  <-ready
+  deadline:=time.NewTimer(time.Second);defer deadline.Stop()
+  tick:=time.NewTicker(time.Millisecond);defer tick.Stop()
+  for !TrySendEvent(ch,23){select{case <-deadline.C:t.Fatal("never sent to waiting receiver");case <-tick.C:}}
+  select{case v:=<-received:if v!=23{t.Fatal(v)};case <-time.After(time.Second):t.Fatal("missing send")}
+ }
+}
+
+func TestTryReceiveEvent(t *testing.T) {
+ type result struct{v int;received,closed bool}
+ check:=func(in <-chan int,want result){
+  out:=make(chan result,1);go func(){v,r,c:=TryReceiveEvent(in);out<-result{v,r,c}}()
+  select{case got:=<-out:if got!=want{t.Fatal(got,want)};case <-time.After(time.Second):t.Fatal("blocked")}
+ }
+ in:=make(chan int,2);in<-0;in<-9
+ check(in,result{0,true,false});check(in,result{9,true,false})
+ check(in,result{});check(nil,result{})
+ in<-4;close(in)
+ check(in,result{4,true,false});check(in,result{0,false,true});check(in,result{0,false,true})
+}
+
+func TestDrainTwoSources(t *testing.T) {
+ makeInput:=func(vs ...int)<-chan int{ch:=make(chan int,len(vs));for _,v:=range vs{ch<-v};close(ch);return ch}
+ type result struct{a,b []int}
+ check:=func(a,b <-chan int,wa,wb []int){
+  out:=make(chan result,1);go func(){x,y:=DrainTwoSources(a,b);out<-result{x,y}}()
+  select{case got:=<-out:if !reflect.DeepEqual(got.a,wa)||!reflect.DeepEqual(got.b,wb){t.Fatal(got,wa,wb)};case <-time.After(time.Second):t.Fatal("did not drain")}
+ }
+ check(makeInput(1,0,1),makeInput(9,8),[]int{1,0,1},[]int{9,8})
+ check(nil,makeInput(0,2),[]int{},[]int{0,2})
+ check(makeInput(7),nil,[]int{7},[]int{})
+ check(nil,nil,[]int{},[]int{})
+ a:=makeInput();b:=make(chan int,1);b<-5;close(b)
+ check(a,b,[]int{},[]int{5})
+
+ {
+  a,b:=make(chan int),make(chan int)
+  stop:=make(chan struct{});defer close(stop)
+  go func(){defer close(a);defer close(b);select{case b<-2:case <-stop:return};select{case a<-1:case <-stop:}}()
+  check(a,b,[]int{1},[]int{2})
+ }
+}
+
+func TestReceiveBeforeTimeout(t *testing.T) {
+ type result struct{v int;err error}
+ run:=func(in <-chan int,d time.Duration)result{
+  out:=make(chan result,1);go func(){v,e:=ReceiveBeforeTimeout(in,d);out<-result{v,e}}()
+  select{case r:=<-out:return r;case <-time.After(2*time.Second):t.Fatal("wait did not terminate");return result{}}
+ }
+ ch:=make(chan int,1);ch<-0
+ if got:=run(ch,time.Second);got.v!=0||got.err!=nil{t.Fatal(got)}
+ ch<-12
+ if got:=run(ch,0);got.v!=0||!errors.Is(got.err,context.DeadlineExceeded)||len(ch)!=1{t.Fatal(got)}
+ if got:=run(ch,-time.Second);!errors.Is(got.err,context.DeadlineExceeded)||len(ch)!=1{t.Fatal(got)}
+ if got:=run(ch,time.Second);got.v!=12||got.err!=nil{t.Fatal(got)}
+ close(ch)
+ if got:=run(ch,time.Second);got.err==nil||got.err.Error()!="event channel closed"||got.v!=0{t.Fatal(got)}
+ if got:=run(nil,5*time.Millisecond);!errors.Is(got.err,context.DeadlineExceeded)||got.v!=0{t.Fatal(got)}
+
+ {
+  delayed:=make(chan int);out:=make(chan result,1)
+  go func(){out<-run(delayed,time.Second)}()
+  select{case delayed<-33:case r:=<-out:t.Fatal("returned before event",r);case <-time.After(time.Second):t.Fatal("not waiting")}
+  select{case r:=<-out:if r.v!=33||r.err!=nil{t.Fatal(r)};case <-time.After(time.Second):t.Fatal("missing event")}
+  start:=time.Now();r:=run(nil,20*time.Millisecond)
+  if !errors.Is(r.err,context.DeadlineExceeded)||time.Since(start)<20*time.Millisecond{t.Fatal("premature timeout",r)}
+ }
+}
+
+func TestSafeStore(t *testing.T) {
+ var s SafeStore
+ if v,ok:=s.Get("missing");v!=0||ok{t.Fatal(v,ok)}
+ s.Set("zero",0)
+ if v,ok:=s.Get("zero");v!=0||!ok{t.Fatal(v,ok)}
+ var wg sync.WaitGroup
+ for i:=0;i<24;i++{i:=i;wg.Add(1);go func(){defer wg.Done();key:=fmt.Sprint(i);s.Set(key,i);s.Get("zero")}()}
+ done:=make(chan struct{});go func(){wg.Wait();close(done)}()
+ select{case <-done:case <-time.After(time.Second):t.Fatal("workers blocked")}
+ for i:=0;i<24;i++{if v,ok:=s.Get(fmt.Sprint(i));!ok||v!=i{t.Fatal(i,v,ok)}}
+ s.Set("zero",9);if v,ok:=s.Get("zero");!ok||v!=9{t.Fatal(v,ok)}
+
+ {
+  var fresh SafeStore
+  var workers sync.WaitGroup
+  start:=make(chan struct{})
+  for i:=0;i<32;i++{i:=i;workers.Add(1);go func(){defer workers.Done();<-start;fresh.Set(fmt.Sprint(i),i)}()}
+  close(start);finished:=make(chan struct{});go func(){workers.Wait();close(finished)}()
+  select{case <-finished:case <-time.After(time.Second):t.Fatal("first writes blocked")}
+  for i:=0;i<32;i++{if v,ok:=fresh.Get(fmt.Sprint(i));!ok||v!=i{t.Fatal(i,v,ok)}}
+ }
+}
+
+func TestConfigStore(t *testing.T) {
+ var s ConfigStore
+ if h,p:=s.Snapshot();h!=""||p!=0{t.Fatal(h,p)}
+ s.Update("A",1)
+ if h,p:=s.Snapshot();h!="A"||p!=1{t.Fatal(h,p)}
+ s.mu.RLock()
+ read:=make(chan bool,1);go func(){h,p:=s.Snapshot();read<-h=="A"&&p==1}()
+ select{case ok:=<-read:s.mu.RUnlock();if !ok{t.Fatal("wrong snapshot")};case <-time.After(time.Second):s.mu.RUnlock();t.Fatal("readers serialized")}
+ var wg sync.WaitGroup
+ bad:=make(chan struct{},1)
+ for i:=0;i<12;i++{wg.Add(2);go func(){defer wg.Done();s.Update("B",2);s.Update("A",1)}();go func(){defer wg.Done();for j:=0;j<50;j++{h,p:=s.Snapshot();if !(h=="A"&&p==1||h=="B"&&p==2){select{case bad<-struct{}{}:default:}}}}()}
+ done:=make(chan struct{});go func(){wg.Wait();close(done)}()
+ select{case <-done:case <-time.After(time.Second):t.Fatal("blocked")}
+ select{case <-bad:t.Fatal("inconsistent snapshot");default:}
+}
+
+func TestAtomicCounter(t *testing.T) {
+ var c AtomicCounter
+ if c.Value()!=0||c.Add(3)!=3||c.Add(-2)!=1||c.Value()!=1{t.Fatal("wrong scalar semantics")}
+ var wg sync.WaitGroup
+ for i:=0;i<20;i++{wg.Add(1);go func(){defer wg.Done();for j:=0;j<100;j++{c.Add(1);c.Value()}}()}
+ done:=make(chan struct{});go func(){wg.Wait();close(done)}()
+ select{case <-done:case <-time.After(time.Second):t.Fatal("blocked")}
+ if got:=c.Value();got!=2001{t.Fatal(got)}
+
+ {
+  var fresh AtomicCounter
+  var workers sync.WaitGroup
+  start:=make(chan struct{});values:=make(chan int64,200)
+  for i:=0;i<10;i++{workers.Add(1);go func(){defer workers.Done();<-start;for j:=0;j<20;j++{values<-fresh.Add(1)}}()}
+  close(start);finished:=make(chan struct{});go func(){workers.Wait();close(values);close(finished)}()
+  select{case <-finished:case <-time.After(time.Second):t.Fatal("Add blocked")}
+  seen:=make(map[int64]bool)
+  for v:=range values{if v<1||v>200||seen[v]{t.Fatal("invalid Add result",v)};seen[v]=true}
+  if len(seen)!=200||fresh.Value()!=200{t.Fatal("missing increments")}
+ }
+}
+
+func TestLazyConfig(t *testing.T) {
+ var empty LazyConfig
+ var calls atomic.Int32
+ if got:=empty.Get(func()string{calls.Add(1);return ""});got!=""{t.Fatal(got)}
+ if got:=empty.Get(func()string{calls.Add(1);return "different"});got!=""||calls.Load()!=1{t.Fatal(got,calls.Load())}
+ var c LazyConfig
+ var wg sync.WaitGroup
+ var loads atomic.Int32
+ out:=make(chan string,20)
+ for i:=0;i<20;i++{wg.Add(1);go func(){defer wg.Done();out<-c.Get(func()string{loads.Add(1);return "ready"})}()}
+ done:=make(chan struct{});go func(){wg.Wait();close(done)}()
+ select{case <-done:case <-time.After(time.Second):t.Fatal("blocked")}
+ close(out)
+ for v:=range out{if v!="ready"{t.Fatal(v)}}
+ if loads.Load()!=1{t.Fatal(loads.Load())}
+
+ {
+  var fresh LazyConfig
+  started,release:=make(chan struct{}),make(chan struct{})
+  first,second:=make(chan string,1),make(chan string,1)
+  go func(){first<-fresh.Get(func()string{close(started);<-release;return "loaded"})}()
+  select{case <-started:case <-time.After(time.Second):close(release);t.Fatal("loader not started")}
+  go func(){second<-fresh.Get(func()string{return "wrong"})}()
+  select{case v:=<-second:close(release);t.Fatal("returned before loader",v);case <-time.After(20*time.Millisecond):}
+  close(release)
+  for _,ch:=range []chan string{first,second}{select{case v:=<-ch:if v!="loaded"{t.Fatal(v)};case <-time.After(time.Second):t.Fatal("Get blocked")}}
+ }
+}
+
+func TestQuotaStore(t *testing.T) {
+ q:=NewQuotaStore(5)
+ if q.Remaining()!=5||q.ReserveQuota(0)||q.ReserveQuota(-1)||q.ReserveQuota(6){t.Fatal("invalid reservation")}
+ if !q.ReserveQuota(5)||q.Remaining()!=0||q.ReserveQuota(1){t.Fatal("exact quota")}
+ if NewQuotaStore(-1).Remaining()!=0{t.Fatal("negative limit")}
+ var zero QuotaStore
+ if zero.ReserveQuota(1)||zero.Remaining()!=0{t.Fatal("zero value")}
+ q=NewQuotaStore(17)
+ var wg sync.WaitGroup
+ var accepted atomic.Int32
+ start:=make(chan struct{})
+ for i:=0;i<50;i++{wg.Add(1);go func(){defer wg.Done();<-start;if q.ReserveQuota(1){accepted.Add(1)};q.Remaining()}()}
+ close(start)
+ done:=make(chan struct{});go func(){wg.Wait();close(done)}()
+ select{case <-done:case <-time.After(time.Second):t.Fatal("blocked")}
+ if accepted.Load()!=17||q.Remaining()!=0{t.Fatal(accepted.Load(),q.Remaining())}
+}
+
+func TestStartCancelableWorker(t *testing.T) {
+ parent, stop := context.WithCancel(context.Background()); defer stop()
+ seen:=make(chan context.Context,1)
+ release:=make(chan struct{})
+ cancel,done:=StartCancelableWorker(parent,func(ctx context.Context){seen<-ctx;select{case <-ctx.Done():case <-release:}})
+ defer close(release)
+ if cancel==nil||done==nil{t.Fatal("missing cancellation or completion")}
+ defer cancel()
+ var child context.Context
+ select{case child=<-seen:case <-time.After(time.Second):t.Fatal("work not started")}
+ cancel();cancel()
+ select{case <-done:case <-time.After(time.Second):t.Fatal("worker did not finish")}
+ if !errors.Is(child.Err(),context.Canceled)||parent.Err()!=nil{t.Fatal("wrong cancellation propagation")}
+ p2,stop2:=context.WithCancel(context.Background())
+ c2,d2:=StartCancelableWorker(p2,func(ctx context.Context){<-ctx.Done()})
+ defer stop2();if c2==nil||d2==nil{t.Fatal("missing handles")};defer c2()
+ stop2()
+ select{case <-d2:case <-time.After(time.Second):t.Fatal("parent cancellation not propagated")}
+ seen3:=make(chan context.Context,1)
+ c3,d3:=StartCancelableWorker(parent,func(ctx context.Context){seen3<-ctx})
+ if c3==nil||d3==nil{t.Fatal("missing handles")};defer c3()
+ select{case <-d3:case <-time.After(time.Second):t.Fatal("normal completion blocked")}
+ if ctx:=<-seen3;ctx.Err()!=context.Canceled{t.Fatal("child not released")}
+
+ {
+  started,cleanup,release:=make(chan struct{}),make(chan struct{}),make(chan struct{})
+  defer close(release)
+  type handles struct{cancel context.CancelFunc;done <-chan struct{}}
+  result:=make(chan handles,1)
+  go func(){c,d:=StartCancelableWorker(context.Background(),func(ctx context.Context){close(started);<-ctx.Done();close(cleanup);<-release});result<-handles{c,d}}()
+  select{case <-started:case <-time.After(time.Second):t.Fatal("not started")}
+  var h handles
+  select{case h=<-result:case <-time.After(time.Second):t.Fatal("worker start blocked")}
+  h.cancel()
+  select{case <-cleanup:case <-time.After(time.Second):t.Fatal("cancel not observed")}
+  select{case <-h.done:t.Fatal("done closed before cleanup");case <-time.After(20*time.Millisecond):}
+
+ }
+}
+
+func TestCallWithTimeout(t *testing.T) {
+ parent,stop:=context.WithTimeout(context.Background(),time.Second);defer stop()
+ pd,_:=parent.Deadline()
+ var observed context.Context
+ marker:=errors.New("dependency error")
+ err:=CallWithTimeout(parent,2*time.Second,func(ctx context.Context)error{observed=ctx;d,ok:=ctx.Deadline();if !ok||d.After(pd){return errors.New("wrong deadline")};return marker})
+ if err!=marker||observed==nil||observed==parent||observed.Err()!=context.Canceled||parent.Err()!=nil{t.Fatal("deadline or error contract",err)}
+ called:=false
+ if err:=CallWithTimeout(parent,0,func(context.Context)error{called=true;return nil});!errors.Is(err,context.DeadlineExceeded)||called{t.Fatal(err,called)}
+ p2,c2:=context.WithCancel(context.Background());c2()
+ if err:=CallWithTimeout(p2,0,func(context.Context)error{called=true;return nil});!errors.Is(err,context.Canceled)||called{t.Fatal(err,called)}
+ out:=make(chan error,1)
+ go func(){out<-CallWithTimeout(context.Background(),5*time.Millisecond,func(ctx context.Context)error{<-ctx.Done();return ctx.Err()})}()
+ select{case err:=<-out:if !errors.Is(err,context.DeadlineExceeded){t.Fatal(err)};case <-time.After(time.Second):t.Fatal("timeout not propagated")}
+
+ {
+  canceled,stop:=context.WithCancel(context.Background());stop()
+  n:=0;cb:=func(context.Context)error{n++;return nil}
+  if e:=CallWithTimeout(canceled,time.Second,cb);!errors.Is(e,context.Canceled)||n!=0{t.Fatal(e,n)}
+  if e:=CallWithTimeout(context.Background(),-time.Second,cb);!errors.Is(e,context.DeadlineExceeded)||n!=0{t.Fatal(e,n)}
+  var child context.Context
+  if e:=CallWithTimeout(context.Background(),time.Second,func(ctx context.Context)error{n++;child=ctx;return nil});e!=nil||n!=1||child==nil||child.Err()!=context.Canceled{t.Fatal(e,n)}
+  parent,stopParent:=context.WithCancel(context.Background());defer stopParent()
+  started:=make(chan struct{});result:=make(chan error,1)
+  go func(){result<-CallWithTimeout(parent,time.Second,func(ctx context.Context)error{close(started);<-ctx.Done();return ctx.Err()})}()
+  select{case <-started:case <-time.After(time.Second):t.Fatal("call not started")}
+  stopParent()
+  select{case e:=<-result:if !errors.Is(e,context.Canceled){t.Fatal(e)};case <-time.After(time.Second):t.Fatal("parent cancellation ignored")}
+ }
+}
+
+func TestRequestIDFromContext(t *testing.T) {
+ parent,stop:=context.WithTimeout(context.Background(),time.Second);defer stop()
+ p:=context.WithValue(parent,"request_id","foreign")
+ if v,ok:=RequestIDFromContext(p);v!=""||ok{t.Fatal("string key collision",v,ok)}
+ child:=WithRequestID(p,"req-42")
+ if v,ok:=RequestIDFromContext(child);v!="req-42"||!ok{t.Fatal(v,ok)}
+ if child.Value("request_id")!="foreign"{t.Fatal("parent metadata lost")}
+ pd,_:=p.Deadline();cd,ok:=child.Deadline();if !ok||!cd.Equal(pd){t.Fatal("deadline lost")}
+ if v,ok:=RequestIDFromContext(p);v!=""||ok{t.Fatal("parent modified")}
+ empty:=WithRequestID(child,"")
+ if v,ok:=RequestIDFromContext(empty);v!=""||!ok{t.Fatal("empty id",v,ok)}
+ wrong:=context.WithValue(child,requestIDKey{},123)
+ if v,ok:=RequestIDFromContext(wrong);v!=""||ok{t.Fatal("wrong type",v,ok)}
+ stop()
+ select{case <-child.Done():case <-time.After(time.Second):t.Fatal("cancellation lost")}
+}
+
+func TestRunWithCancelCause(t *testing.T) {
+ marker:=errors.New("storage failed")
+ var child context.Context
+ err:=RunWithCancelCause(context.Background(),func(ctx context.Context)error{child=ctx;return marker})
+ if err!=marker||child==nil||child.Err()!=context.Canceled||context.Cause(child)!=marker{t.Fatal("cause lost",err)}
+ p,cancel:=context.WithCancelCause(context.Background());defer cancel(nil)
+ parentErr:=errors.New("client stopped");cancel(parentErr)
+ called:=false
+ if got:=RunWithCancelCause(p,func(context.Context)error{called=true;return marker});got!=parentErr||called{t.Fatal(got,called)}
+ p2,cancel2:=context.WithCancelCause(context.Background());defer cancel2(nil)
+ if got:=RunWithCancelCause(p2,func(ctx context.Context)error{cancel2(parentErr);<-ctx.Done();return marker});got!=parentErr{t.Fatal("first cause overwritten",got)}
+ var success context.Context
+ if got:=RunWithCancelCause(context.Background(),func(ctx context.Context)error{success=ctx;return nil});got!=nil||success==nil||success.Err()!=context.Canceled{t.Fatal("success cleanup",got)}
+
+ {
+  p,stop:=context.WithCancelCause(context.Background());defer stop(nil)
+  e:=RunWithCancelCause(p,func(ctx context.Context)error{stop(marker);<-ctx.Done();return nil})
+  if e!=marker{t.Fatal("parent cause lost",e)}
+ }
+}
+
+func TestSendWithContext(t *testing.T) {
+ out:=make(chan int,1)
+ if err:=SendWithContext(context.Background(),out,7);err!=nil||len(out)!=1{t.Fatal(err)}
+ p,cancel:=context.WithCancel(context.Background())
+ done:=make(chan error,1);go func(){done<-SendWithContext(p,out,9)}()
+ cancel()
+ select{case err:=<-done:if !errors.Is(err,context.Canceled){t.Fatal(err)};case <-time.After(time.Second):t.Fatal("blocked send not canceled")}
+ if len(out)!=1||<-out!=7{t.Fatal("unexpected send")}
+ if err:=SendWithContext(p,out,8);!errors.Is(err,context.Canceled)||len(out)!=0{t.Fatal("pre-canceled send",err)}
+ ctx,stop:=context.WithTimeout(context.Background(),5*time.Millisecond);defer stop()
+ wait:=make(chan error,1);go func(){wait<-SendWithContext(ctx,nil,1)}()
+ select{case err:=<-wait:if !errors.Is(err,context.DeadlineExceeded){t.Fatal(err)};case <-time.After(time.Second):t.Fatal("nil channel blocked")}
+ ch:=make(chan int);result:=make(chan error,1)
+ go func(){result<-SendWithContext(context.Background(),ch,42)}()
+ select{case v:=<-ch:if v!=42{t.Fatal(v)};case err:=<-result:t.Fatal("returned without sending",err);case <-time.After(time.Second):t.Fatal("missing send")}
+ select{case err:=<-result:if err!=nil{t.Fatal(err)};case <-time.After(time.Second):t.Fatal("did not return")}
+
+ {
+  ctx,stop:=context.WithCancel(context.Background());defer stop()
+  ch:=make(chan int);result:=make(chan error,1)
+  go func(){result<-SendWithContext(ctx,ch,91)}()
+  select{case e:=<-result:t.Fatal("returned without ready receiver",e);case <-time.After(20*time.Millisecond):}
+  stop()
+  select{case e:=<-result:if !errors.Is(e,context.Canceled){t.Fatal(e)};case <-time.After(time.Second):t.Fatal("blocked send ignored cancel")}
+ }
+}
+
+func TestBoundedQueue(t *testing.T){
+ q:=NewBoundedQueue(2)
+ if cap(q.jobs)!=2||cap(NewBoundedQueue(0).jobs)!=1{t.Fatal("wrong capacity")}
+ if v,ok:=q.TryDequeue();v!=0||ok{t.Fatal(v,ok)}
+ for _,v:=range []int{0,8}{if err:=q.Enqueue(context.Background(),v);err!=nil{t.Fatal(err)}}
+ ctx,cancel:=context.WithTimeout(context.Background(),10*time.Millisecond);defer cancel()
+ done:=make(chan error,1);go func(){done<-q.Enqueue(ctx,9)}()
+ select{case err:=<-done:if !errors.Is(err,context.DeadlineExceeded){t.Fatal(err)};case <-time.After(time.Second):t.Fatal("blocked queue")}
+ for _,want:=range []int{0,8}{if v,ok:=q.TryDequeue();!ok||v!=want{t.Fatal(v,ok,want)}}
+ p,stop:=context.WithCancel(context.Background());stop()
+ if err:=q.Enqueue(p,7);!errors.Is(err,context.Canceled)||len(q.jobs)!=0{t.Fatal(err)}
+ if err:=q.Enqueue(context.Background(),5);err!=nil{t.Fatal(err)}
+ if v,ok:=q.TryDequeue();!ok||v!=5{t.Fatal(v,ok)}
+
+ {
+  if cap(NewBoundedQueue(-2).jobs)!=1{t.Fatal("negative capacity")}
+  queue:=NewBoundedQueue(1);ctx,stop:=context.WithTimeout(context.Background(),time.Second);defer stop()
+  if e:=queue.Enqueue(ctx,1);e!=nil{t.Fatal(e)}
+  result:=make(chan error,1);go func(){result<-queue.Enqueue(ctx,2)}()
+  select{case e:=<-result:t.Fatal("returned while full",e);case <-time.After(20*time.Millisecond):}
+  if v,ok:=queue.TryDequeue();!ok||v!=1{t.Fatal(v,ok)}
+  select{case e:=<-result:if e!=nil{t.Fatal(e)};case <-time.After(time.Second):t.Fatal("enqueue did not resume")}
+  if v,ok:=queue.TryDequeue();!ok||v!=2{t.Fatal(v,ok)}
+ }
+}
+
+func TestOrderedFanOut(t *testing.T){
+ var active,peak,calls atomic.Int32
+ started:=make(chan int,4);release:=make(chan struct{})
+ result:=make(chan []int,1)
+ go func(){result<-OrderedFanOut([]int{4,2,9,1},2,func(v int)int{
+  n:=active.Add(1);defer active.Add(-1);calls.Add(1)
+  for {old:=peak.Load();if n<=old||peak.CompareAndSwap(old,n){break}}
+  started<-v;<-release;return v*2
+ })}()
+ for i:=0;i<2;i++{select{case <-started:case <-time.After(time.Second):close(release);t.Fatal("workers not concurrent")}}
+ close(release)
+ select{case got:=<-result:if !reflect.DeepEqual(got,[]int{8,4,18,2})||peak.Load()!=2||calls.Load()!=4{t.Fatal(got,peak.Load(),calls.Load())};case <-time.After(time.Second):t.Fatal("blocked")}
+ if got:=OrderedFanOut(nil,0,func(int)int{t.Fatal("unexpected work");return 0});got==nil||len(got)!=0{t.Fatal(got)}
+ if got:=OrderedFanOut([]int{3},0,func(v int)int{return v});!reflect.DeepEqual(got,[]int{3}){t.Fatal(got)}
+
+ {
+  input:=[]int{3,1,2};original:=append([]int(nil),input...)
+  var mu sync.Mutex;seen:=map[int]int{}
+  got:=OrderedFanOut(input,10,func(v int)int{mu.Lock();seen[v]++;mu.Unlock();return v*3})
+  if !reflect.DeepEqual(got,[]int{9,3,6})||!reflect.DeepEqual(input,original)||!reflect.DeepEqual(seen,map[int]int{1:1,2:1,3:1}){t.Fatal(got,input,seen)}
+  firstStarted,secondDone:=make(chan struct{}),make(chan struct{})
+  result:=make(chan []int,1)
+  go func(){result<-OrderedFanOut([]int{1,2},2,func(v int)int{if v==1{close(firstStarted);<-secondDone}else{<-firstStarted;close(secondDone)};return v*10})}()
+  select{case got:=<-result:if !reflect.DeepEqual(got,[]int{10,20}){t.Fatal(got)};case <-time.After(time.Second):t.Fatal("ordered workers blocked")}
+ }
+}
+
+func TestProcessConcurrentBatch(t *testing.T){
+ a,b:=errors.New("a"),errors.New("b")
+ var calls,active,peak atomic.Int32
+ started:=make(chan int,4);release:=make(chan struct{})
+ type result struct{v []int;err error};done:=make(chan result,1)
+ go func(){v,e:=ProcessConcurrentBatch([]int{4,-1,0,-2},2,func(v int)(int,error){
+  n:=active.Add(1);defer active.Add(-1);calls.Add(1)
+  for{old:=peak.Load();if n<=old||peak.CompareAndSwap(old,n){break}}
+  started<-v;<-release
+  if v==-1{return 99,a};if v==-2{return 98,b};return v*2,nil
+ });done<-result{v,e}}()
+ for i:=0;i<2;i++{select{case <-started:case <-time.After(time.Second):close(release);t.Fatal("not concurrent")}}
+ close(release)
+ select{case got:=<-done:if !reflect.DeepEqual(got.v,[]int{8,0})||!errors.Is(got.err,a)||!errors.Is(got.err,b)||calls.Load()!=4||peak.Load()!=2{t.Fatal(got,calls.Load(),peak.Load())};case <-time.After(time.Second):t.Fatal("blocked")}
+ v,e:=ProcessConcurrentBatch([]int{1,2},0,func(int)(int,error){return 7,a})
+ if v==nil||len(v)!=0||!errors.Is(e,a){t.Fatal(v,e)}
+ v,e=ProcessConcurrentBatch(nil,1,func(int)(int,error){return 0,nil});if v==nil||len(v)!=0||e!=nil{t.Fatal(v,e)}
+ v,e=ProcessConcurrentBatch([]int{0},1,func(v int)(int,error){return v,nil});if !reflect.DeepEqual(v,[]int{0})||e!=nil{t.Fatal(v,e)}
+
+ {
+  input:=[]int{1,2,3};original:=append([]int(nil),input...)
+  v,e:=ProcessConcurrentBatch(input,2,func(v int)(int,error){if v==1{return 0,a};if v==3{return 0,b};return v,nil})
+  joined,ok:=e.(interface{Unwrap() []error})
+  if !ok||!reflect.DeepEqual(joined.Unwrap(),[]error{a,b})||!reflect.DeepEqual(v,[]int{2})||!reflect.DeepEqual(input,original){t.Fatal("error order or result",v,e)}
+ }
+}
+
+func TestShutdownWorkers(t *testing.T){
+ var calls atomic.Int32
+ stopped:=make(chan struct{});done:=make(chan struct{})
+ cancel:=func(){calls.Add(1);close(stopped)}
+ result:=make(chan error,1)
+ go func(){result<-ShutdownWorkers(context.Background(),cancel,done)}()
+ select{case <-stopped:case <-time.After(time.Second):t.Fatal("cancel not called")}
+ select{case err:=<-result:t.Fatal("returned before completion",err);case <-time.After(20*time.Millisecond):}
+ close(done)
+ select{case err:=<-result:if err!=nil||calls.Load()!=1{t.Fatal(err,calls.Load())};case <-time.After(time.Second):t.Fatal("not finished")}
+ ctx,stop:=context.WithTimeout(context.Background(),5*time.Millisecond);defer stop()
+ wait:=make(chan error,1);go func(){wait<-ShutdownWorkers(ctx,func(){calls.Add(1)},nil)}()
+ select{case err:=<-wait:if !errors.Is(err,context.DeadlineExceeded)||calls.Load()!=2{t.Fatal(err)};case <-time.After(time.Second):t.Fatal("shutdown deadline ignored")}
+ expired,end:=context.WithCancel(context.Background());end()
+ if err:=ShutdownWorkers(expired,func(){calls.Add(1)},done);err!=nil||calls.Load()!=3{t.Fatal(err)}
+
+ {
+  ctx,stop:=context.WithCancel(context.Background());stop()
+  n:=0;open:=make(chan struct{})
+  if e:=ShutdownWorkers(ctx,func(){n++},open);!errors.Is(e,context.Canceled)||n!=1{t.Fatal(e,n)}
+ }
+}
+
+func TestRunFailFastGroup(t *testing.T){
+ marker:=errors.New("primary failure")
+ started:=make(chan struct{});exited:=make(chan struct{})
+ release:=make(chan struct{});result:=make(chan error,1)
+ jobs:=[]func(context.Context)error{
+  func(ctx context.Context)error{<-started;return marker},
+  func(ctx context.Context)error{close(started);<-ctx.Done();close(exited);<-release;return ctx.Err()},
+ }
+ go func(){result<-RunFailFastGroup(context.Background(),jobs)}()
+ select{case <-exited:case <-time.After(time.Second):close(release);t.Fatal("sibling not canceled")}
+ select{case err:=<-result:close(release);t.Fatal("returned before sibling exited",err);case <-time.After(20*time.Millisecond):}
+ close(release)
+ select{case err:=<-result:if err!=marker{t.Fatal(err)};case <-time.After(time.Second):t.Fatal("blocked")}
+ var calls atomic.Int32
+ okJobs:=[]func(context.Context)error{func(context.Context)error{calls.Add(1);return nil},func(context.Context)error{calls.Add(1);return nil}}
+ if err:=RunFailFastGroup(context.Background(),okJobs);err!=nil||calls.Load()!=2{t.Fatal(err,calls.Load())}
+ parent,stop:=context.WithCancelCause(context.Background());stop(marker)
+ if err:=RunFailFastGroup(parent,okJobs);err!=marker||calls.Load()!=2{t.Fatal(err,calls.Load())}
+ if err:=RunFailFastGroup(context.Background(),nil);err!=nil{t.Fatal(err)}
+
+ {
+  parent,stop:=context.WithCancelCause(context.Background());defer stop(nil)
+  started:=make(chan struct{});out:=make(chan error,1)
+  go func(){out<-RunFailFastGroup(parent,[]func(context.Context)error{func(ctx context.Context)error{close(started);<-ctx.Done();return errors.New("secondary")}})}()
+  select{case <-started:case <-time.After(time.Second):t.Fatal("job not started")}
+  stop(marker)
+  select{case e:=<-out:if e!=marker{t.Fatal(e)};case <-time.After(time.Second):t.Fatal("parent cancel ignored")}
+  var child context.Context
+  if e:=RunFailFastGroup(context.Background(),[]func(context.Context)error{func(ctx context.Context)error{child=ctx;return nil}});e!=nil||child==nil||child.Err()!=context.Canceled{t.Fatal("cleanup",e)}
+ }
+}

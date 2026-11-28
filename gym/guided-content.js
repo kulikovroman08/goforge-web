@@ -12744,5 +12744,3949 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "Для полностью валидного DTO или конфигурации нужен полный результат. Fail-fast не откатывает внешние действия.",
     "interview": "Когда выбирать fail-fast вместо частичного успеха?"
+  },
+  "concurrency-start-goroutine": {
+    "frames": [
+      [
+        "Вызов",
+        [
+          "G1: StartBackgroundWork",
+          "work: готов"
+        ],
+        "work ещё не вызван",
+        "Передаём функцию, не результат её вызова."
+      ],
+      [
+        "Запуск",
+        [
+          "G1: go work()",
+          "G2: runnable"
+        ],
+        "Создана G2",
+        "Планировщик может запустить G2 до или после возврата G1."
+      ],
+      [
+        "Возврат",
+        [
+          "G1: продолжает",
+          "G2: выполняет work"
+        ],
+        "Нет ожидания",
+        "Это один возможный порядок; завершение G2 не гарантировано к моменту возврата."
+      ],
+      [
+        "Завершение",
+        [
+          "G2: done"
+        ],
+        "work завершилась",
+        "Для ожидания нужен явный сигнал или WaitGroup."
+      ]
+    ],
+    "steps": [
+      [
+        "Получить callback",
+        "work func()",
+        "Функция приходит как аргумент. Её тело ещё не выполнено."
+      ],
+      [
+        "Запустить горутину",
+        "go work()",
+        "go вычисляет функцию и аргументы в вызывающей горутине, а тело выполняется конкурентно."
+      ],
+      [
+        "Вернуть управление",
+        "// конец функции",
+        "Не ждём work. Планировщик не гарантирует, какая горутина продолжит первой."
+      ]
+    ],
+    "blocks": [
+      "Вернуть управление",
+      "Запустить горутину",
+      "Получить callback"
+    ],
+    "order": [
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "",
+        "after": " work()",
+        "options": [
+          "go",
+          "defer",
+          "return"
+        ],
+        "correct": 0,
+        "explain": "go запускает вызов конкурентно."
+      },
+      {
+        "before": "go ",
+        "after": "()",
+        "options": [
+          "work",
+          "nil",
+          "close"
+        ],
+        "correct": 0,
+        "explain": "Вызываем переданный callback."
+      }
+    ],
+    "partial": "package practice\n\nfunc StartBackgroundWork(work func()) {\n\t// TODO: запусти work в отдельной горутине\n}\n",
+    "bug": "package practice\n\nfunc StartBackgroundWork(work func()) {\n\twork()\n}\n",
+    "hints": [
+      "Нужно вызвать callback, но не в текущей горутине.",
+      "В Go отдельный конкурентный вызов начинается с ключевого слова go.",
+      "Напиши вызов work() после go.",
+      "Не добавляй Wait, Sleep или повторный вызов.",
+      "go work()"
+    ],
+    "related": [
+      [
+        "concurrency-done-signal",
+        "Повторить запуск горутины"
+      ],
+      [
+        "race",
+        "Связь с синхронизацией"
+      ]
+    ],
+    "production": "Фоновая работа должна иметь владельца жизненного цикла. Не запускай неконтролируемую горутину на каждый HTTP-запрос: нужны отмена, лимиты и политика ошибок.",
+    "interview": "Гарантирует ли go, что новая горутина начнёт или завершит работу до возврата?"
+  },
+  "concurrency-done-signal": {
+    "frames": [
+      [
+        "Создание",
+        [
+          "done: open",
+          "G1: ready"
+        ],
+        "done := make(chan struct{})",
+        "Нет сообщения о завершении."
+      ],
+      [
+        "Работа",
+        [
+          "G2: work()",
+          "done: open"
+        ],
+        "G1 получает done",
+        "Получатель может ждать <-done."
+      ],
+      [
+        "Завершение",
+        [
+          "G2: return",
+          "done: closed"
+        ],
+        "defer close(done)",
+        "Закрытие происходит только после возврата work."
+      ],
+      [
+        "Получение сигнала",
+        [
+          "G1: unblocked",
+          "done: closed"
+        ],
+        "_, ok := <-done → ok=false",
+        "Все ожидающие чтения могут продолжить."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать сигнал",
+        "done := make(chan struct{})",
+        "struct{} не содержит данных. Канал нужен только как сигнал."
+      ],
+      [
+        "Запустить исполнителя",
+        "go func() {",
+        "Анонимная функция выполняется в отдельной горутине и захватывает done и work."
+      ],
+      [
+        "Запланировать закрытие",
+        "    defer close(done)",
+        "Закрытие произойдёт при выходе из этой функции, после work. Закрывает владелец сигнала."
+      ],
+      [
+        "Выполнить работу",
+        "    work()\n}()",
+        "Скобки () вызывают анонимную функцию; без них go statement невалиден."
+      ],
+      [
+        "Вернуть канал",
+        "return done",
+        "<-chan struct{} позволяет получателю читать, но не закрывать канал. <-done ожидает завершения."
+      ]
+    ],
+    "blocks": [
+      "Вернуть канал",
+      "Выполнить работу",
+      "Запланировать закрытие",
+      "Запустить исполнителя",
+      "Создать сигнал"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "done := make(",
+        "after": " )",
+        "options": [
+          "chan struct{}",
+          "struct{}",
+          "[]struct{}"
+        ],
+        "correct": 0,
+        "explain": "Создаём канал сигнала."
+      },
+      {
+        "before": "defer ",
+        "after": "(done)",
+        "options": [
+          "close",
+          "delete",
+          "len"
+        ],
+        "correct": 0,
+        "explain": "Закрытие сигнализирует о завершении."
+      }
+    ],
+    "partial": "package practice\n\nfunc RunWithDone(work func()) <-chan struct{} {\n\tdone := make(chan struct{})\n\tgo func() {\n\t    work()\n\t    // TODO: закрой done после выполнения\n\t}()\n\treturn done\n}\n",
+    "bug": "package practice\n\nfunc RunWithDone(work func()) <-chan struct{} {\n\tdone := make(chan struct{})\n\tclose(done)\n\tgo work()\n\treturn done\n}\n",
+    "hints": [
+      "Сначала создай канал без полезной нагрузки.",
+      "Верни канал только для чтения.",
+      "Запусти анонимную функцию через go func(){...}().",
+      "Внутри неё зарегистрируй defer close(done), затем вызови work.",
+      "done := make(chan struct{})\ngo func(){defer close(done);work()}()\nreturn done"
+    ],
+    "related": [
+      [
+        "concurrency-start-goroutine",
+        "Повторить запуск горутины"
+      ],
+      [
+        "race",
+        "Связь с синхронизацией"
+      ]
+    ],
+    "production": "Сигнал закрытия удобно использовать для ожидания завершения worker-а. Для остановки обычно нужен отдельный сигнал отмены: done сообщает о фактическом завершении, а не просит остановиться.",
+    "interview": "Почему закрытый done-канал лучше одиночной отправки для нескольких ожидающих?"
+  },
+  "concurrency-result-channel": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "work → 42",
+          "out: cap=1"
+        ],
+        "len=0",
+        "Создаём место для одного результата."
+      ],
+      [
+        "Вычисление",
+        [
+          "G2: work()",
+          "G1: продолжает"
+        ],
+        "out: open, len=0",
+        "Работа выполняется конкурентно."
+      ],
+      [
+        "Отправка",
+        [
+          "out: [42]",
+          "G2: done"
+        ],
+        "close(out), len=1",
+        "Даже без читателя единственное значение помещается в буфер."
+      ],
+      [
+        "Чтение",
+        [
+          "v=42, ok=true",
+          "len=0"
+        ],
+        "следующее чтение: 0,false",
+        "Закрытие не удаляет накопленные данные."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать буфер",
+        "out := make(chan int, 1)",
+        "Ёмкость 1 позволяет сохранить один результат без готового получателя."
+      ],
+      [
+        "Запустить вычисление",
+        "go func() {",
+        "Вызов возвращает канал, пока вычисление может продолжаться."
+      ],
+      [
+        "Запланировать закрытие",
+        "    defer close(out)",
+        "Получатель увидит конец потока после получения единственного значения."
+      ],
+      [
+        "Отправить результат",
+        "    out <- work()\n}()",
+        "Сначала вычисляется work(), затем результат записывается в канал. Ноль тоже допустим."
+      ],
+      [
+        "Вернуть поток",
+        "return out",
+        "Получатель читает значение; после опустошения закрытого канала ok=false."
+      ]
+    ],
+    "blocks": [
+      "Вернуть поток",
+      "Отправить результат",
+      "Запланировать закрытие",
+      "Запустить вычисление",
+      "Создать буфер"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out := make(chan int, ",
+        "after": ")",
+        "options": [
+          "0",
+          "1",
+          "2"
+        ],
+        "correct": 1,
+        "explain": "Контракт требует ёмкость ровно 1."
+      },
+      {
+        "before": "out ",
+        "after": " work()",
+        "options": [
+          "<-",
+          "=",
+          "->"
+        ],
+        "correct": 0,
+        "explain": "Оператор <- отправляет результат."
+      }
+    ],
+    "partial": "package practice\n\nfunc ComputeAsync(work func() int) <-chan int {\n\tout := make(chan int, 1)\n\tgo func() {\n\t    defer close(out)\n\t    // TODO: отправь результат callback\n\t}()\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc ComputeAsync(work func() int) <-chan int {\n\tout := make(chan int)\n\tgo func() {\n\t    defer close(out)\n\t    out <- work()\n\t}()\n\treturn out\n}\n",
+    "hints": [
+      "Нужен канал с одним местом для результата.",
+      "Создай out через make(chan int, 1).",
+      "Внутри go func(){...}() зарегистрируй defer close(out).",
+      "Отправь результат вызова work() через out <- work().",
+      "out := make(chan int,1)\ngo func(){defer close(out);out<-work()}()\nreturn out"
+    ],
+    "related": [
+      [
+        "concurrency-start-goroutine",
+        "Повторить запуск горутины"
+      ],
+      [
+        "race",
+        "Связь с синхронизацией"
+      ]
+    ],
+    "production": "Буфер на один результат предотвращает зависание отправителя после завершения вычисления, если читатель ушёл. Но он не отменяет само вычисление и не подходит для бесконечного потока.",
+    "interview": "Почему буфер 1 подходит для одноразового результата?"
+  },
+  "concurrency-wait-group": {
+    "frames": [
+      [
+        "Регистрация",
+        [
+          "A",
+          "B",
+          "C"
+        ],
+        "wg=3",
+        "Регистрируем всех работников до запуска."
+      ],
+      [
+        "Запуск",
+        [
+          "G-A: running",
+          "G-B: running",
+          "G-C: running"
+        ],
+        "wg=3; G1: Wait",
+        "Один из возможных порядков."
+      ],
+      [
+        "B завершилась",
+        [
+          "A: running",
+          "B: done",
+          "C: running"
+        ],
+        "wg=2",
+        "Done уменьшает счётчик."
+      ],
+      [
+        "Все завершились",
+        [
+          "A: done",
+          "B: done",
+          "C: done"
+        ],
+        "wg=0; Wait returns",
+        "Возвращаем управление после всех callback."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать счётчик",
+        "var wg sync.WaitGroup",
+        "Zero value WaitGroup готов к использованию."
+      ],
+      [
+        "Зарегистрировать задачи",
+        "wg.Add(len(jobs))",
+        "Add выполняется до запуска, иначе Wait может увидеть ноль слишком рано."
+      ],
+      [
+        "Перебрать операции",
+        "for _, job := range jobs {",
+        "Берём callback из среза, индекс не нужен."
+      ],
+      [
+        "Запустить работника",
+        "    go func(fn func()) {",
+        "Передадим callback параметром, чтобы привязать конкретную функцию к вызову."
+      ],
+      [
+        "Отметить завершение",
+        "        defer wg.Done()\n        fn()\n    }(job)\n}",
+        "Done уменьшает счётчик после окончания callback, а не перед ним."
+      ],
+      [
+        "Дождаться всех",
+        "wg.Wait()",
+        "Wait возвращается при нулевом счётчике. Он не защищает общую изменяемую память."
+      ]
+    ],
+    "blocks": [
+      "Дождаться всех",
+      "Отметить завершение",
+      "Запустить работника",
+      "Перебрать операции",
+      "Зарегистрировать задачи",
+      "Создать счётчик"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "wg.Add(",
+        "after": " )",
+        "options": [
+          "len(jobs)",
+          "1",
+          "0"
+        ],
+        "correct": 0,
+        "explain": "Одна регистрация на callback."
+      },
+      {
+        "before": "defer wg.",
+        "after": "()",
+        "options": [
+          "Done",
+          "Wait",
+          "Add"
+        ],
+        "correct": 0,
+        "explain": "Уменьшаем счётчик после работы."
+      }
+    ],
+    "partial": "package practice\n\nfunc RunAllWork(jobs []func()) {\n\tvar wg sync.WaitGroup\n\twg.Add(len(jobs))\n\tfor _, job := range jobs {\n\t    go func(fn func()) {\n\t        defer wg.Done()\n\t        fn()\n\t    }(job)\n\t}\n\t// TODO: дождись всех операций\n}\n",
+    "bug": "package practice\n\nfunc RunAllWork(jobs []func()) {\n\tfor _, job := range jobs { job() }\n}\n",
+    "hints": [
+      "Нужен sync.WaitGroup для учёта завершения.",
+      "Зарегистрируй len(jobs) до запуска.",
+      "Передавай job параметром в анонимную горутину.",
+      "Внутри defer wg.Done(); после цикла wg.Wait().",
+      "var wg sync.WaitGroup\nwg.Add(len(jobs))\nfor _,job:=range jobs{go func(fn func()){defer wg.Done();fn()}(job)}\nwg.Wait()"
+    ],
+    "related": [
+      [
+        "concurrency-start-goroutine",
+        "Повторить запуск горутины"
+      ],
+      [
+        "race",
+        "Связь с синхронизацией"
+      ]
+    ],
+    "production": "WaitGroup удобен для небольшого фиксированного набора независимых операций. Для тысяч задач нужен лимит; для ошибок и отмены — дополнительный механизм.",
+    "interview": "Почему WaitGroup не заменяет Mutex?"
+  },
+  "concurrency-loop-arguments": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "i=0:v=2",
+          "i=1:v=5",
+          "i=2:v=3"
+        ],
+        "out=[0,0,0]; wg=3",
+        "Пусть transform удваивает число."
+      ],
+      [
+        "Запуск",
+        [
+          "G0(0,2)",
+          "G1(1,5)",
+          "G2(2,3)"
+        ],
+        "out=[0,0,0]",
+        "Аргументы вычислены при каждом go-вызове."
+      ],
+      [
+        "Один возможный порядок",
+        [
+          "G1: done",
+          "G2: done",
+          "G0: running"
+        ],
+        "out=[0,10,6]; wg=1",
+        "Порядок завершения произвольный."
+      ],
+      [
+        "Результат",
+        [
+          "G0: done",
+          "wg=0"
+        ],
+        "out=[4,10,6]",
+        "Wait завершён; порядок входа сохранён."
+      ]
+    ],
+    "steps": [
+      [
+        "Выделить результат",
+        "out := make([]int, len(values))",
+        "Каждому входному индексу соответствует отдельное место; append не нужен."
+      ],
+      [
+        "Зарегистрировать работы",
+        "var wg sync.WaitGroup\nwg.Add(len(values))",
+        "WaitGroup обеспечивает завершение всех записей до чтения результата."
+      ],
+      [
+        "Получить индекс и значение",
+        "for i, v := range values {",
+        "Индекс сохраняет порядок независимо от порядка завершения горутин."
+      ],
+      [
+        "Передать аргументы",
+        "    go func(index, value int) {",
+        "Явные параметры делают привязку понятной в любой версии Go; Go 1.22+ также создаёт отдельные range-переменные при := при соответствующей версии языка."
+      ],
+      [
+        "Записать результат",
+        "        defer wg.Done()\n        out[index] = transform(value)\n    }(i, v)\n}",
+        "Каждая горутина пишет в отдельный элемент заранее выделенного среза. Заголовок среза не меняется."
+      ],
+      [
+        "Дождаться и вернуть",
+        "wg.Wait()\nreturn out",
+        "Читаем результат после завершения всех записей. Никакой гарантии порядка выполнения callback нет."
+      ]
+    ],
+    "blocks": [
+      "Дождаться и вернуть",
+      "Записать результат",
+      "Передать аргументы",
+      "Получить индекс и значение",
+      "Зарегистрировать работы",
+      "Выделить результат"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "go func(index, value int){ ... }(",
+        "after": " )",
+        "options": [
+          "i,v",
+          "v,i",
+          "0,0"
+        ],
+        "correct": 0,
+        "explain": "Передаём текущую пару индекса и значения."
+      },
+      {
+        "before": "out[",
+        "after": "] = transform(value)",
+        "options": [
+          "index",
+          "value",
+          "0"
+        ],
+        "correct": 0,
+        "explain": "Индекс задаёт позицию результата."
+      }
+    ],
+    "partial": "package practice\n\nfunc MapInGoroutines(values []int, transform func(int) int) []int {\n\tout := make([]int,len(values))\n\tvar wg sync.WaitGroup\n\twg.Add(len(values))\n\tfor i,v:=range values {\n\t    go func(index,value int){\n\t        defer wg.Done()\n\t        // TODO: запиши результат transform(value) по index\n\t        _ = index; _ = value\n\t    }(i,v)\n\t}\n\twg.Wait()\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc MapInGoroutines(values []int, transform func(int) int) []int {\n\tout := make([]int,len(values))\n\tvar wg sync.WaitGroup\n\twg.Add(len(values))\n\tfor i,v:=range values {\n\t    go func(index,value int){\n\t        defer wg.Done()\n\t        out[index] = transform(values[0])\n\t    }(i,v)\n\t}\n\twg.Wait()\n\treturn out\n}\n",
+    "hints": [
+      "Выдели выходной срез нужной длины заранее.",
+      "Для каждой горутины передай i и v отдельными параметрами.",
+      "Регистрируй WaitGroup до запуска; внутри defer Done.",
+      "Записывай результат в out[index], а не append.",
+      "out:=make([]int,len(values))\nvar wg sync.WaitGroup\nwg.Add(len(values))\nfor i,v:=range values{go func(index,value int){defer wg.Done();out[index]=transform(value)}(i,v)}\nwg.Wait()\nreturn out"
+    ],
+    "related": [
+      [
+        "concurrency-start-goroutine",
+        "Повторить запуск горутины"
+      ],
+      [
+        "race",
+        "Связь с синхронизацией"
+      ]
+    ],
+    "production": "Для небольших независимых преобразований индекс помогает сохранить порядок. Для большой партии используй ограниченную конкурентность; callback обязан самостоятельно защищать общие зависимости.",
+    "interview": "Почему отдельные индексы можно записывать без mutex, а общий append — нет?"
+  },
+  "concurrency-unbuffered": {
+    "frames": [
+      [
+        "Подготовка",
+        [
+          "G1: ready",
+          "ch: cap=0",
+          "done: open"
+        ],
+        "value=42",
+        "Создаём канал и отдельный сигнал."
+      ],
+      [
+        "Ожидание",
+        [
+          "G1: send 42",
+          "G2: receive"
+        ],
+        "ch: rendezvous",
+        "Отправка и получение синхронизируются. До готовности другой стороны операция ждёт."
+      ],
+      [
+        "Передача",
+        [
+          "G2: 42",
+          "G1: close(ch)"
+        ],
+        "ch: closed",
+        "Получатель видит значение, затем конец потока."
+      ],
+      [
+        "Завершение",
+        [
+          "G2: return",
+          "done: closed"
+        ],
+        "G1: return",
+        "Вызывающая функция ждёт завершения callback."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать канал",
+        "ch := make(chan int)",
+        "make создаёт канал ёмкостью 0. Отправка требует готового получателя; значение не хранится в очереди."
+      ],
+      [
+        "Создать сигнал завершения",
+        "done := make(chan struct{})",
+        "Этот канал сообщает, что callback вернулся. Закрытие сигнала не переносит полезные данные."
+      ],
+      [
+        "Запустить получателя",
+        "go func() {\n    defer close(done)\n    receive(ch)\n}()",
+        "Если вызвать receive синхронно, он будет ждать отправку, до которой вызывающая функция не дошла. go позволяет обеим сторонам встретиться."
+      ],
+      [
+        "Передать значение",
+        "ch <- value",
+        "Оператор <- слева от значения означает отправку. При cap=0 отправитель ждёт получателя."
+      ],
+      [
+        "Закрыть поток",
+        "close(ch)",
+        "Больше отправок не будет. Получатель, читающий range, сможет выйти."
+      ],
+      [
+        "Дождаться callback",
+        "<-done",
+        "Закрытие done выполняется после возврата receive. Теперь функция гарантирует завершение callback."
+      ]
+    ],
+    "blocks": [
+      "Дождаться callback",
+      "Закрыть поток",
+      "Передать значение",
+      "Запустить получателя",
+      "Создать сигнал завершения",
+      "Создать канал"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "ch := make(",
+        "after": " )",
+        "options": [
+          "chan int",
+          "[]int",
+          "chan int, 1"
+        ],
+        "correct": 0,
+        "explain": "Нужен канал без буфера."
+      },
+      {
+        "before": "ch ",
+        "after": " value",
+        "options": [
+          "<-",
+          "=",
+          "->"
+        ],
+        "correct": 0,
+        "explain": "Отправка выполняется оператором <-."
+      },
+      {
+        "before": "",
+        "after": "done",
+        "options": [
+          "<-",
+          "close(",
+          "go "
+        ],
+        "correct": 0,
+        "explain": "Чтение сигнала ждёт завершения."
+      }
+    ],
+    "partial": "package practice\n\nfunc ExchangeValue(value int, receive func(<-chan int)) {\n\tch := make(chan int)\n\tdone := make(chan struct{})\n\tgo func() {\n\t    defer close(done)\n\t    receive(ch)\n\t}()\n\t// TODO: передай value\n\tclose(ch)\n\t<-done\n}\n",
+    "bug": "package practice\n\nfunc ExchangeValue(value int, receive func(<-chan int)) {\n\tch := make(chan int, 1)\n\tdone := make(chan struct{})\n\tgo func(){defer close(done);receive(ch)}()\n\tch <- value\n\tclose(ch)\n\t<-done\n}\n",
+    "hints": [
+      "Создай канал int без буфера и сигнал done.",
+      "Запусти receive(ch) в отдельной горутине.",
+      "В горутине используй defer close(done).",
+      "Отправь value, закрой ch, затем дождись <-done.",
+      "ch:=make(chan int)\ndone:=make(chan struct{})\ngo func(){defer close(done);receive(ch)}()\nch<-value\nclose(ch)\n<-done"
+    ],
+    "related": [
+      [
+        "concurrency-done-signal",
+        "Повторить передачу и завершение"
+      ],
+      [
+        "channel-merge",
+        "Связь с production"
+      ]
+    ],
+    "production": "Небуферизованный канал создаёт backpressure: отправка ждёт готового получателя, но не завершения обработки. Для бесконечного потока нужна отмена и согласованный владелец закрытия.",
+    "interview": "Чем небуферизованный канал отличается от канала ёмкостью один?"
+  },
+  "concurrency-buffer-events": {
+    "frames": [
+      [
+        "Начало",
+        [
+          "[ ]",
+          "[ ]",
+          "[ ]"
+        ],
+        "len=0; cap=3",
+        "Вход: 4, 0, 9."
+      ],
+      [
+        "Первая отправка",
+        [
+          "4",
+          "[ ]",
+          "[ ]"
+        ],
+        "len=1; cap=3",
+        "Осталось два места."
+      ],
+      [
+        "Заполнение",
+        [
+          "4",
+          "0",
+          "9"
+        ],
+        "len=3; cap=3",
+        "Четвёртая отправка без чтения блокировалась бы."
+      ],
+      [
+        "Закрытие",
+        [
+          "4",
+          "0",
+          "9"
+        ],
+        "closed; len=3",
+        "Все значения ещё доступны."
+      ],
+      [
+        "Дочитали",
+        [
+          "[ ]",
+          "[ ]",
+          "[ ]"
+        ],
+        "len=0; cap=3; ok=false",
+        "Ёмкость не меняется после чтения и закрытия."
+      ]
+    ],
+    "steps": [
+      [
+        "Определить ёмкость",
+        "out := make(chan int, len(events))",
+        "len(events) задаёт количество мест. Отправка каждого из N элементов завершится без читателя, пока в буфере есть место."
+      ],
+      [
+        "Перебрать вход",
+        "for _, event := range events {",
+        "range идёт по срезу в порядке индексов. Индекс здесь не нужен."
+      ],
+      [
+        "Заполнить очередь",
+        "    out <- event\n}",
+        "Каждая отправка увеличивает число ожидающих значений. Буфер не расширяется автоматически."
+      ],
+      [
+        "Закрыть канал",
+        "close(out)",
+        "Закрытие запрещает дальнейшую отправку, но не стирает очередь."
+      ],
+      [
+        "Вернуть поток",
+        "return out",
+        "Получатель читает сохранённые значения; после опустошения канала чтение возвращает zero value и ok=false."
+      ]
+    ],
+    "blocks": [
+      "Вернуть поток",
+      "Закрыть канал",
+      "Заполнить очередь",
+      "Перебрать вход",
+      "Определить ёмкость"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out := make(chan int, ",
+        "after": ")",
+        "options": [
+          "len(events)",
+          "0",
+          "1"
+        ],
+        "correct": 0,
+        "explain": "Нужно место для каждого события."
+      },
+      {
+        "before": "",
+        "after": "(out)",
+        "options": [
+          "close",
+          "delete",
+          "clear"
+        ],
+        "correct": 0,
+        "explain": "Закрываем поток перед возвратом."
+      }
+    ],
+    "partial": "package practice\n\nfunc BufferEvents(events []int) <-chan int {\n\tout := make(chan int, len(events))\n\tfor _, event := range events {\n\t    _ = event\n\t    // TODO: отправь событие\n\t}\n\tclose(out)\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc BufferEvents(events []int) <-chan int {\n\tout := make(chan int, len(events)+1)\n\tfor _, event := range events { out <- event }\n\tclose(out)\n\treturn out\n}\n",
+    "hints": [
+      "Сначала выдели буфер на все элементы.",
+      "Используй make(chan int, len(events)).",
+      "Перебери events через range, отправляя каждый элемент.",
+      "После цикла закрой out и верни его.",
+      "out:=make(chan int,len(events))\nfor _,v:=range events{out<-v}\nclose(out)\nreturn out"
+    ],
+    "related": [
+      [
+        "concurrency-unbuffered",
+        "Повторить передачу и завершение"
+      ],
+      [
+        "select-first",
+        "Связь с production"
+      ]
+    ],
+    "production": "Полное буферизование подходит для небольшого известного пакета. Для большого потока буфер ограничивают по ресурсам и определяют поведение при заполнении; len не является надёжным условием для конкурентной отправки.",
+    "interview": "Что происходит с накопленными значениями при close buffered channel?"
+  },
+  "concurrency-collect-events": {
+    "frames": [
+      [
+        "Поток",
+        [
+          "in: 7",
+          "in: 0",
+          "in: 7"
+        ],
+        "out=[]",
+        "Производитель отправляет события и закрывает вход."
+      ],
+      [
+        "Чтение 7",
+        [
+          "in: 0",
+          "in: 7"
+        ],
+        "out=[7]",
+        "Добавляем первое значение."
+      ],
+      [
+        "Чтение 0",
+        [
+          "in: 7"
+        ],
+        "out=[7,0]",
+        "Ноль не означает закрытие."
+      ],
+      [
+        "Конец",
+        [
+          "in: closed & empty"
+        ],
+        "out=[7,0,7]",
+        "range заканчивается после последнего значения."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать результат",
+        "out := make([]int, 0)",
+        "Пустой, но не nil срез удовлетворяет контракту даже для пустого потока."
+      ],
+      [
+        "Читать поток",
+        "for event := range in {",
+        "range над каналом получает по одному значению и завершает цикл только после закрытия и исчерпания. Пустой открытый канал заставляет ждать."
+      ],
+      [
+        "Сохранить значение",
+        "    out = append(out, event)\n}",
+        "append возвращает обновлённый срез. Любое полученное значение, включая 0 и дубликаты, является частью потока."
+      ],
+      [
+        "Вернуть результат",
+        "return out",
+        "Выход из range означает, что поток закрыт и полностью дочитан. Получатель не закрывает чужой канал."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Сохранить значение",
+      "Читать поток",
+      "Создать результат"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "for event := ",
+        "after": " in {",
+        "options": [
+          "range",
+          "select",
+          "close"
+        ],
+        "correct": 0,
+        "explain": "range дочитывает канал."
+      },
+      {
+        "before": "out = append(out, ",
+        "after": ")",
+        "options": [
+          "event",
+          "0",
+          "in"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем фактическое значение."
+      }
+    ],
+    "partial": "package practice\n\nfunc CollectEvents(in <-chan int) []int {\n\tout := make([]int, 0)\n\tfor event := range in {\n\t    _ = event\n\t    // TODO: добавь событие в out\n\t}\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc CollectEvents(in <-chan int) []int {\n\tout := make([]int, 0)\n\tfor event := range in {\n\t    if event != 0 {out=append(out,event)}\n\t}\n\treturn out\n}\n",
+    "hints": [
+      "Создай пустой срез int.",
+      "Используй for event := range in.",
+      "В теле добавляй каждый event через append.",
+      "Не проверяй event==0 и не закрывай вход.",
+      "out:=make([]int,0)\nfor event:=range in{out=append(out,event)}\nreturn out"
+    ],
+    "related": [
+      [
+        "concurrency-unbuffered",
+        "Повторить передачу и завершение"
+      ],
+      [
+        "channel-pipeline",
+        "Связь с production"
+      ]
+    ],
+    "production": "Сбор конечного потока удобен для ограниченных партий. Для бесконечной подписки range без context может зависнуть навсегда, а накопление всех событий может исчерпать память.",
+    "interview": "Когда завершается for v := range ch?"
+  },
+  "concurrency-receive-value": {
+    "frames": [
+      [
+        "Открытый буфер",
+        [
+          "in: [0,8]"
+        ],
+        "value=?, ok=?",
+        "Ноль является обычным отправленным значением."
+      ],
+      [
+        "Первое чтение",
+        [
+          "in: [8]"
+        ],
+        "value=0; ok=true",
+        "Данные получены."
+      ],
+      [
+        "После close",
+        [
+          "in: [8]"
+        ],
+        "value=8; ok=true",
+        "Закрытый канал всё ещё отдаёт накопленное."
+      ],
+      [
+        "Исчерпание",
+        [
+          "in: closed, empty"
+        ],
+        "value=0; ok=false",
+        "Теперь ноль синтетический: отправленного значения нет."
+      ]
+    ],
+    "steps": [
+      [
+        "Выполнить чтение",
+        "value, ok := <-in",
+        "Comma-ok даёт два результата. value — полученное значение; ok=true значит, что значение реально отправлено, даже если оно равно нулю."
+      ],
+      [
+        "Вернуть оба результата",
+        "return value, ok",
+        "При закрытом исчерпанном канале Go возвращает 0,false. Не нужно самостоятельно угадывать статус по значению или длине буфера."
+      ]
+    ],
+    "blocks": [
+      "Вернуть оба результата",
+      "Выполнить чтение"
+    ],
+    "order": [
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "value, ok := ",
+        "after": "in",
+        "options": [
+          "<-",
+          "->",
+          "close("
+        ],
+        "correct": 0,
+        "explain": "Оператор чтения расположен перед каналом."
+      },
+      {
+        "before": "return value, ",
+        "after": "",
+        "options": [
+          "ok",
+          "value != 0",
+          "len(in)>0"
+        ],
+        "correct": 0,
+        "explain": "Используем фактический признак от операции чтения."
+      }
+    ],
+    "partial": "package practice\n\nfunc ReceiveValue(in <-chan int) (int, bool) {\n\tvalue, ok := <-in\n\t// TODO: верни фактический признак получения\n\t_ = ok\n\treturn value, false\n}\n",
+    "bug": "package practice\n\nfunc ReceiveValue(in <-chan int) (int, bool) {\n\tvalue := <-in\n\treturn value, value != 0\n}\n",
+    "hints": [
+      "Операция чтения умеет вернуть два значения.",
+      "Напиши value, ok := <-in.",
+      "ok не зависит от численного значения.",
+      "Верни оба результата без дополнительных условий.",
+      "value,ok:=<-in\nreturn value,ok"
+    ],
+    "related": [
+      [
+        "concurrency-unbuffered",
+        "Повторить передачу и завершение"
+      ],
+      [
+        "select-first",
+        "Связь с production"
+      ]
+    ],
+    "production": "Comma-ok позволяет корректно отличить отключение источника событий от валидного сообщения с zero value. В select закрытый канал остаётся готовым к чтению; его нужно обработать отдельно.",
+    "interview": "Чем value=0,ok=true отличается от value=0,ok=false?"
+  },
+  "concurrency-produce-events": {
+    "frames": [
+      [
+        "Подготовка",
+        [
+          "G1: consumer",
+          "G2: producer",
+          "out: cap=0"
+        ],
+        "events=[3,0,5]",
+        "Разделяем доступ по направлениям."
+      ],
+      [
+        "Отправка",
+        [
+          "G2: dst <- 3",
+          "G1: <-out"
+        ],
+        "received=[3]",
+        "Обе стороны синхронизируются."
+      ],
+      [
+        "Последующие значения",
+        [
+          "G2: 0,5",
+          "G1: range"
+        ],
+        "received=[3,0,5]",
+        "Порядок одного отправителя сохраняется."
+      ],
+      [
+        "Конец",
+        [
+          "G2: close(dst)",
+          "G1: range ends"
+        ],
+        "out: closed",
+        "Получатель не закрывает выход."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать канал",
+        "out := make(chan int)",
+        "Канал без буфера синхронизирует каждую отправку с получением."
+      ],
+      [
+        "Запустить производителя",
+        "go func(dst chan<- int) {",
+        "Параметр chan<- int разрешает отправку и закрытие, но запрещает чтение. Передача out этому параметру сужает доступ."
+      ],
+      [
+        "Закрыть при завершении",
+        "    defer close(dst)",
+        "Единственный производитель знает, когда отправок больше не будет."
+      ],
+      [
+        "Перебрать события",
+        "    for _, event := range events {",
+        "Читаем входной срез в порядке индексов; вызывающий код не должен менять его конкурентно."
+      ],
+      [
+        "Отправить данные",
+        "        dst <- event\n    }\n}(out)",
+        "Передаём все значения, включая нули. Если читатель не читает, отправка блокируется."
+      ],
+      [
+        "Вернуть доступ получателю",
+        "return out",
+        "Возвращаемый <-chan int запрещает отправку и close со стороны вызывающего. Закрытие — обязанность производителя."
+      ]
+    ],
+    "blocks": [
+      "Вернуть доступ получателю",
+      "Отправить данные",
+      "Перебрать события",
+      "Закрыть при завершении",
+      "Запустить производителя",
+      "Создать канал"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "go func(dst ",
+        "after": " ) {",
+        "options": [
+          "chan<- int",
+          "<-chan int",
+          "[]int"
+        ],
+        "correct": 0,
+        "explain": "Производителю нужен send-only канал."
+      },
+      {
+        "before": "defer ",
+        "after": "(dst)",
+        "options": [
+          "close",
+          "clear",
+          "delete"
+        ],
+        "correct": 0,
+        "explain": "Закрывает владелец отправки."
+      }
+    ],
+    "partial": "package practice\n\nfunc ProduceEvents(events []int) <-chan int {\n\tout := make(chan int)\n\tgo func(dst chan<- int) {\n\t    defer close(dst)\n\t    for _, event := range events {\n\t        _ = event\n\t        // TODO: отправь event в dst\n\t    }\n\t}(out)\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc ProduceEvents(events []int) <-chan int {\n\tout := make(chan int)\n\tgo func(dst chan<- int) {\n\t    for _, event := range events {dst<-event}\n\t    // забыли close(dst)\n\t}(out)\n\treturn out\n}\n",
+    "hints": [
+      "Создай out := make(chan int).",
+      "Запусти go func(dst chan<- int){...}(out).",
+      "Внутри зарегистрируй defer close(dst).",
+      "Перебери events и отправляй каждый через dst <- event.",
+      "out:=make(chan int)\ngo func(dst chan<- int){defer close(dst);for _,v:=range events{dst<-v}}(out)\nreturn out"
+    ],
+    "related": [
+      [
+        "concurrency-unbuffered",
+        "Повторить передачу и завершение"
+      ],
+      [
+        "channel-pipeline",
+        "Связь с production"
+      ]
+    ],
+    "production": "Направленные каналы ограничивают операции и выражают роли производителя и потребителя; ответственность за закрытие определяется контрактом приложения. Если потребитель может уйти раньше конца, нужна отмена.",
+    "interview": "Можно ли закрыть send-only канал и почему нельзя закрыть receive-only?"
+  },
+  "concurrency-select-ready": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "a: empty",
+          "b: [42]"
+        ],
+        "select ждёт готовность",
+        "a открыт, но данных нет. b уже содержит значение."
+      ],
+      [
+        "Выбор",
+        [
+          "a: not ready",
+          "b: ready"
+        ],
+        "case v,ok := <-b",
+        "Ветка b готова, поэтому выполняется чтение b."
+      ],
+      [
+        "Результат",
+        [
+          "v=42",
+          "source=b",
+          "ok=true"
+        ],
+        "return 42,\"b\",true",
+        "Функция читает ровно один элемент."
+      ],
+      [
+        "Другой сценарий",
+        [
+          "a: ready",
+          "b: ready"
+        ],
+        "любая готовая ветка",
+        "Порядок веток в исходнике не устанавливает приоритет."
+      ]
+    ],
+    "steps": [
+      [
+        "Описать ожидание",
+        "select {",
+        "select ждёт готовности одной из коммуникаций. Это не последовательная проверка первого канала, затем второго."
+      ],
+      [
+        "Обработать первый источник",
+        "case v, ok := <-a:\n    return v, \"a\", ok",
+        "Чтение получает значение и статус. Имя источника задаётся контрактом; при закрытии возвращаем false."
+      ],
+      [
+        "Обработать второй источник",
+        "case v, ok := <-b:\n    return v, \"b\", ok\n}",
+        "Вторая ветка симметрична. Если обе готовы, Go выбирает одну готовую операцию псевдослучайно, а не по порядку case."
+      ]
+    ],
+    "blocks": [
+      "Обработать второй источник",
+      "Обработать первый источник",
+      "Описать ожидание"
+    ],
+    "order": [
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "",
+        "after": " {",
+        "options": [
+          "select",
+          "switch",
+          "range"
+        ],
+        "correct": 0,
+        "explain": "select работает с коммуникациями каналов."
+      },
+      {
+        "before": "case v, ok := ",
+        "after": "b:",
+        "options": [
+          "<-",
+          "->",
+          "close("
+        ],
+        "correct": 0,
+        "explain": "Два результата чтения включают статус."
+      },
+      {
+        "before": "return v, \"b\", ",
+        "after": "",
+        "options": [
+          "ok",
+          "true",
+          "v!=0"
+        ],
+        "correct": 0,
+        "explain": "Передаём фактический статус чтения."
+      }
+    ],
+    "partial": "package practice\n\nfunc ReceiveEither(a, b <-chan int) (int, string, bool) {\n\tselect {\n\tcase v, ok := <-a:\n\t    return v, \"a\", ok\n\tcase v, ok := <-b:\n\t    // TODO: верни правильное имя второго источника\n\t    return v, \"a\", ok\n\t}\n}\n",
+    "bug": "package practice\n\nfunc ReceiveEither(a, b <-chan int) (int, string, bool) {\n\tselect {\n\tcase v := <-a:\n\t    return v, \"a\", true\n\tcase v := <-b:\n\t    return v, \"b\", true\n\t}\n}\n",
+    "hints": [
+      "Нужен select, а не два последовательных чтения.",
+      "Добавь case v, ok := <-a.",
+      "Верни v, \"a\", ok; сделай симметричную ветку b.",
+      "Не добавляй default: функция должна ждать готовую операцию.",
+      "select {\ncase v,ok:=<-a: return v,\"a\",ok\ncase v,ok:=<-b: return v,\"b\",ok\n}"
+    ],
+    "related": [
+      [
+        "concurrency-receive-value",
+        "Повторить comma-ok"
+      ],
+      [
+        "select-first",
+        "Связь с context и production"
+      ]
+    ],
+    "production": "Два независимых источника событий можно обслуживать одним select. Для постоянного цикла нужно дополнительно отключать закрытые каналы и учитывать отмену, иначе готовый закрытый канал может создавать busy loop.",
+    "interview": "Есть ли приоритет у первого case в select?"
+  },
+  "concurrency-try-send": {
+    "frames": [
+      [
+        "Свободное место",
+        [
+          "out: [7, _]",
+          "value=8"
+        ],
+        "cap=2; len=1",
+        "Отправка готова."
+      ],
+      [
+        "Успех",
+        [
+          "out: [7,8]"
+        ],
+        "return true",
+        "Событие действительно записано."
+      ],
+      [
+        "Переполнение",
+        [
+          "out: [7,8]",
+          "value=9"
+        ],
+        "default → false",
+        "Нет места; очередь не изменяется."
+      ],
+      [
+        "Отключённый выход",
+        [
+          "out=nil"
+        ],
+        "default → false",
+        "Операция с nil не готова."
+      ]
+    ],
+    "steps": [
+      [
+        "Начать select",
+        "select {",
+        "Нужна одна операция с возможностью немедленного отказа, а не ожидание свободного места."
+      ],
+      [
+        "Попытаться отправить",
+        "case out <- value:\n    return true",
+        "Если коммуникация готова, select выполняет её и возвращаем true. Для небуферизованного канала требуется готовый получатель."
+      ],
+      [
+        "Обработать перегрузку",
+        "default:\n    return false\n}",
+        "default выбирается только если ни одна коммуникация не готова. Это не отправка и не отмена уже выполненной отправки."
+      ]
+    ],
+    "blocks": [
+      "Обработать перегрузку",
+      "Попытаться отправить",
+      "Начать select"
+    ],
+    "order": [
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "case out ",
+        "after": " value:",
+        "options": [
+          "<-",
+          "=",
+          "->"
+        ],
+        "correct": 0,
+        "explain": "Отправка — канал слева от <-."
+      },
+      {
+        "before": "",
+        "after": " :\n    return false",
+        "options": [
+          "default",
+          "else",
+          "case false"
+        ],
+        "correct": 0,
+        "explain": "default позволяет не ждать."
+      }
+    ],
+    "partial": "package practice\n\nfunc TrySendEvent(out chan<- int, value int) bool {\n\tselect {\n\tcase out <- value:\n\t    // TODO: сообщи об успешной отправке\n\t    return false\n\tdefault:\n\t    return false\n\t}\n}\n",
+    "bug": "package practice\n\nfunc TrySendEvent(out chan<- int, value int) bool {\n\tif len(out) < cap(out) {\n\t    return true\n\t}\n\treturn false\n}\n",
+    "hints": [
+      "Нужна неблокирующая попытка, не проверка len.",
+      "Используй select с одной отправкой.",
+      "В case out <- value верни true.",
+      "Добавь default с return false.",
+      "select {case out<-value:return true;default:return false}"
+    ],
+    "related": [
+      [
+        "concurrency-receive-value",
+        "Повторить comma-ok"
+      ],
+      [
+        "select-first",
+        "Связь с context и production"
+      ]
+    ],
+    "production": "Для необязательной телеметрии можно отклонять событие при переполнении и считать потери. Для бизнес-событий silent drop часто недопустим: нужен явный отказ, повтор или надёжная очередь. default не защищает от panic при отправке в закрытый канал.",
+    "interview": "Почему if len(ch)<cap(ch) не заменяет select с default?"
+  },
+  "concurrency-try-receive": {
+    "frames": [
+      [
+        "Данные",
+        [
+          "in: [0]",
+          "open"
+        ],
+        "0,true,false",
+        "Получили реальный ноль."
+      ],
+      [
+        "Временно пуст",
+        [
+          "in: []",
+          "open"
+        ],
+        "0,false,false",
+        "default, можно продолжить другую работу."
+      ],
+      [
+        "Закрыт",
+        [
+          "in: []",
+          "closed"
+        ],
+        "0,false,true",
+        "Чтение готово, но значения больше нет."
+      ],
+      [
+        "Nil",
+        [
+          "in=nil"
+        ],
+        "0,false,false",
+        "Ветка чтения отключена."
+      ]
+    ],
+    "steps": [
+      [
+        "Описать попытку",
+        "select {",
+        "Одна операция чтения с альтернативой default не ждёт появления будущих данных."
+      ],
+      [
+        "Получить значение и статус",
+        "case v, ok := <-in:",
+        "Comma-ok нужен, потому что закрытый канал также готов к чтению."
+      ],
+      [
+        "Распознать закрытие",
+        "    if !ok {\n        return 0, false, true\n    }",
+        "ok=false означает, что закрытый канал исчерпан. Это отдельное состояние, не пустой открытый буфер."
+      ],
+      [
+        "Вернуть данные",
+        "    return v, true, false",
+        "Даже v=0 является полученным событием, если ok=true."
+      ],
+      [
+        "Распознать ожидание",
+        "default:\n    return 0, false, false\n}",
+        "Если чтение не готово, никаких данных не получено. Nil канал попадает сюда тоже."
+      ]
+    ],
+    "blocks": [
+      "Распознать ожидание",
+      "Вернуть данные",
+      "Распознать закрытие",
+      "Получить значение и статус",
+      "Описать попытку"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "case v, ",
+        "after": " := <-in:",
+        "options": [
+          "ok",
+          "err",
+          "cap"
+        ],
+        "correct": 0,
+        "explain": "Второй результат чтения — bool."
+      },
+      {
+        "before": "return 0, false, ",
+        "after": " // канал закрыт",
+        "options": [
+          "true",
+          "false",
+          "ok"
+        ],
+        "correct": 0,
+        "explain": "Третий флаг отмечает закрытие."
+      }
+    ],
+    "partial": "package practice\n\nfunc TryReceiveEvent(in <-chan int) (int, bool, bool) {\n\tselect {\n\tcase v, ok := <-in:\n\t    if !ok {\n\t        // TODO: отличи закрытие от отсутствия данных\n\t        return 0,false,false\n\t    }\n\t    return v,true,false\n\tdefault:\n\t    return 0,false,false\n\t}\n}\n",
+    "bug": "package practice\n\nfunc TryReceiveEvent(in <-chan int) (int, bool, bool) {\n\tselect {\n\tcase v := <-in:\n\t    return v,true,false\n\tdefault:\n\t    return 0,false,false\n\t}\n}\n",
+    "hints": [
+      "У функции три разных исхода, не два.",
+      "Используй select и comma-ok в ветке чтения.",
+      "При !ok верни 0,false,true.",
+      "При данных верни v,true,false; в default — 0,false,false.",
+      "select {case v,ok:=<-in:if !ok{return 0,false,true};return v,true,false;default:return 0,false,false}"
+    ],
+    "related": [
+      [
+        "concurrency-receive-value",
+        "Повторить comma-ok"
+      ],
+      [
+        "select-first",
+        "Связь с context и production"
+      ]
+    ],
+    "production": "Неблокирующая проверка полезна в отдельных циклах обслуживания и тестах. Не строй бесконечный цикл из default без ожидания: он будет потреблять CPU. Обычно лучше блокирующий select с отменой.",
+    "interview": "Чем пустой открытый канал отличается от закрытого при неблокирующем чтении?"
+  },
+  "concurrency-disable-closed": {
+    "frames": [
+      [
+        "Два источника",
+        [
+          "a:[1]",
+          "b:[0,2]"
+        ],
+        "first=[]; second=[]",
+        "a и b независимо становятся готовы."
+      ],
+      [
+        "a завершился",
+        [
+          "a: closed",
+          "b: [0,2]"
+        ],
+        "first=[1]; a=nil",
+        "Чтение конца a отключает его ветку."
+      ],
+      [
+        "Остался b",
+        [
+          "a: disabled",
+          "b: [2]"
+        ],
+        "second=[0]",
+        "Цикл продолжает работать, пока хотя бы один канал доступен."
+      ],
+      [
+        "Оба завершены",
+        [
+          "a=nil",
+          "b=nil"
+        ],
+        "first=[1]; second=[0,2]",
+        "Условие цикла false, возвращаем результаты."
+      ]
+    ],
+    "steps": [
+      [
+        "Подготовить два результата",
+        "first, second := make([]int, 0), make([]int, 0)",
+        "Храним результаты раздельно: порядок между независимыми источниками не определён."
+      ],
+      [
+        "Продолжать пока есть источник",
+        "for a != nil || b != nil {",
+        "Логическое ИЛИ означает, что достаточно одного действующего канала. Nil — маркер отсутствующего источника."
+      ],
+      [
+        "Начать select",
+        "    select {",
+        "Читаем только готовые коммуникации; без default цикл не крутится на пустых открытых каналах."
+      ],
+      [
+        "Обработать a",
+        "    case v, ok := <-a:\n        if !ok {\n            a = nil\n            continue\n        }\n        first = append(first, v)",
+        "После исчерпания a присваиваем nil локальной переменной. Закрытый канал был постоянно готов, nil никогда не готов. continue не позволяет записать синтетический ноль."
+      ],
+      [
+        "Обработать b",
+        "    case v, ok := <-b:\n        if !ok {\n            b = nil\n            continue\n        }\n        second = append(second, v)\n    }\n}",
+        "Вторая ветка работает симметрично. Изменение локальной переменной не закрывает канал и не меняет переменную вызывающего."
+      ],
+      [
+        "Вернуть результаты",
+        "return first, second",
+        "Оба источника теперь nil, цикл завершён. Пустой результат не nil."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результаты",
+      "Обработать b",
+      "Обработать a",
+      "Начать select",
+      "Продолжать пока есть источник",
+      "Подготовить два результата"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "for a != nil ",
+        "after": " b != nil {",
+        "options": [
+          "||",
+          "&&",
+          "=="
+        ],
+        "correct": 0,
+        "explain": "Нужно дочитать даже один оставшийся источник."
+      },
+      {
+        "before": "if !ok { a = ",
+        "after": "; continue }",
+        "options": [
+          "nil",
+          "b",
+          "a"
+        ],
+        "correct": 0,
+        "explain": "Nil отключает ветку select."
+      },
+      {
+        "before": "first = append(first, ",
+        "after": ")",
+        "options": [
+          "v",
+          "0",
+          "b"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем реальные значения источника a."
+      }
+    ],
+    "partial": "package practice\n\nfunc DrainTwoSources(a, b <-chan int) ([]int, []int) {\n\tfirst,second:=make([]int,0),make([]int,0)\n\tfor a!=nil || b!=nil {\n\t select {\n\t case v,ok:=<-a:\n\t  if !ok { a=nil;continue }\n\t  // TODO: сохрани событие первого источника\n\t  _=v\n\t case v,ok:=<-b:\n\t  if !ok {b=nil;continue}\n\t  second=append(second,v)\n\t }\n\t}\n\treturn first,second\n}\n",
+    "bug": "package practice\n\nfunc DrainTwoSources(a, b <-chan int) ([]int, []int) {\n\tfirst,second:=make([]int,0),make([]int,0)\n\tfor a!=nil && b!=nil {\n\t select {\n\t case v,ok:=<-a:\n\t  if !ok {a=nil;continue}\n\t  first=append(first,v)\n\t case v,ok:=<-b:\n\t  if !ok {b=nil;continue}\n\t  second=append(second,v)\n\t }\n\t}\n\treturn first,second\n}\n",
+    "hints": [
+      "Два независимых результата и два локальных указателя на каналы.",
+      "Цикл продолжается пока a!=nil || b!=nil.",
+      "В каждом case читай v,ok.",
+      "При !ok отключай только этот источник через nil и continue.",
+      "first,second:=make([]int,0),make([]int,0)\nfor a!=nil||b!=nil{select{case v,ok:=<-a:if !ok{a=nil;continue};first=append(first,v);case v,ok:=<-b:if !ok{b=nil;continue};second=append(second,v)}}\nreturn first,second"
+    ],
+    "related": [
+      [
+        "concurrency-receive-value",
+        "Повторить comma-ok"
+      ],
+      [
+        "select-first",
+        "Связь с context и production"
+      ]
+    ],
+    "production": "При объединении источников в одном цикле отключение закрытого канала предотвращает постоянное срабатывание его ветки. Для неограниченных потоков нужен дополнительный case отмены; эта задача ограничена конечными входами.",
+    "interview": "Зачем присваивать закрытому каналу nil в select?"
+  },
+  "concurrency-timer-wait": {
+    "frames": [
+      [
+        "Старт",
+        [
+          "in: empty",
+          "timer: armed"
+        ],
+        "timeout=50ms",
+        "Создаём одноразовый таймер."
+      ],
+      [
+        "Событие раньше",
+        [
+          "in: [12]",
+          "timer: not ready"
+        ],
+        "return 12,nil; Stop",
+        "Готова ветка входа."
+      ],
+      [
+        "Альтернативный исход",
+        [
+          "in: empty",
+          "timer.C: ready"
+        ],
+        "0, DeadlineExceeded",
+        "Ожидание ограничено таймером."
+      ],
+      [
+        "Закрытие входа",
+        [
+          "in: closed",
+          "timer: armed"
+        ],
+        "0, event channel closed",
+        "Это отдельная причина завершения."
+      ]
+    ],
+    "steps": [
+      [
+        "Обработать невалидный бюджет",
+        "if timeout <= 0 {\n    return 0, context.DeadlineExceeded\n}",
+        "Контракт задаёт немедленный отказ без чтения. Так готовое значение не выигрывает случайно у уже истёкшего бюджета."
+      ],
+      [
+        "Создать таймер",
+        "timer := time.NewTimer(timeout)",
+        "Timer предоставляет канал C, который становится готов после истечения интервала. Это одноразовый таймер, не ticker."
+      ],
+      [
+        "Запланировать остановку",
+        "defer timer.Stop()",
+        "Если получим событие раньше, больше не нужен активный таймер. Здесь нет Reset или повторного чтения C; Stop выполняется на всех путях."
+      ],
+      [
+        "Ожидать событие",
+        "select {\ncase v, ok := <-in:",
+        "При входных данных читаем реальное значение и статус канала."
+      ],
+      [
+        "Обработать закрытие и успех",
+        "    if !ok {\n        return 0, errors.New(\"event channel closed\")\n    }\n    return v, nil",
+        "Закрытие источника отличается от таймаута и не считается успешным нулевым событием."
+      ],
+      [
+        "Обработать истечение",
+        "case <-timer.C:\n    return 0, context.DeadlineExceeded\n}",
+        "Таймер ограничивает ожидание коммуникации. Если обе ветки готовы, select не гарантирует приоритет таймера."
+      ]
+    ],
+    "blocks": [
+      "Обработать истечение",
+      "Обработать закрытие и успех",
+      "Ожидать событие",
+      "Запланировать остановку",
+      "Создать таймер",
+      "Обработать невалидный бюджет"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "timer := time.",
+        "after": "(timeout)",
+        "options": [
+          "NewTimer",
+          "NewTicker",
+          "Sleep"
+        ],
+        "correct": 0,
+        "explain": "Нужен одноразовый таймер с каналом."
+      },
+      {
+        "before": "defer timer.",
+        "after": "()",
+        "options": [
+          "Stop",
+          "Reset",
+          "Close"
+        ],
+        "correct": 0,
+        "explain": "Останавливаем ненужный таймер при выходе."
+      },
+      {
+        "before": "case <-timer.",
+        "after": " :",
+        "options": [
+          "C",
+          "Done",
+          "Err"
+        ],
+        "correct": 0,
+        "explain": "Timer.C — канал события таймера."
+      }
+    ],
+    "partial": "package practice\n\nfunc ReceiveBeforeTimeout(in <-chan int, timeout time.Duration) (int, error) {\n\tif timeout<=0 {return 0,context.DeadlineExceeded}\n\ttimer:=time.NewTimer(timeout)\n\tdefer timer.Stop()\n\tselect {\n\tcase v,ok:=<-in:\n\t if !ok{return 0,errors.New(\"event channel closed\")}\n\t return v,nil\n\tcase <-timer.C:\n\t // TODO: верни причину таймаута\n\t return 0,nil\n\t}\n}\n",
+    "bug": "package practice\n\nfunc ReceiveBeforeTimeout(in <-chan int, timeout time.Duration) (int, error) {\n\tif timeout<=0{return 0,nil}\n\ttimer:=time.NewTimer(timeout)\n\tdefer timer.Stop()\n\tselect {\n\tcase v:=<-in:return v,nil\n\tcase <-timer.C:return 0,context.DeadlineExceeded\n\t}\n}\n",
+    "hints": [
+      "Для timeout<=0 обработай отказ до select.",
+      "Создай time.NewTimer(timeout), defer timer.Stop().",
+      "В select читай in через comma-ok.",
+      "Ветка <-timer.C возвращает context.DeadlineExceeded.",
+      "if timeout<=0{return 0,context.DeadlineExceeded}\ntimer:=time.NewTimer(timeout);defer timer.Stop()\nselect{case v,ok:=<-in:if !ok{return 0,errors.New(\"event channel closed\")};return v,nil;case <-timer.C:return 0,context.DeadlineExceeded}"
+    ],
+    "related": [
+      [
+        "concurrency-receive-value",
+        "Повторить comma-ok"
+      ],
+      [
+        "select-first",
+        "Связь с context и production"
+      ]
+    ],
+    "production": "Локальный таймер подходит для ограниченного ожидания одного события. Для цепочки вызовов обычно передают context с общим deadline, чтобы не начинать новый полный бюджет на каждой зависимости. Таймер не прекращает чужую работу автоматически.",
+    "interview": "Чем time.NewTimer отличается от time.Sleep в задаче ожидания канала?"
+  },
+  "concurrency-safe-store": {
+    "frames": [
+      [
+        "Начало",
+        [
+          "G1:Set(a,0)",
+          "G2:Get(a)"
+        ],
+        "values=nil; mutex свободен",
+        "Обе горутины используют один объект."
+      ],
+      [
+        "Запись",
+        [
+          "G1: lock",
+          "G2: waiting"
+        ],
+        "values=map[a:0]",
+        "Создание и запись под одним mutex."
+      ],
+      [
+        "Освобождение",
+        [
+          "G1: unlock",
+          "G2: lock"
+        ],
+        "values=map[a:0]",
+        "Читатель получает доступ."
+      ],
+      [
+        "Чтение",
+        [
+          "G2: Get(a)"
+        ],
+        "0,true",
+        "Ноль — значение, а не отсутствие."
+      ]
+    ],
+    "steps": [
+      [
+        "Объявить состояние",
+        "type SafeStore struct {mu sync.Mutex; values map[string]int}",
+        "Mutex и map принадлежат одному объекту. Нулевой mutex готов, а нулевая map равна nil. Pointer receiver не копирует блокировку."
+      ],
+      [
+        "Захватить блокировку записи",
+        "func (s *SafeStore) Set(key string,value int){\n s.mu.Lock()\n defer s.mu.Unlock()",
+        "Lock ждёт освобождения mutex. defer гарантирует Unlock при выходе из метода."
+      ],
+      [
+        "Инициализировать map",
+        " if s.values==nil {s.values=make(map[string]int)}",
+        "Проверка и создание защищены той же блокировкой, иначе два писателя могут заменить map."
+      ],
+      [
+        "Записать значение",
+        " s.values[key]=value\n}",
+        "Мутация внутри критической секции."
+      ],
+      [
+        "Защитить чтение",
+        "func (s *SafeStore) Get(key string)(int,bool){\n s.mu.Lock()\n defer s.mu.Unlock()",
+        "Даже чтение конфликтует с конкурентной записью. Используем тот же mutex."
+      ],
+      [
+        "Вернуть данные и статус",
+        " v,ok:=s.values[key]\n return v,ok\n}",
+        "Чтение nil map безопасно. Comma-ok различает отсутствующий ключ и сохранённый ноль."
+      ]
+    ],
+    "blocks": [
+      "Вернуть данные и статус",
+      "Защитить чтение",
+      "Записать значение",
+      "Инициализировать map",
+      "Захватить блокировку записи",
+      "Объявить состояние"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "s.mu.",
+        "after": "()",
+        "options": [
+          "Lock",
+          "Done",
+          "Add"
+        ],
+        "correct": 0,
+        "explain": "Lock входит в критическую секцию."
+      },
+      {
+        "before": "defer s.mu.",
+        "after": "()",
+        "options": [
+          "Unlock",
+          "Wait",
+          "Lock"
+        ],
+        "correct": 0,
+        "explain": "Освобождаем тот же mutex."
+      },
+      {
+        "before": "v,ok := s.values[",
+        "after": "]",
+        "options": [
+          "key",
+          "value",
+          "0"
+        ],
+        "correct": 0,
+        "explain": "Comma-ok сообщает наличие ключа."
+      }
+    ],
+    "partial": "package practice\n\ntype SafeStore struct {mu sync.Mutex; values map[string]int}\nfunc (s *SafeStore) Set(key string,value int){\n s.mu.Lock()\n defer s.mu.Unlock()\n if s.values==nil {s.values=make(map[string]int)}\n // TODO: запиши значение\n}\nfunc (s *SafeStore) Get(key string)(int,bool){\n s.mu.Lock()\n defer s.mu.Unlock()\n v,ok:=s.values[key]\n return v,ok\n}\n",
+    "bug": "package practice\n\ntype SafeStore struct {mu sync.Mutex; values map[string]int}\nfunc (s *SafeStore) Set(key string,value int){\n s.mu.Lock()\n defer s.mu.Unlock()\n if s.values==nil {s.values=make(map[string]int)}\n s.values[key]=value\n}\nfunc (s *SafeStore) Get(key string)(int,bool){\n s.mu.Lock()\n defer s.mu.Unlock()\n v:=s.values[key]\n return v,v!=0\n}\n",
+    "hints": [
+      "Нужны map и mutex внутри одного объекта.",
+      "Оба метода — pointer receiver; Lock и defer Unlock в каждом.",
+      "В Set создай map при nil под блокировкой.",
+      "В Get используй comma-ok.",
+      "Set: Lock → defer Unlock → make при nil → запись. Get: Lock → defer Unlock → v,ok := s.values[key] → return v,ok."
+    ],
+    "related": [
+      [
+        "race",
+        "Повторить data race"
+      ],
+      [
+        "concurrency-wait-group",
+        "Ожидание группы операций"
+      ]
+    ],
+    "production": "Подходит для небольшого in-memory реестра. Mutex не защищает другие процессы и не заменяет транзакции БД. Избегай долгих RPC под блокировкой.",
+    "interview": "Почему чтение map тоже нужно защищать?"
+  },
+  "concurrency-rwmutex": {
+    "frames": [
+      [
+        "Исходное состояние",
+        [
+          "host=A",
+          "port=1"
+        ],
+        "R1 и R2 читают",
+        "Оба держат RLock."
+      ],
+      [
+        "Писатель ждёт",
+        [
+          "R1: reading",
+          "R2: reading",
+          "W: waiting"
+        ],
+        "Update(B,2)",
+        "Lock ждёт окончания чтений."
+      ],
+      [
+        "Запись",
+        [
+          "W: Lock",
+          "R3: waiting"
+        ],
+        "host=B; port=2",
+        "Оба поля обновлены под Lock."
+      ],
+      [
+        "Снимок",
+        [
+          "R3: RLock"
+        ],
+        "B,2",
+        "Смешанная пара A,2 не наблюдается."
+      ]
+    ],
+    "steps": [
+      [
+        "Хранить пару и RWMutex",
+        "type ConfigStore struct {mu sync.RWMutex; host string; port int}",
+        "Поля образуют единый снимок. RWMutex разрешает совместные чтения, писатель требует эксклюзивного доступа."
+      ],
+      [
+        "Захватить эксклюзивный доступ",
+        "func (s *ConfigStore) Update(host string,port int){\n s.mu.Lock()\n defer s.mu.Unlock()",
+        "Пока писатель держит Lock, ни читатель, ни другой писатель не входит в защищённую область."
+      ],
+      [
+        "Обновить пару",
+        " s.host=host\n s.port=port\n}",
+        "Обе записи под одной блокировкой. Читатель не видит промежуточную комбинацию."
+      ],
+      [
+        "Захватить доступ на чтение",
+        "func (s *ConfigStore) Snapshot()(string,int){\n s.mu.RLock()\n defer s.mu.RUnlock()",
+        "Читатели могут держать RLock одновременно, если нет препятствующего писателя."
+      ],
+      [
+        "Вернуть снимок",
+        " return s.host,s.port\n}",
+        "Копируем скалярные значения до освобождения блокировки."
+      ]
+    ],
+    "blocks": [
+      "Вернуть снимок",
+      "Захватить доступ на чтение",
+      "Обновить пару",
+      "Захватить эксклюзивный доступ",
+      "Хранить пару и RWMutex"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "s.mu.",
+        "after": "() // чтение",
+        "options": [
+          "RLock",
+          "Lock",
+          "RUnlock"
+        ],
+        "correct": 0,
+        "explain": "RLock допускает совместные чтения."
+      },
+      {
+        "before": "defer s.mu.",
+        "after": "()",
+        "options": [
+          "RUnlock",
+          "Unlock",
+          "Done"
+        ],
+        "correct": 0,
+        "explain": "Освобождение соответствует RLock."
+      },
+      {
+        "before": "s.mu.",
+        "after": "() // запись",
+        "options": [
+          "Lock",
+          "RLock",
+          "RUnlock"
+        ],
+        "correct": 0,
+        "explain": "Запись требует эксклюзивного Lock."
+      }
+    ],
+    "partial": "package practice\n\ntype ConfigStore struct {mu sync.RWMutex; host string; port int}\nfunc (s *ConfigStore) Update(host string,port int){\n s.mu.Lock()\n defer s.mu.Unlock()\n s.host=host\n // TODO: обнови второе поле\n}\nfunc (s *ConfigStore) Snapshot()(string,int){\n s.mu.RLock()\n defer s.mu.RUnlock()\n return s.host,s.port\n}\n",
+    "bug": "package practice\n\ntype ConfigStore struct {mu sync.RWMutex; host string; port int}\nfunc (s *ConfigStore) Update(host string,port int){\n s.mu.Lock()\n defer s.mu.Unlock()\n s.host=host\n s.port=port\n}\nfunc (s *ConfigStore) Snapshot()(string,int){\n s.mu.Lock()\n defer s.mu.Unlock()\n return s.host,s.port\n}\n",
+    "hints": [
+      "Используй sync.RWMutex для обоих полей.",
+      "Update: Lock, defer Unlock.",
+      "Измени host и port под одной блокировкой.",
+      "Snapshot: RLock, defer RUnlock, возврат обоих полей.",
+      "Update: Lock → два присваивания → Unlock. Snapshot: RLock → return s.host,s.port → RUnlock."
+    ],
+    "related": [
+      [
+        "race",
+        "Повторить data race"
+      ],
+      [
+        "concurrency-wait-group",
+        "Ожидание группы операций"
+      ]
+    ],
+    "production": "Read-heavy конфигурация может выиграть от RWMutex, но он не автоматически быстрее Mutex. Измеряй contention. Не пытайся повысить RLock до Lock без освобождения.",
+    "interview": "Почему RWMutex не всегда быстрее Mutex?"
+  },
+  "concurrency-atomic-counter": {
+    "frames": [
+      [
+        "Начало",
+        [
+          "G1:+2",
+          "G2:+3"
+        ],
+        "value=0",
+        "Два независимых прибавления."
+      ],
+      [
+        "Один возможный порядок",
+        [
+          "G1:Add(2)"
+        ],
+        "value=2; return 2",
+        "Одна атомарная операция."
+      ],
+      [
+        "Вторая операция",
+        [
+          "G2:Add(3)"
+        ],
+        "value=5; return 5",
+        "Обновления не теряются."
+      ],
+      [
+        "Чтение",
+        [
+          "Load()"
+        ],
+        "5",
+        "После завершения обеих операций итог равен 5."
+      ]
+    ],
+    "steps": [
+      [
+        "Объявить атомарное поле",
+        "type AtomicCounter struct {value atomic.Int64}",
+        "Тип из sync/atomic предоставляет атомарные операции. Zero value равен нулю. Не копируй после использования."
+      ],
+      [
+        "Выполнить сложение",
+        "func (c *AtomicCounter) Add(delta int64)int64{\n return c.value.Add(delta)\n}",
+        "Add делает read-modify-write одной атомарной операцией и возвращает новое значение, в отличие от раздельных Load и Store."
+      ],
+      [
+        "Прочитать значение",
+        "func (c *AtomicCounter) Value()int64{\n return c.value.Load()\n}",
+        "Все чтения также атомарные. Снимок может измениться сразу после возврата."
+      ]
+    ],
+    "blocks": [
+      "Прочитать значение",
+      "Выполнить сложение",
+      "Объявить атомарное поле"
+    ],
+    "order": [
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "value atomic.",
+        "after": "",
+        "options": [
+          "Int64",
+          "Mutex",
+          "WaitGroup"
+        ],
+        "correct": 0,
+        "explain": "Типизированный атомарный int64."
+      },
+      {
+        "before": "return c.value.",
+        "after": "(delta)",
+        "options": [
+          "Add",
+          "Store",
+          "Load"
+        ],
+        "correct": 0,
+        "explain": "Add возвращает новое значение."
+      },
+      {
+        "before": "return c.value.",
+        "after": "()",
+        "options": [
+          "Load",
+          "Add",
+          "Swap"
+        ],
+        "correct": 0,
+        "explain": "Load атомарно читает поле."
+      }
+    ],
+    "partial": "package practice\n\ntype AtomicCounter struct {value atomic.Int64}\nfunc (c *AtomicCounter) Add(delta int64)int64{\n return c.value.Add(delta)\n}\nfunc (c *AtomicCounter) Value()int64{\n // TODO: атомарно прочитай значение\n return 0\n}\n",
+    "bug": "package practice\n\ntype AtomicCounter struct {value atomic.Int64}\nfunc (c *AtomicCounter) Add(delta int64)int64{\n return c.value.Add(delta)-delta\n}\nfunc (c *AtomicCounter) Value()int64{return c.value.Load()}\n",
+    "hints": [
+      "Импорт sync/atomic есть в общей заготовке.",
+      "Поле value имеет тип atomic.Int64.",
+      "Add делегирует c.value.Add(delta).",
+      "Value использует c.value.Load().",
+      "return c.value.Add(delta) // Add\nreturn c.value.Load() // Value"
+    ],
+    "related": [
+      [
+        "race",
+        "Повторить data race"
+      ],
+      [
+        "concurrency-wait-group",
+        "Ожидание группы операций"
+      ]
+    ],
+    "production": "Подходит для независимых метрик. Для инварианта нескольких полей или check-then-act одного атомарного чтения недостаточно.",
+    "interview": "Почему Load()+Store() не эквивалентны Add()?"
+  },
+  "concurrency-once": {
+    "frames": [
+      [
+        "Первый Get",
+        [
+          "G1: Do(load A)",
+          "G2: Do(load B)"
+        ],
+        "once: not done",
+        "Одна горутина начинает loader."
+      ],
+      [
+        "Инициализация",
+        [
+          "G1: load A",
+          "G2: waiting"
+        ],
+        "value ещё не опубликовано",
+        "Другой вызов ждёт."
+      ],
+      [
+        "Завершение",
+        [
+          "G1: value=A",
+          "G2: unblocked"
+        ],
+        "once: done",
+        "Оба возвращают A."
+      ],
+      [
+        "Повтор",
+        [
+          "G3: Get(load C)"
+        ],
+        "return A",
+        "Loader C не вызывается."
+      ]
+    ],
+    "steps": [
+      [
+        "Хранить Once и результат",
+        "type LazyConfig struct {once sync.Once; value string}",
+        "Once хранит факт выполнения независимо от строки. Пустая строка — валидный результат."
+      ],
+      [
+        "Объявить метод",
+        "func (c *LazyConfig) Get(load func()string)string{",
+        "Loader передаётся как функция; pointer receiver сохраняет один экземпляр Once."
+      ],
+      [
+        "Выполнить инициализацию",
+        " c.once.Do(func(){\n  c.value=load()\n })",
+        "Do выполняет функцию один раз на экземпляр. Конкурентные вызовы ждут окончания инициализации."
+      ],
+      [
+        "Вернуть результат",
+        " return c.value\n}",
+        "Возврат из Do синхронизирован с завершением инициализации."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Выполнить инициализацию",
+      "Объявить метод",
+      "Хранить Once и результат"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "c.once.",
+        "after": "(func(){",
+        "options": [
+          "Do",
+          "Add",
+          "Lock"
+        ],
+        "correct": 0,
+        "explain": "Once.Do выполняет инициализацию один раз."
+      },
+      {
+        "before": "c.value = ",
+        "after": "()",
+        "options": [
+          "load",
+          "Get",
+          "close"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем результат loader."
+      }
+    ],
+    "partial": "package practice\n\ntype LazyConfig struct {once sync.Once; value string}\nfunc (c *LazyConfig) Get(load func()string)string{\n c.once.Do(func(){\n  // TODO: вызови load и сохрани результат\n })\n return c.value\n}\n",
+    "bug": "package practice\n\ntype LazyConfig struct {once sync.Once; value string}\nfunc (c *LazyConfig) Get(load func()string)string{\n if c.value==\"\" {c.value=load()}\n return c.value\n}\n",
+    "hints": [
+      "Нужен sync.Once, не проверка пустой строки.",
+      "Храни once и value в одном объекте.",
+      "Вызови c.once.Do с анонимной функцией.",
+      "Внутри сохрани c.value = load(), затем верни c.value.",
+      "c.once.Do(func(){c.value=load()})\nreturn c.value"
+    ],
+    "related": [
+      [
+        "race",
+        "Повторить data race"
+      ],
+      [
+        "concurrency-wait-group",
+        "Ожидание группы операций"
+      ]
+    ],
+    "production": "Once подходит для неизменяемой инициализации. Для повторной попытки после ошибки или обновления нужен другой механизм. После panic в Do Once считает вызов выполненным.",
+    "interview": "Почему проверка value==\"\" не заменяет sync.Once?"
+  },
+  "concurrency-quota": {
+    "frames": [
+      [
+        "Начало",
+        [
+          "G1: reserve 4",
+          "G2: reserve 4"
+        ],
+        "remaining=5",
+        "Оба хотят одну квоту."
+      ],
+      [
+        "G1 под Lock",
+        [
+          "check 4<=5",
+          "remaining -=4"
+        ],
+        "remaining=1; true",
+        "Проверка и запись неразделимы."
+      ],
+      [
+        "G2 под Lock",
+        [
+          "check 4>1"
+        ],
+        "remaining=1; false",
+        "Второй видит новый остаток."
+      ],
+      [
+        "Ошибка подхода",
+        [
+          "check отдельно",
+          "act отдельно"
+        ],
+        "оба могли увидеть 5",
+        "Даже отдельно защищённые обращения допускают логическую гонку."
+      ]
+    ],
+    "steps": [
+      [
+        "Хранить общий остаток",
+        "type QuotaStore struct {mu sync.Mutex; remaining int}",
+        "Инвариант: остаток неотрицателен. Один mutex защищает все обращения."
+      ],
+      [
+        "Создать начальное состояние",
+        "func NewQuotaStore(limit int)*QuotaStore{\n if limit<0 {limit=0}\n return &QuotaStore{remaining:limit}\n}",
+        "Отрицательный лимит нормализуем. Объект пока не опубликован, Lock не нужен."
+      ],
+      [
+        "Проверить аргумент",
+        "func (q *QuotaStore) ReserveQuota(amount int)bool{\n if amount<=0{return false}",
+        "Проверка параметра не обращается к общей памяти."
+      ],
+      [
+        "Войти в критическую секцию",
+        " q.mu.Lock()\n defer q.mu.Unlock()",
+        "Нельзя освобождать mutex между проверкой остатка и уменьшением."
+      ],
+      [
+        "Проверить и уменьшить",
+        " if amount>q.remaining{return false}\n q.remaining-=amount\n return true\n}",
+        "Равенство допустимо. Проверка предотвращает отрицательный остаток, действие выполняется до Unlock."
+      ],
+      [
+        "Прочитать остаток",
+        "func (q *QuotaStore) Remaining()int{\n q.mu.Lock()\n defer q.mu.Unlock()\n return q.remaining\n}",
+        "Чтение тоже защищаем. Это снимок, не разрешение на будущее резервирование."
+      ]
+    ],
+    "blocks": [
+      "Прочитать остаток",
+      "Проверить и уменьшить",
+      "Войти в критическую секцию",
+      "Проверить аргумент",
+      "Создать начальное состояние",
+      "Хранить общий остаток"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if amount ",
+        "after": " q.remaining {return false}",
+        "options": [
+          ">",
+          ">=",
+          "<"
+        ],
+        "correct": 0,
+        "explain": "Равенство допустимо."
+      },
+      {
+        "before": "q.remaining ",
+        "after": " amount",
+        "options": [
+          "-=",
+          "+=",
+          "=="
+        ],
+        "correct": 0,
+        "explain": "Успех уменьшает остаток."
+      },
+      {
+        "before": "defer q.mu.",
+        "after": "()",
+        "options": [
+          "Unlock",
+          "Lock",
+          "Done"
+        ],
+        "correct": 0,
+        "explain": "Освобождаем после всей операции."
+      }
+    ],
+    "partial": "package practice\n\ntype QuotaStore struct {mu sync.Mutex; remaining int}\nfunc NewQuotaStore(limit int)*QuotaStore{\n if limit<0{limit=0}\n return &QuotaStore{remaining:limit}\n}\nfunc (q *QuotaStore) ReserveQuota(amount int)bool{\n if amount<=0{return false}\n q.mu.Lock()\n defer q.mu.Unlock()\n if amount>q.remaining{return false}\n // TODO: уменьши остаток\n return true\n}\nfunc (q *QuotaStore) Remaining()int{q.mu.Lock();defer q.mu.Unlock();return q.remaining}\n",
+    "bug": "package practice\n\ntype QuotaStore struct {mu sync.Mutex; remaining int}\nfunc NewQuotaStore(limit int)*QuotaStore{\n if limit<0{limit=0}\n return &QuotaStore{remaining:limit}\n}\nfunc (q *QuotaStore) ReserveQuota(amount int)bool{\n if amount<=0{return false}\n q.mu.Lock()\n defer q.mu.Unlock()\n if amount>=q.remaining{return false}\n q.remaining-=amount\n return true\n}\nfunc (q *QuotaStore) Remaining()int{q.mu.Lock();defer q.mu.Unlock();return q.remaining}\n",
+    "hints": [
+      "Остаток и mutex принадлежат одному объекту.",
+      "Нормализуй limit и отклоняй неположительный amount.",
+      "Lock перед чтением остатка.",
+      "Под той же блокировкой проверь amount>remaining и вычти amount.",
+      "if amount<=0{return false}\nq.mu.Lock();defer q.mu.Unlock()\nif amount>q.remaining{return false}\nq.remaining-=amount\nreturn true"
+    ],
+    "related": [
+      [
+        "race",
+        "Повторить data race"
+      ],
+      [
+        "concurrency-wait-group",
+        "Ожидание группы операций"
+      ]
+    ],
+    "production": "Резервирование квоты требует атомарной проверки и изменения. Для нескольких инстансов нужен механизм согласованности общего хранилища, например транзакция или условный UPDATE.",
+    "interview": "Может ли race condition существовать без data race?"
+  },
+  "concurrency-cancel-worker": {
+    "frames": [
+      [
+        "Запуск",
+        [
+          "parent: active",
+          "child: active"
+        ],
+        "done: open",
+        "Создали дочерний контекст и работника."
+      ],
+      [
+        "Запрос остановки",
+        [
+          "caller: cancel()",
+          "child.Done: closed"
+        ],
+        "child.Err=context.Canceled",
+        "Родитель остаётся активным."
+      ],
+      [
+        "Кооперативный выход",
+        [
+          "work: observes Done",
+          "work: returns"
+        ],
+        "done ещё открытый",
+        "Горутина самостоятельно возвращается."
+      ],
+      [
+        "Завершение",
+        [
+          "defer cancel",
+          "close(done)"
+        ],
+        "done: closed",
+        "Ожидание завершения разблокируется."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать дочерний контекст",
+        "ctx, cancel := context.WithCancel(parent)",
+        "WithCancel создаёт дочерний контекст и функцию отмены. Отмена родителя распространяется вниз; отмена ребёнка не отменяет родителя."
+      ],
+      [
+        "Создать сигнал завершения",
+        "done := make(chan struct{})",
+        "ctx.Done сообщает о запросе отмены; отдельный done сообщает о фактическом возврате work. Эти события не обязательно совпадают."
+      ],
+      [
+        "Запустить работника",
+        "go func() {",
+        "Анонимная функция запускается конкурентно; вызывающий код не ждёт долгую работу."
+      ],
+      [
+        "Запланировать освобождение ресурсов",
+        "    defer close(done)\n    defer cancel()",
+        "defer выполняются в обратном порядке: сначала cancel освобождает связь с родителем, затем закрытие done сообщает о завершении."
+      ],
+      [
+        "Передать контекст",
+        "    work(ctx)\n}()",
+        "Именно дочерний контекст реагирует на возвращённый cancel. work должен самостоятельно проверять Done или передавать ctx операциям, поддерживающим отмену."
+      ],
+      [
+        "Вернуть управление",
+        "return cancel, done",
+        "Вызывающий может отменить операцию, а затем ждать <-done, если ему необходимо дождаться фактического завершения."
+      ]
+    ],
+    "blocks": [
+      "Вернуть управление",
+      "Передать контекст",
+      "Запланировать освобождение ресурсов",
+      "Запустить работника",
+      "Создать сигнал завершения",
+      "Создать дочерний контекст"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "ctx, cancel := context.",
+        "after": "(parent)",
+        "options": [
+          "WithCancel",
+          "Background",
+          "WithValue"
+        ],
+        "correct": 0,
+        "explain": "Создаём отменяемый дочерний контекст."
+      },
+      {
+        "before": "work(",
+        "after": ")",
+        "options": [
+          "ctx",
+          "parent",
+          "context.Background()"
+        ],
+        "correct": 0,
+        "explain": "Иначе возвращённый cancel не остановит work."
+      },
+      {
+        "before": "defer ",
+        "after": "(done)",
+        "options": [
+          "close",
+          "clear",
+          "delete"
+        ],
+        "correct": 0,
+        "explain": "Сигнал фактического завершения."
+      }
+    ],
+    "partial": "package practice\n\nfunc StartCancelableWorker(parent context.Context, work func(context.Context)) (context.CancelFunc, <-chan struct{}) {\n\tctx, cancel := context.WithCancel(parent)\n\tdone := make(chan struct{})\n\tgo func() {\n\t    defer close(done)\n\t    defer cancel()\n\t    // TODO: передай дочерний контекст в work\n\t    _ = ctx\n\t    work(parent)\n\t}()\n\treturn cancel, done\n}\n",
+    "bug": "package practice\n\nfunc StartCancelableWorker(parent context.Context, work func(context.Context)) (context.CancelFunc, <-chan struct{}) {\n\tctx, cancel := context.WithCancel(parent)\n\tdone := make(chan struct{})\n\tgo func() {\n\t    defer cancel()\n\t    work(ctx)\n\t    // забыли закрыть done\n\t}()\n\treturn cancel, done\n}\n",
+    "hints": [
+      "Нужны два сигнала: отмена и фактическое завершение.",
+      "Создай ctx,cancel через context.WithCancel(parent).",
+      "Создай done и запусти анонимную горутину.",
+      "Внутри defer close(done), defer cancel(), work(ctx).",
+      "ctx,cancel:=context.WithCancel(parent)\ndone:=make(chan struct{})\ngo func(){defer close(done);defer cancel();work(ctx)}()\nreturn cancel,done"
+    ],
+    "related": [
+      [
+        "concurrency-timer-wait",
+        "Повторить ограниченное ожидание"
+      ],
+      [
+        "channel-pipeline",
+        "Связь с pipeline и отменой"
+      ]
+    ],
+    "production": "Владельцу фоновой задачи полезно хранить cancel и сигнал завершения отдельно. Не считай отмену подтверждением остановки. Для shutdown нужен ограниченный бюджет ожидания и кооперативный worker.",
+    "interview": "Останавливает ли cancel горутину принудительно?"
+  },
+  "concurrency-context-timeout": {
+    "frames": [
+      [
+        "Запрос",
+        [
+          "parent: budget 100ms",
+          "local: 500ms"
+        ],
+        "effective deadline ≤ 100ms",
+        "Дочерний контекст не продлевает родителя."
+      ],
+      [
+        "Вызов",
+        [
+          "service",
+          "repository(ctx)"
+        ],
+        "call(ctx)",
+        "Зависимость получает общий бюджет."
+      ],
+      [
+        "Ранний успех",
+        [
+          "call returns nil",
+          "defer cancel"
+        ],
+        "return nil",
+        "Ненужные ресурсы освобождены."
+      ],
+      [
+        "Истечение",
+        [
+          "ctx.Done: closed",
+          "call returns ctx.Err()"
+        ],
+        "DeadlineExceeded",
+        "Кооперативная зависимость завершает ожидание."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить родителя",
+        "if err := parent.Err(); err != nil {\n    return err\n}",
+        "Уже завершившийся запрос не требует обращения к зависимости. Err возвращает Canceled или DeadlineExceeded."
+      ],
+      [
+        "Проверить бюджет",
+        "if timeout <= 0 {\n    return context.DeadlineExceeded\n}",
+        "Не начинаем работу с исчерпанным бюджетом. При одновременной исходной отмене приоритет в контракте у parent.Err."
+      ],
+      [
+        "Создать дедлайн",
+        "ctx, cancel := context.WithTimeout(parent, timeout)",
+        "Эффективный deadline — более ранний из дедлайна родителя и нового таймаута. Локальный timeout не продлевает родительский бюджет."
+      ],
+      [
+        "Запланировать очистку",
+        "defer cancel()",
+        "Освобождаем таймер и связь с родителем при раннем завершении вызова."
+      ],
+      [
+        "Проверить состояние ребёнка",
+        "if err := ctx.Err(); err != nil {\n    return err\n}",
+        "Контекст мог завершиться при создании. Между проверкой и вызовом всё равно возможна отмена, поэтому callback обязан учитывать ctx."
+      ],
+      [
+        "Вызвать зависимость",
+        "return call(ctx)",
+        "Передаём дочерний контекст и сохраняем ошибку callback. Контекст не превращает некооперативный вызов в ограниченный по времени."
+      ]
+    ],
+    "blocks": [
+      "Вызвать зависимость",
+      "Проверить состояние ребёнка",
+      "Запланировать очистку",
+      "Создать дедлайн",
+      "Проверить бюджет",
+      "Проверить родителя"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "ctx, cancel := context.",
+        "after": "(parent, timeout)",
+        "options": [
+          "WithTimeout",
+          "WithValue",
+          "Background"
+        ],
+        "correct": 0,
+        "explain": "Создаём ограниченный дочерний бюджет."
+      },
+      {
+        "before": "defer ",
+        "after": "()",
+        "options": [
+          "cancel",
+          "call",
+          "parent.Err"
+        ],
+        "correct": 0,
+        "explain": "Освобождаем контекст при возврате."
+      },
+      {
+        "before": "return call(",
+        "after": ")",
+        "options": [
+          "ctx",
+          "parent",
+          "context.Background()"
+        ],
+        "correct": 0,
+        "explain": "Не теряем локальное ограничение."
+      }
+    ],
+    "partial": "package practice\n\nfunc CallWithTimeout(parent context.Context, timeout time.Duration, call func(context.Context) error) error {\n\tif err := parent.Err(); err != nil {return err}\n\tif timeout<=0 {return context.DeadlineExceeded}\n\tctx, cancel := context.WithTimeout(parent, timeout)\n\tdefer cancel()\n\tif err := ctx.Err(); err != nil {return err}\n\t// TODO: передай дочерний ctx вместо parent\n\t_ = ctx\n\treturn call(parent)\n}\n",
+    "bug": "package practice\n\nfunc CallWithTimeout(parent context.Context, timeout time.Duration, call func(context.Context) error) error {\n\tif err := parent.Err(); err != nil {return err}\n\tif timeout<=0 {return context.DeadlineExceeded}\n\tctx, cancel := context.WithTimeout(parent, timeout)\n\tdefer cancel()\n\tif err := ctx.Err(); err != nil {return err}\n\t_ = call(ctx)\n\treturn nil\n}\n",
+    "hints": [
+      "Сначала проверь parent.Err и timeout.",
+      "Создай дочерний WithTimeout.",
+      "Сразу запланируй defer cancel().",
+      "Проверь ctx.Err и верни call(ctx) без подмены ошибки.",
+      "if err:=parent.Err();err!=nil{return err}\nif timeout<=0{return context.DeadlineExceeded}\nctx,cancel:=context.WithTimeout(parent,timeout);defer cancel()\nif err:=ctx.Err();err!=nil{return err}\nreturn call(ctx)"
+    ],
+    "related": [
+      [
+        "concurrency-timer-wait",
+        "Повторить ограниченное ожидание"
+      ],
+      [
+        "channel-pipeline",
+        "Связь с pipeline и отменой"
+      ]
+    ],
+    "production": "В цепочке handler → service → repository передавай входной ctx, а локальный timeout используй как дополнительное ограничение. Если callback игнорирует ctx, WithTimeout сам его не остановит.",
+    "interview": "Что произойдёт, если у родителя осталось 100ms, а WithTimeout ребёнка задаёт 500ms?"
+  },
+  "concurrency-request-id": {
+    "frames": [
+      [
+        "Родитель",
+        [
+          "ctx: request_id='foreign'"
+        ],
+        "private key: absent",
+        "Чужой строковый ключ не совпадает с нашим типом."
+      ],
+      [
+        "Добавление",
+        [
+          "WithRequestID(ctx,'req-42')"
+        ],
+        "child[requestIDKey{}]='req-42'",
+        "Создаётся ребёнок, родитель не меняется."
+      ],
+      [
+        "Чтение",
+        [
+          "RequestIDFromContext(child)"
+        ],
+        "req-42,true",
+        "Совпадает тип ключа и тип значения."
+      ],
+      [
+        "Наследование",
+        [
+          "parent: cancel()",
+          "child.Done: closed"
+        ],
+        "request metadata retained",
+        "WithValue не отключает отмену."
+      ]
+    ],
+    "steps": [
+      [
+        "Определить приватный ключ",
+        "type requestIDKey struct{}",
+        "Ключ context.Value должен быть сравнимым. Отдельный именованный неэкспортируемый тип отделяет пространство имён от чужих строковых ключей."
+      ],
+      [
+        "Добавить значение",
+        "func WithRequestID(ctx context.Context,id string)context.Context{\n    return context.WithValue(ctx, requestIDKey{}, id)\n}",
+        "WithValue создаёт дочерний контекст, не изменяя родителя. Сохраняются его отмена, deadline и поиск других ключей."
+      ],
+      [
+        "Безопасно прочитать",
+        "func RequestIDFromContext(ctx context.Context)(string,bool){\n    id,ok := ctx.Value(requestIDKey{}).(string)",
+        "Value возвращает any. Безопасное утверждение типа с comma-ok возвращает zero value и false, если значение отсутствует или тип другой."
+      ],
+      [
+        "Вернуть результат",
+        "    return id,ok\n}",
+        "Пустая строка с ok=true — установленное значение, а не отсутствие. Не храни в context обязательные параметры бизнес-логики."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Безопасно прочитать",
+      "Добавить значение",
+      "Определить приватный ключ"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "type requestIDKey ",
+        "after": "",
+        "options": [
+          "struct{}",
+          "[]byte",
+          "map[string]int"
+        ],
+        "correct": 0,
+        "explain": "Пустая структура сравнима."
+      },
+      {
+        "before": "context.WithValue(ctx, ",
+        "after": ", id)",
+        "options": [
+          "requestIDKey{}",
+          "\"request_id\"",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Собственный тип ключа избегает коллизий."
+      },
+      {
+        "before": "ctx.Value(requestIDKey{}).(",
+        "after": " )",
+        "options": [
+          "string",
+          "int",
+          "bool"
+        ],
+        "correct": 0,
+        "explain": "Читаем строку с comma-ok."
+      }
+    ],
+    "partial": "package practice\n\ntype requestIDKey struct{}\nfunc WithRequestID(ctx context.Context,id string)context.Context{\n    return context.WithValue(ctx, requestIDKey{}, id)\n}\nfunc RequestIDFromContext(ctx context.Context)(string,bool){\n    // TODO: прочитай id через безопасное type assertion\n    return \"\",false\n}\n",
+    "bug": "package practice\n\ntype requestIDKey struct{}\nfunc WithRequestID(ctx context.Context,id string)context.Context{\n    return context.WithValue(ctx, \"request_id\", id)\n}\nfunc RequestIDFromContext(ctx context.Context)(string,bool){\n    id,ok := ctx.Value(\"request_id\").(string)\n    return id,ok\n}\n",
+    "hints": [
+      "Создай отдельный неэкспортируемый тип ключа.",
+      "Используй requestIDKey{} как ключ в WithValue и Value.",
+      "Не создавай Background: сохраняй родителя.",
+      "Читай через id,ok := ctx.Value(requestIDKey{}).(string).",
+      "type requestIDKey struct{}\n// WithRequestID: return context.WithValue(ctx,requestIDKey{},id)\n// RequestIDFromContext: id,ok:=ctx.Value(requestIDKey{}).(string);return id,ok"
+    ],
+    "related": [
+      [
+        "concurrency-timer-wait",
+        "Повторить ограниченное ожидание"
+      ],
+      [
+        "channel-pipeline",
+        "Связь с pipeline и отменой"
+      ]
+    ],
+    "production": "Request ID, trace metadata и другие request-scoped данные подходят для context. Не используй context как контейнер зависимостей или замену явных аргументов. Значения не становятся потокобезопасными только из-за хранения в context.",
+    "interview": "Почему строковые ключи context.WithValue нежелательны?"
+  },
+  "concurrency-cancel-cause": {
+    "frames": [
+      [
+        "Начало",
+        [
+          "ctx.Err=nil",
+          "Cause=nil"
+        ],
+        "active",
+        "Создали контекст с причиной."
+      ],
+      [
+        "Сбой",
+        [
+          "work returns storage error"
+        ],
+        "cancel(storage error)",
+        "Фиксируем причину."
+      ],
+      [
+        "Отмена",
+        [
+          "Done: closed",
+          "Err: Canceled"
+        ],
+        "Cause=storage error",
+        "Стандартный Err и детальная причина различны."
+      ],
+      [
+        "Повторная отмена",
+        [
+          "defer cancel(nil)"
+        ],
+        "Cause=storage error",
+        "Первая причина сохраняется."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать контекст с причиной",
+        "ctx, cancel := context.WithCancelCause(parent)",
+        "CancelCauseFunc принимает error. Done и Err по-прежнему работают, а Cause позволяет получить причину первой отмены."
+      ],
+      [
+        "Освободить ресурсы",
+        "defer cancel(nil)",
+        "Даже на успешном пути дочерний контекст освобождается. cancel(nil) устанавливает Canceled, если причины ещё не было; отложенный вызов не меняет уже вычисленный возвращаемый результат."
+      ],
+      [
+        "Проверить отмену",
+        "if ctx.Err() != nil {\n    return context.Cause(ctx)\n}",
+        "Если родитель уже отменён, не вызываем work и сохраняем исходную причину."
+      ],
+      [
+        "Выполнить операцию",
+        "err := work(ctx)",
+        "Callback получает дочерний контекст и может реагировать на родительскую отмену."
+      ],
+      [
+        "Зафиксировать ошибку",
+        "if err != nil {\n    cancel(err)\n    return context.Cause(ctx)\n}",
+        "Первая отмена побеждает. Если родитель отменил контекст раньше, новая ошибка не перезапишет причину."
+      ],
+      [
+        "Вернуть исход",
+        "return context.Cause(ctx)",
+        "У активного контекста Cause равно nil. Если родитель уже отменил ребёнка, Cause возвращает его причину. defer освобождает ребёнка после вычисления результата."
+      ]
+    ],
+    "blocks": [
+      "Вернуть исход",
+      "Зафиксировать ошибку",
+      "Выполнить операцию",
+      "Проверить отмену",
+      "Освободить ресурсы",
+      "Создать контекст с причиной"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "ctx,cancel := context.",
+        "after": "(parent)",
+        "options": [
+          "WithCancelCause",
+          "WithCancel",
+          "WithValue"
+        ],
+        "correct": 0,
+        "explain": "Нужна CancelCauseFunc."
+      },
+      {
+        "before": "cancel(",
+        "after": ") // ошибка work",
+        "options": [
+          "err",
+          "nil",
+          "context.Background()"
+        ],
+        "correct": 0,
+        "explain": "Передаём фактическую ошибку."
+      },
+      {
+        "before": "return context.",
+        "after": "(ctx)",
+        "options": [
+          "Cause",
+          "Background",
+          "TODO"
+        ],
+        "correct": 0,
+        "explain": "Возвращаем детальную причину."
+      }
+    ],
+    "partial": "package practice\n\nfunc RunWithCancelCause(parent context.Context, work func(context.Context) error) error {\n\tctx, cancel := context.WithCancelCause(parent)\n\tdefer cancel(nil)\n\tif ctx.Err()!=nil {return context.Cause(ctx)}\n\terr:=work(ctx)\n\tif err!=nil {\n\t    // TODO: передай ошибку в cancel\n\t    cancel(nil)\n\t    return context.Cause(ctx)\n\t}\n\treturn context.Cause(ctx)\n}\n",
+    "bug": "package practice\n\nfunc RunWithCancelCause(parent context.Context, work func(context.Context) error) error {\n\tctx, cancel := context.WithCancelCause(parent)\n\tdefer cancel(nil)\n\tif ctx.Err()!=nil {return ctx.Err()}\n\terr:=work(ctx)\n\tif err!=nil {cancel(err)}\n\treturn ctx.Err()\n}\n",
+    "hints": [
+      "Создай WithCancelCause и defer cancel(nil).",
+      "Для уже отменённого ребёнка верни Cause.",
+      "Выполни work(ctx) один раз.",
+      "При ошибке вызови cancel(err), затем верни Cause.",
+      "ctx,cancel:=context.WithCancelCause(parent);defer cancel(nil)\nif ctx.Err()!=nil{return context.Cause(ctx)}\nif err:=work(ctx);err!=nil{cancel(err);return context.Cause(ctx)}\nreturn context.Cause(ctx)"
+    ],
+    "related": [
+      [
+        "concurrency-timer-wait",
+        "Повторить ограниченное ожидание"
+      ],
+      [
+        "channel-pipeline",
+        "Связь с pipeline и отменой"
+      ]
+    ],
+    "production": "Причина отмены полезна для логов и диагностики координируемых операций. Не подменяй Err детальной причиной в коде, который ожидает стандартные категории; проверяй Err и Cause по нужному контракту.",
+    "interview": "Чем context.Err отличается от context.Cause?"
+  },
+  "concurrency-send-context": {
+    "frames": [
+      [
+        "Буфер заполнен",
+        [
+          "producer: value=9",
+          "out:[7]"
+        ],
+        "send blocked",
+        "Select ждёт свободного места или отмены."
+      ],
+      [
+        "Потребитель ушёл",
+        [
+          "ctx: cancel()",
+          "out: full"
+        ],
+        "Done: ready",
+        "Отмена становится готовой альтернативой."
+      ],
+      [
+        "Выход",
+        [
+          "producer: returns"
+        ],
+        "context.Canceled; out=[7]",
+        "Ничего нового не отправлено."
+      ],
+      [
+        "Другой исход",
+        [
+          "consumer reads",
+          "out: available"
+        ],
+        "send succeeds → nil",
+        "Если обе ветки готовы одновременно, приоритет не гарантирован."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить исходную отмену",
+        "if err := ctx.Err(); err != nil {\n    return err\n}",
+        "Уже отменённый контекст не должен расходовать место буфера даже при готовой отправке."
+      ],
+      [
+        "Ожидать коммуникацию",
+        "select {",
+        "Отправка может блокироваться, но select позволяет ожидать альтернативный сигнал отмены."
+      ],
+      [
+        "Отправить значение",
+        "case out <- value:\n    return nil",
+        "Успех означает фактически выполненную отправку. Не добавляем повторную проверку Err, которая могла бы объявить уже доставленное значение недоставленным."
+      ],
+      [
+        "Обработать отмену",
+        "case <-ctx.Done():\n    return ctx.Err()\n}",
+        "Done закрывается при отмене или истечении дедлайна. Если канал nil, отправка не готова, но отмена всё ещё может разблокировать select."
+      ]
+    ],
+    "blocks": [
+      "Обработать отмену",
+      "Отправить значение",
+      "Ожидать коммуникацию",
+      "Проверить исходную отмену"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if err := ctx.",
+        "after": "(); err != nil {",
+        "options": [
+          "Err",
+          "Done",
+          "Value"
+        ],
+        "correct": 0,
+        "explain": "Err сообщает уже произошедшую отмену."
+      },
+      {
+        "before": "case out ",
+        "after": " value:",
+        "options": [
+          "<-",
+          "=",
+          "->"
+        ],
+        "correct": 0,
+        "explain": "Ожидаем отправку."
+      },
+      {
+        "before": "case <-ctx.",
+        "after": "():",
+        "options": [
+          "Done",
+          "Err",
+          "Deadline"
+        ],
+        "correct": 0,
+        "explain": "Done — канал сигнала отмены."
+      }
+    ],
+    "partial": "package practice\n\nfunc SendWithContext(ctx context.Context, out chan<- int, value int) error {\n\tif err := ctx.Err(); err != nil {return err}\n\tselect {\n\tcase out <- value:\n\t    return nil\n\tcase <-ctx.Done():\n\t    // TODO: верни причину отмены\n\t    return nil\n\t}\n}\n",
+    "bug": "package practice\n\nfunc SendWithContext(ctx context.Context, out chan<- int, value int) error {\n\tselect {\n\tcase out <- value:\n\t    return nil\n\tcase <-ctx.Done():\n\t    return ctx.Err()\n\tdefault:\n\t    return errors.New(\"channel busy\")\n\t}\n}\n",
+    "hints": [
+      "Сначала обработай уже отменённый контекст.",
+      "Нужен блокирующий select без default.",
+      "Одна ветка отправляет out <- value.",
+      "Вторая ветка ждёт <-ctx.Done() и возвращает ctx.Err().",
+      "if err:=ctx.Err();err!=nil{return err}\nselect{case out<-value:return nil;case <-ctx.Done():return ctx.Err()}"
+    ],
+    "related": [
+      [
+        "concurrency-timer-wait",
+        "Повторить ограниченное ожидание"
+      ],
+      [
+        "channel-pipeline",
+        "Связь с pipeline и отменой"
+      ]
+    ],
+    "production": "Каждая потенциально блокирующая отправка в отменяемом pipeline должна учитывать уход downstream. Context не делает безопасной отправку в закрытый канал: закрытие координируется отдельно владельцем.",
+    "interview": "Почему проверка ctx.Err перед обычным out<-value недостаточна?"
+  },
+  "concurrency-bounded-queue": {
+    "frames": [
+      [
+        "Очередь заполнена",
+        [
+          "7",
+          "8"
+        ],
+        "capacity=2; incoming=9",
+        "Новая задача ждёт свободного места."
+      ],
+      [
+        "Потребитель читает",
+        [
+          "8",
+          "_"
+        ],
+        "dequeue=7,true",
+        "Освобождается место."
+      ],
+      [
+        "Производитель продолжает",
+        [
+          "8",
+          "9"
+        ],
+        "Enqueue returns nil",
+        "Задача действительно принята."
+      ],
+      [
+        "Альтернативный исход",
+        [
+          "7",
+          "8"
+        ],
+        "ctx отменён → error",
+        "Очередь не увеличивается и задача не теряется незаметно."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать ограниченную очередь",
+        "type BoundedQueue struct { jobs chan int }\nfunc NewBoundedQueue(capacity int)*BoundedQueue {\n if capacity<1 {capacity=1}\n return &BoundedQueue{jobs:make(chan int,capacity)}\n}",
+        "Буфер — фиксированное число ожидающих задач. Минимальная ёмкость 1 позволяет хранить хотя бы одну задачу."
+      ],
+      [
+        "Проверить отмену",
+        "func (q *BoundedQueue) Enqueue(ctx context.Context,job int)error{\n if err:=ctx.Err();err!=nil{return err}",
+        "До начала отправки исключаем уже отменённый запрос."
+      ],
+      [
+        "Дождаться места или отмены",
+        " select{\n case q.jobs<-job:return nil\n case <-ctx.Done():return ctx.Err()\n }\n}",
+        "При заполнении производитель ждёт, а не создаёт неограниченную очередь. Если клиент уйдёт, Done разблокирует ожидание."
+      ],
+      [
+        "Забрать задачу без ожидания",
+        "func (q *BoundedQueue) TryDequeue()(int,bool){\n select{\n case v:=<-q.jobs:return v,true\n default:return 0,false\n }\n}",
+        "Получение освобождает место. default сообщает, что сейчас задач нет; нулевое значение не означает пустую очередь."
+      ]
+    ],
+    "blocks": [
+      "Забрать задачу без ожидания",
+      "Дождаться места или отмены",
+      "Проверить отмену",
+      "Создать ограниченную очередь"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "make(chan int,",
+        "after": ")",
+        "options": [
+          "capacity",
+          "0",
+          "capacity+1"
+        ],
+        "correct": 0,
+        "explain": "Ёмкость ограничена заданным значением."
+      },
+      {
+        "before": "case <-ctx.",
+        "after": "():",
+        "options": [
+          "Done",
+          "Err",
+          "Value"
+        ],
+        "correct": 0,
+        "explain": "Сигнал отмены позволяет выйти из ожидания."
+      },
+      {
+        "before": "default:return 0,",
+        "after": "",
+        "options": [
+          "false",
+          "true",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Нет полученной задачи."
+      }
+    ],
+    "partial": "package practice\n\ntype BoundedQueue struct { jobs chan int }\nfunc NewBoundedQueue(capacity int)*BoundedQueue{\n if capacity<1{capacity=1}\n return &BoundedQueue{jobs:make(chan int,capacity)}\n}\nfunc(q *BoundedQueue) Enqueue(ctx context.Context,job int)error{\n if err:=ctx.Err();err!=nil{return err}\n select{\n case q.jobs<-job:return nil\n case <-ctx.Done():\n  // TODO: верни ошибку отмены\n  return nil\n }\n}\nfunc(q *BoundedQueue) TryDequeue()(int,bool){select{case v:=<-q.jobs:return v,true;default:return 0,false}}\n",
+    "bug": "package practice\n\ntype BoundedQueue struct { jobs chan int }\nfunc NewBoundedQueue(capacity int)*BoundedQueue{\n if capacity<1{capacity=1}\n return &BoundedQueue{jobs:make(chan int,capacity)}\n}\nfunc(q *BoundedQueue) Enqueue(ctx context.Context,job int)error{\n if err:=ctx.Err();err!=nil{return err}\n select{\n case q.jobs<-job:return nil\n default:return nil\n }\n}\nfunc(q *BoundedQueue) TryDequeue()(int,bool){select{case v:=<-q.jobs:return v,true;default:return 0,false}}\n",
+    "hints": [
+      "Храни chan int в структуре.",
+      "Создай буфер заданной ёмкости, минимум 1.",
+      "Enqueue: предварительный Err, затем send или Done.",
+      "TryDequeue: receive или default.",
+      "Enqueue: select{case q.jobs<-job:return nil;case <-ctx.Done():return ctx.Err()}\nTryDequeue: select{case v:=<-q.jobs:return v,true;default:return 0,false}"
+    ],
+    "related": [
+      [
+        "concurrency-send-context",
+        "Повторить отменяемую отправку"
+      ],
+      [
+        "concurrency-wait-group",
+        "Повторить ожидание группы"
+      ]
+    ],
+    "production": "Буфер ограничивает число ожидающих элементов внутри очереди, но не число заблокированных производителей и не общий расход памяти. Ограничивай также число входящих запросов и workers; измеряй глубину, задержку и отказы.",
+    "interview": "Чем bounded queue отличается от ограничения числа workers?"
+  },
+  "concurrency-ordered-fanout": {
+    "frames": [
+      [
+        "Задания",
+        [
+          "i=0:4",
+          "i=1:2",
+          "i=2:9"
+        ],
+        "limit=2; out=[0,0,0]",
+        "Два worker получают первые индексы."
+      ],
+      [
+        "Второй завершился раньше",
+        [
+          "W1: i=0",
+          "W2: i=1 done"
+        ],
+        "out=[0,4,0]",
+        "Записываем результат на индекс 1, не append."
+      ],
+      [
+        "Следующее задание",
+        [
+          "W2: i=2",
+          "W1: i=0 done"
+        ],
+        "out=[8,4,0]",
+        "Не больше двух активных вызовов."
+      ],
+      [
+        "Все завершены",
+        [
+          "jobs: closed",
+          "wg: 0"
+        ],
+        "out=[8,4,18]",
+        "Порядок соответствует входу."
+      ]
+    ],
+    "steps": [
+      [
+        "Нормализовать лимит и выделить результат",
+        "if limit<1 {limit=1}\nif limit>len(values){limit=len(values)}\nout:=make([]int,len(values))",
+        "Число работников ограничено входом и лимитом. Пустой вход даёт непустой по nil-семантике срез длины 0."
+      ],
+      [
+        "Создать очередь и зарегистрировать workers",
+        "jobs:=make(chan int)\nvar wg sync.WaitGroup\nwg.Add(limit)",
+        "Передаём индексы, а не просто значения. WaitGroup регистрируется до запуска горутин."
+      ],
+      [
+        "Запустить фиксированное число работников",
+        "for w:=0;w<limit;w++{\n go func(){\n  defer wg.Done()\n  for i:=range jobs{out[i]=work(values[i])}\n }()\n}",
+        "Каждый индекс выдаётся одному worker. Запись в разные элементы заранее выделенного среза безопасна при отсутствии конкурентной мутации заголовка."
+      ],
+      [
+        "Передать задания и закрыть вход",
+        "for i:=range values{jobs<-i}\nclose(jobs)",
+        "Единственный отправитель закрывает очередь после всех индексов; workers заканчивают range."
+      ],
+      [
+        "Дождаться всех результатов",
+        "wg.Wait()\nreturn out",
+        "Wait гарантирует завершение записей до чтения результата вызывающим. Порядок завершения не влияет на исходные индексы."
+      ]
+    ],
+    "blocks": [
+      "Дождаться всех результатов",
+      "Передать задания и закрыть вход",
+      "Запустить фиксированное число работников",
+      "Создать очередь и зарегистрировать workers",
+      "Нормализовать лимит и выделить результат"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "wg.Add(",
+        "after": ")",
+        "options": [
+          "limit",
+          "len(values)",
+          "0"
+        ],
+        "correct": 0,
+        "explain": "Регистрируем число workers, не задач."
+      },
+      {
+        "before": "out[",
+        "after": "] = work(values[i])",
+        "options": [
+          "i",
+          "0",
+          "w"
+        ],
+        "correct": 0,
+        "explain": "Индекс сохраняет порядок."
+      },
+      {
+        "before": "",
+        "after": "(jobs)",
+        "options": [
+          "close",
+          "clear",
+          "delete"
+        ],
+        "correct": 0,
+        "explain": "Завершает чтение workers."
+      }
+    ],
+    "partial": "package practice\n\nfunc OrderedFanOut(values []int, limit int, work func(int) int) []int {\n\tif limit<1{limit=1}\n\tif limit>len(values){limit=len(values)}\n\tout:=make([]int,len(values))\n\tjobs:=make(chan int)\n\tvar wg sync.WaitGroup\n\twg.Add(limit)\n\tfor w:=0;w<limit;w++{\n\t go func(){defer wg.Done();for i:=range jobs{\n\t  // TODO: сохрани результат на исходном индексе\n\t  _=work(values[i])\n\t }}()\n\t}\n\tfor i:=range values{jobs<-i}\n\tclose(jobs)\n\twg.Wait()\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc OrderedFanOut(values []int, limit int, work func(int) int) []int {\n\tout:=make([]int,len(values))\n\tfor i,v:=range values{out[i]=work(v)}\n\treturn out\n}\n",
+    "hints": [
+      "Создай выходной срез длины входа.",
+      "Ограничь число workers и передавай им индексы через канал.",
+      "Каждый worker пишет только out[i].",
+      "Закрой jobs после передачи всех индексов и дождись WaitGroup.",
+      "wg.Add(limit); for w:=0;w<limit;w++{go func(){defer wg.Done();for i:=range jobs{out[i]=work(values[i])}}()}\nfor i:=range values{jobs<-i};close(jobs);wg.Wait();return out"
+    ],
+    "related": [
+      [
+        "concurrency-send-context",
+        "Повторить отменяемую отправку"
+      ],
+      [
+        "concurrency-wait-group",
+        "Повторить ожидание группы"
+      ]
+    ],
+    "production": "Фиксированный пул ограничивает число активных goroutines и нагрузку на зависимости. Для бесконечного потока, ошибок и отмены нужны дополнительные контракты; эта задача обрабатывает конечный пакет без ошибок.",
+    "interview": "Почему semaphore внутри горутины на каждый элемент не равен фиксированному пулу?"
+  },
+  "concurrency-partial-batch": {
+    "frames": [
+      [
+        "Вход",
+        [
+          "4",
+          "-1",
+          "0",
+          "-2"
+        ],
+        "limit=2",
+        "Все четыре элемента должны быть обработаны."
+      ],
+      [
+        "После workers",
+        [
+          "8,nil",
+          "0,errA",
+          "0,nil",
+          "0,errB"
+        ],
+        "wg=0",
+        "Ошибки сохранены по исходным индексам."
+      ],
+      [
+        "Фильтрация",
+        [
+          "8",
+          "0"
+        ],
+        "out=[8,0]",
+        "Успешный ноль остаётся."
+      ],
+      [
+        "Результат",
+        [
+          "errors.Join(errA,errB)"
+        ],
+        "errors.Is обоих → true",
+        "Частичный успех не скрывает ошибки."
+      ]
+    ],
+    "steps": [
+      [
+        "Ограничить workers и выделить слоты",
+        "if limit<1{limit=1}\nif limit>len(values){limit=len(values)}\nresults:=make([]int,len(values))\nerrs:=make([]error,len(values))",
+        "У каждого входного индекса два слота: значение и ошибка. Ноль результата не означает ошибку."
+      ],
+      [
+        "Создать пул",
+        "jobs:=make(chan int)\nvar wg sync.WaitGroup\nwg.Add(limit)\nfor w:=0;w<limit;w++{\n go func(){defer wg.Done();for i:=range jobs{results[i],errs[i]=work(values[i])}}()\n}",
+        "Каждый индекс обрабатывается одним worker. Ошибка сохраняется, но не останавливает пул."
+      ],
+      [
+        "Передать все задачи и дождаться",
+        "for i:=range values{jobs<-i}\nclose(jobs)\nwg.Wait()",
+        "Все задания обрабатываются, даже если некоторые завершились ошибками."
+      ],
+      [
+        "Собрать только успехи",
+        "out:=make([]int,0,len(values))\nfor i,v:=range results{if errs[i]==nil{out=append(out,v)}}",
+        "После Wait последовательно фильтруем результаты по ошибкам, сохраняя исходный порядок и успешные нули."
+      ],
+      [
+        "Объединить ошибки",
+        "return out,errors.Join(errs...)",
+        "Join пропускает nil и возвращает nil, если ошибок нет. errors.Is работает для каждой исходной ошибки."
+      ]
+    ],
+    "blocks": [
+      "Объединить ошибки",
+      "Собрать только успехи",
+      "Передать все задачи и дождаться",
+      "Создать пул",
+      "Ограничить workers и выделить слоты"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "results[i],errs[i] = ",
+        "after": "(values[i])",
+        "options": [
+          "work",
+          "append",
+          "close"
+        ],
+        "correct": 0,
+        "explain": "Записываем оба результата."
+      },
+      {
+        "before": "if errs[i] ",
+        "after": " nil",
+        "options": [
+          "==",
+          "!=",
+          "<"
+        ],
+        "correct": 0,
+        "explain": "Успех определяется отсутствием ошибки."
+      },
+      {
+        "before": "errors.",
+        "after": "(errs...)",
+        "options": [
+          "Join",
+          "Is",
+          "As"
+        ],
+        "correct": 0,
+        "explain": "Объединяем все причины."
+      }
+    ],
+    "partial": "package practice\n\nfunc ProcessConcurrentBatch(values []int, limit int, work func(int) (int,error)) ([]int,error) {\n\tif limit<1{limit=1}\n\tif limit>len(values){limit=len(values)}\n\tresults:=make([]int,len(values))\n\terrs:=make([]error,len(values))\n\tjobs:=make(chan int)\n\tvar wg sync.WaitGroup\n\twg.Add(limit)\n\tfor w:=0;w<limit;w++{go func(){defer wg.Done();for i:=range jobs{results[i],errs[i]=work(values[i])}}()}\n\tfor i:=range values{jobs<-i}\n\tclose(jobs);wg.Wait()\n\tout:=make([]int,0,len(values))\n\tfor i,v:=range results{if errs[i]==nil{out=append(out,v)}}\n\t// TODO: объедини все ошибки\n\treturn out,nil\n}\n",
+    "bug": "package practice\n\nfunc ProcessConcurrentBatch(values []int, limit int, work func(int) (int,error)) ([]int,error) {\n\tif limit<1{limit=1}\n\tif limit>len(values){limit=len(values)}\n\tresults:=make([]int,len(values))\n\terrs:=make([]error,len(values))\n\tjobs:=make(chan int)\n\tvar wg sync.WaitGroup\n\twg.Add(limit)\n\tfor w:=0;w<limit;w++{go func(){defer wg.Done();for i:=range jobs{results[i],errs[i]=work(values[i])}}()}\n\tfor i:=range values{jobs<-i}\n\tclose(jobs);wg.Wait()\n\treturn results,errors.Join(errs...)\n}\n",
+    "hints": [
+      "Используй пул индексов как в OrderedFanOut.",
+      "Выдели два среза одинаковой длины.",
+      "В worker сохраняй results[i],errs[i], не выходи при ошибке.",
+      "После Wait собери только элементы с errs[i]==nil.",
+      "out:=make([]int,0,len(values));for i,v:=range results{if errs[i]==nil{out=append(out,v)}};return out,errors.Join(errs...)"
+    ],
+    "related": [
+      [
+        "concurrency-send-context",
+        "Повторить отменяемую отправку"
+      ],
+      [
+        "concurrency-wait-group",
+        "Повторить ожидание группы"
+      ],
+      [
+        "advanced-batch-partial-success",
+        "Сравнить последовательную обработку"
+      ]
+    ],
+    "production": "Независимые операции часто требуют частичного успеха, например batch-уведомления. Не применяй fail-fast, если бизнес-контракт требует попытки каждого элемента. Для повторов отдельно проектируй идемпотентность.",
+    "interview": "Когда частичный успех предпочтительнее fail-fast?"
+  },
+  "concurrency-graceful-shutdown": {
+    "frames": [
+      [
+        "Начало",
+        [
+          "workers: active",
+          "done: open"
+        ],
+        "shutdown ctx: active",
+        "Есть отдельный бюджет на остановку."
+      ],
+      [
+        "Запрос отмены",
+        [
+          "cancel()",
+          "workers: finishing"
+        ],
+        "done: open",
+        "Остановка ещё не подтверждена."
+      ],
+      [
+        "Успех",
+        [
+          "workers: exited",
+          "done: closed"
+        ],
+        "return nil",
+        "Все workers завершились."
+      ],
+      [
+        "Альтернативный исход",
+        [
+          "done: open",
+          "shutdown ctx: expired"
+        ],
+        "DeadlineExceeded",
+        "Ожидание прекращено, но работники могут ещё работать."
+      ]
+    ],
+    "steps": [
+      [
+        "Запросить остановку",
+        "cancel()",
+        "Сначала уведомляем работников, что пора завершаться. CancelFunc не ждёт их фактического выхода."
+      ],
+      [
+        "Проверить уже завершившуюся работу",
+        "select{\ncase <-done:return nil\ndefault:\n}",
+        "Если сигнал завершения уже закрыт, работа закончилась. По контракту это успех даже при истёкшем бюджете."
+      ],
+      [
+        "Ожидать с бюджетом",
+        "select{\ncase <-done:return nil\ncase <-ctx.Done():return ctx.Err()\n}",
+        "Отдельный контекст ограничивает ожидание shutdown. Если workers не завершились, вызывающий получает ошибку, а не ложное подтверждение остановки."
+      ]
+    ],
+    "blocks": [
+      "Ожидать с бюджетом",
+      "Проверить уже завершившуюся работу",
+      "Запросить остановку"
+    ],
+    "order": [
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "",
+        "after": "() // запрос остановки",
+        "options": [
+          "cancel",
+          "close",
+          "ctx.Err"
+        ],
+        "correct": 0,
+        "explain": "Вызываем предоставленную CancelFunc."
+      },
+      {
+        "before": "case <-",
+        "after": " :return nil",
+        "options": [
+          "done",
+          "ctx.Done()",
+          "cancel"
+        ],
+        "correct": 0,
+        "explain": "Done подтверждает фактический выход."
+      },
+      {
+        "before": "return ctx.",
+        "after": "()",
+        "options": [
+          "Err",
+          "Done",
+          "Value"
+        ],
+        "correct": 0,
+        "explain": "Возвращаем ошибку бюджета ожидания."
+      }
+    ],
+    "partial": "package practice\n\nfunc ShutdownWorkers(ctx context.Context, cancel context.CancelFunc, done <-chan struct{}) error {\n\tcancel()\n\tselect{case <-done:return nil;default:}\n\tselect{\n\tcase <-done:return nil\n\tcase <-ctx.Done():\n\t // TODO: верни ошибку истечения бюджета shutdown\n\t return nil\n\t}\n}\n",
+    "bug": "package practice\n\nfunc ShutdownWorkers(ctx context.Context, cancel context.CancelFunc, done <-chan struct{}) error {\n\tcancel()\n\treturn nil\n}\n",
+    "hints": [
+      "Cancel и фактическое завершение — разные сигналы.",
+      "Сначала вызови cancel.",
+      "Проверь done через неблокирующий select.",
+      "Потом блокирующий select между done и ctx.Done.",
+      "cancel();select{case <-done:return nil;default:};select{case <-done:return nil;case <-ctx.Done():return ctx.Err()}"
+    ],
+    "related": [
+      [
+        "concurrency-send-context",
+        "Повторить отменяемую отправку"
+      ],
+      [
+        "concurrency-wait-group",
+        "Повторить ожидание группы"
+      ]
+    ],
+    "production": "Сервис сначала прекращает принимать новые задания, затем сигнализирует работникам и ждёт их в отдельном shutdown-бюджете. Эта функция покрывает только фазу cancel-and-wait, не дренирование очереди и не остановку HTTP listener.",
+    "interview": "Почему нельзя использовать уже отменённый рабочий контекст как бюджет shutdown?"
+  },
+  "concurrency-fail-fast-group": {
+    "frames": [
+      [
+        "Запуск",
+        [
+          "job A",
+          "job B",
+          "job C"
+        ],
+        "ctx active; wg=3",
+        "Три зависимые операции стартуют."
+      ],
+      [
+        "Ошибка A",
+        [
+          "A: storage error",
+          "B,C: observe Done"
+        ],
+        "cancel(storage error)",
+        "Первая ошибка отменяет общий контекст."
+      ],
+      [
+        "Остановка",
+        [
+          "B: returns Canceled",
+          "C: cleanup"
+        ],
+        "Cause=storage error",
+        "Поздние ошибки не заменяют первую причину."
+      ],
+      [
+        "Завершение",
+        [
+          "wg=0"
+        ],
+        "return storage error",
+        "Все операции закончили работу."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать общий контекст группы",
+        "ctx,cancel:=context.WithCancelCause(parent)\ndefer cancel(nil)\nif ctx.Err()!=nil{return context.Cause(ctx)}",
+        "Все операции получают один отменяемый контекст. Уже отменённый родитель исключает запуск. Deferred cleanup освобождает ресурсы."
+      ],
+      [
+        "Зарегистрировать задачи",
+        "var wg sync.WaitGroup\nwg.Add(len(jobs))",
+        "WaitGroup отслеживает фактическое завершение всех операций, а не только сигнал отмены."
+      ],
+      [
+        "Запустить операции",
+        "for _,job:=range jobs{\n go func(run func(context.Context)error){\n  defer wg.Done()",
+        "Передаём callback параметром, чтобы каждый запуск получил свой job. Все зарегистрированные jobs запускаются даже если кто-то уже успел отменить контекст."
+      ],
+      [
+        "Отменить группу при ошибке",
+        "  if err:=run(ctx);err!=nil{cancel(err)}\n }(job)\n}",
+        "Первый сигнал отмены фиксирует причину. Другие jobs наблюдают ctx.Done и могут завершиться. Повторный cancel не перезаписывает причину."
+      ],
+      [
+        "Дождаться и вернуть причину",
+        "wg.Wait()\nreturn context.Cause(ctx)",
+        "Не возвращаемся, пока jobs не вышли. Причина вычисляется до deferred cancel(nil), поэтому успешная группа возвращает nil."
+      ]
+    ],
+    "blocks": [
+      "Дождаться и вернуть причину",
+      "Отменить группу при ошибке",
+      "Запустить операции",
+      "Зарегистрировать задачи",
+      "Создать общий контекст группы"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "context.",
+        "after": "(parent)",
+        "options": [
+          "WithCancelCause",
+          "WithValue",
+          "Background"
+        ],
+        "correct": 0,
+        "explain": "Нужен общий контекст с причиной."
+      },
+      {
+        "before": "if err:=run(ctx);err!=nil{cancel(",
+        "after": ")}",
+        "options": [
+          "err",
+          "nil",
+          "ctx"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем исходную ошибку."
+      },
+      {
+        "before": "return context.",
+        "after": "(ctx)",
+        "options": [
+          "Cause",
+          "TODO",
+          "Background"
+        ],
+        "correct": 0,
+        "explain": "Возвращаем детальную причину, а не только категорию."
+      }
+    ],
+    "partial": "package practice\n\nfunc RunFailFastGroup(parent context.Context, jobs []func(context.Context) error) error {\n\tctx,cancel:=context.WithCancelCause(parent)\n\tdefer cancel(nil)\n\tif ctx.Err()!=nil{return context.Cause(ctx)}\n\tvar wg sync.WaitGroup\n\twg.Add(len(jobs))\n\tfor _,job:=range jobs{\n\t go func(run func(context.Context)error){\n\t  defer wg.Done()\n\t  if err:=run(ctx);err!=nil{\n\t   // TODO: передай исходную ошибку в отмену группы\n\t   cancel(nil)\n\t  }\n\t }(job)\n\t}\n\twg.Wait()\n\treturn context.Cause(ctx)\n}\n",
+    "bug": "package practice\n\nfunc RunFailFastGroup(parent context.Context, jobs []func(context.Context) error) error {\n\tctx,cancel:=context.WithCancelCause(parent)\n\tdefer cancel(nil)\n\tif ctx.Err()!=nil{return context.Cause(ctx)}\n\tvar wg sync.WaitGroup\n\twg.Add(len(jobs))\n\tfor _,job:=range jobs{\n\t go func(run func(context.Context)error){\n\t  defer wg.Done()\n\t  if err:=run(ctx);err!=nil{cancel(err)}\n\t }(job)\n\t}\n\twg.Wait()\n\treturn ctx.Err()\n}\n",
+    "hints": [
+      "Создай общий WithCancelCause.",
+      "При уже отменённом parent верни Cause.",
+      "Зарегистрируй все jobs и запусти каждый с общим ctx.",
+      "На ошибке вызови cancel(err); дождись всех через Wait.",
+      "ctx,cancel:=context.WithCancelCause(parent);defer cancel(nil)\nif ctx.Err()!=nil{return context.Cause(ctx)}\nvar wg sync.WaitGroup;wg.Add(len(jobs));for _,job:=range jobs{go func(run func(context.Context)error){defer wg.Done();if err:=run(ctx);err!=nil{cancel(err)}}(job)};wg.Wait();return context.Cause(ctx)"
+    ],
+    "related": [
+      [
+        "concurrency-send-context",
+        "Повторить отменяемую отправку"
+      ],
+      [
+        "concurrency-wait-group",
+        "Повторить ожидание группы"
+      ],
+      [
+        "concurrency-partial-batch",
+        "Сравнить с частичным успехом"
+      ]
+    ],
+    "production": "Это учебный аналог fail-fast группы на стандартной библиотеке, не полная замена golang.org/x/sync/errgroup. Подходит для небольшой группы зависимых запросов. Для большого списка нужен лимит конкурентности, а для независимых задач — возможно partial success.",
+    "interview": "Почему fail-fast не означает немедленный return при первой ошибке?"
   }
 };
