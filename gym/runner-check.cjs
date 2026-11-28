@@ -19,6 +19,9 @@ if (!namesMatch) throw new Error('Cannot discover per-task Go test names');
 const testNames = JSON.parse(namesMatch[1]);
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'goforge-browser-'));
 const failures = [];
+// Regression: a function returning chan struct{} must be removed in full.
+const signatureStub='func DoneExample() <-chan struct{} { return nil }';
+if(runner.stripTargetDeclarations(signatureStub+'\nfunc Other() {}',signatureStub).trim()!=='func Other() {}')throw Error('channel result signature parsing regression');
 // Never count a failed test or a successful HTTP response as solved.
 const pass=runner.summarize({IsTest:true,Status:0,TestsFailed:0,Errors:'',Events:[{Message:'--- PASS: TestFoo (0.00s)\nPASS\n'}]});
 const fail=runner.summarize({IsTest:true,Status:1,TestsFailed:1,Errors:'',Events:[{Message:'--- FAIL: TestFoo (0.00s)\nFAIL\n'}]});
