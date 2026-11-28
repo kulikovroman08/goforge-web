@@ -532,3 +532,24 @@ func RunWithCancelCause(parent context.Context, work func(context.Context) error
 func SendWithContext(ctx context.Context, out chan<- int, value int) error {
 	return nil
 }
+
+type BoundedQueue struct { jobs chan int }
+func NewBoundedQueue(capacity int)*BoundedQueue{return &BoundedQueue{jobs:make(chan int,1)}}
+func (q *BoundedQueue) Enqueue(ctx context.Context,job int)error{return nil}
+func (q *BoundedQueue) TryDequeue()(int,bool){return 0,false}
+
+func OrderedFanOut(values []int, limit int, work func(int) int) []int {
+	return nil
+}
+
+func ProcessConcurrentBatch(values []int, limit int, work func(int) (int,error)) ([]int,error) {
+	return nil,nil
+}
+
+func ShutdownWorkers(ctx context.Context, cancel context.CancelFunc, done <-chan struct{}) error {
+	return nil
+}
+
+func RunFailFastGroup(parent context.Context, jobs []func(context.Context) error) error {
+	return nil
+}
