@@ -1012,6 +1012,15 @@ func TestComputeAsync(t *testing.T) {
   select{case _,ok:=<-out:if ok{t.Fatal("duplicate result")};case <-time.After(time.Second):t.Fatal("not closed")}
   if calls.Load()!=1{t.Fatal(calls.Load())}
  }
+
+ {
+  started, release := make(chan struct{}), make(chan struct{})
+  defer close(release)
+  result := make(chan (<-chan int), 1)
+  go func(){result<-ComputeAsync(func()int{close(started);<-release;return 13})}()
+  select{case <-started:case <-time.After(time.Second):t.Fatal("work not started")}
+  select{case out:=<-result:if out==nil||cap(out)!=1{t.Fatal("wrong result channel")};case <-time.After(time.Second):t.Fatal("ComputeAsync waited for work")}
+ }
 }
 
 func TestRunAllWork(t *testing.T) {
@@ -1049,6 +1058,15 @@ func TestExchangeValue(t *testing.T) {
   select{case <-returned:case <-time.After(time.Second):t.Fatal("exchange blocked")}
   select{case got:=<-observed:if got.cap!=0||!reflect.DeepEqual(got.values,[]int{want}){t.Fatal(got)};default:t.Fatal("callback not finished")}
   select{case <-observed:t.Fatal("callback called twice");default:}
+ }
+
+ {
+  started, release, returned := make(chan struct{}), make(chan struct{}), make(chan struct{})
+  go func(){ExchangeValue(3,func(ch <-chan int){for range ch{};close(started);<-release});close(returned)}()
+  select{case <-started:case <-time.After(time.Second):close(release);t.Fatal("callback not started")}
+  select{case <-returned:close(release);t.Fatal("returned before callback");case <-time.After(20*time.Millisecond):}
+  close(release)
+  select{case <-returned:case <-time.After(time.Second):t.Fatal("callback completion not observed")}
  }
 }
 
@@ -1116,6 +1134,13 @@ func TestReceiveEither(t *testing.T) {
  got:=run(a,c)
  if got!=(result{7,"a",true})&&got!=(result{9,"b",true}){t.Fatal(got)}
  if len(a)+len(c)!=1{t.Fatal("expected exactly one receive")}
+
+ {
+  delayed:=make(chan int);got:=make(chan result,1)
+  go func(){got<-run(nil,delayed)}()
+  select{case delayed<-19:case r:=<-got:t.Fatal("returned before data",r);case <-time.After(time.Second):t.Fatal("not receiving")}
+  select{case r:=<-got:if r!=(result{19,"b",true}){t.Fatal(r)};case <-time.After(time.Second):t.Fatal("missing result")}
+ }
 }
 
 func TestTrySendEvent(t *testing.T) {
@@ -1127,6 +1152,17 @@ func TestTrySendEvent(t *testing.T) {
  blocked:=make(chan int)
  result:=make(chan bool,1);go func(){result<-TrySendEvent(blocked,5)}()
  select{case ok:=<-result:if ok{t.Fatal("no receiver")};case <-time.After(time.Second):t.Fatal("blocked")}
+
+ {
+  ch:=make(chan int);received:=make(chan int,1);ready:=make(chan struct{});stop:=make(chan struct{})
+  defer close(stop)
+  go func(){close(ready);select{case v:=<-ch:received<-v;case <-stop:}}()
+  <-ready
+  deadline:=time.NewTimer(time.Second);defer deadline.Stop()
+  tick:=time.NewTicker(time.Millisecond);defer tick.Stop()
+  for !TrySendEvent(ch,23){select{case <-deadline.C:t.Fatal("never sent to waiting receiver");case <-tick.C:}}
+  select{case v:=<-received:if v!=23{t.Fatal(v)};case <-time.After(time.Second):t.Fatal("missing send")}
+ }
 }
 
 func TestTryReceiveEvent(t *testing.T) {
@@ -1155,6 +1191,13 @@ func TestDrainTwoSources(t *testing.T) {
  check(nil,nil,[]int{},[]int{})
  a:=makeInput();b:=make(chan int,1);b<-5;close(b)
  check(a,b,[]int{},[]int{5})
+
+ {
+  a,b:=make(chan int),make(chan int)
+  stop:=make(chan struct{});defer close(stop)
+  go func(){defer close(a);defer close(b);select{case b<-2:case <-stop:return};select{case a<-1:case <-stop:}}()
+  check(a,b,[]int{1},[]int{2})
+ }
 }
 
 func TestReceiveBeforeTimeout(t *testing.T) {
@@ -1172,6 +1215,15 @@ func TestReceiveBeforeTimeout(t *testing.T) {
  close(ch)
  if got:=run(ch,time.Second);got.err==nil||got.err.Error()!="event channel closed"||got.v!=0{t.Fatal(got)}
  if got:=run(nil,5*time.Millisecond);!errors.Is(got.err,context.DeadlineExceeded)||got.v!=0{t.Fatal(got)}
+
+ {
+  delayed:=make(chan int);out:=make(chan result,1)
+  go func(){out<-run(delayed,time.Second)}()
+  select{case delayed<-33:case r:=<-out:t.Fatal("returned before event",r);case <-time.After(time.Second):t.Fatal("not waiting")}
+  select{case r:=<-out:if r.v!=33||r.err!=nil{t.Fatal(r)};case <-time.After(time.Second):t.Fatal("missing event")}
+  start:=time.Now();r:=run(nil,20*time.Millisecond)
+  if !errors.Is(r.err,context.DeadlineExceeded)||time.Since(start)<20*time.Millisecond{t.Fatal("premature timeout",r)}
+ }
 }
 
 func TestSafeStore(t *testing.T) {
@@ -1185,6 +1237,16 @@ func TestSafeStore(t *testing.T) {
  select{case <-done:case <-time.After(time.Second):t.Fatal("workers blocked")}
  for i:=0;i<24;i++{if v,ok:=s.Get(fmt.Sprint(i));!ok||v!=i{t.Fatal(i,v,ok)}}
  s.Set("zero",9);if v,ok:=s.Get("zero");!ok||v!=9{t.Fatal(v,ok)}
+
+ {
+  var fresh SafeStore
+  var workers sync.WaitGroup
+  start:=make(chan struct{})
+  for i:=0;i<32;i++{i:=i;workers.Add(1);go func(){defer workers.Done();<-start;fresh.Set(fmt.Sprint(i),i)}()}
+  close(start);finished:=make(chan struct{});go func(){workers.Wait();close(finished)}()
+  select{case <-finished:case <-time.After(time.Second):t.Fatal("first writes blocked")}
+  for i:=0;i<32;i++{if v,ok:=fresh.Get(fmt.Sprint(i));!ok||v!=i{t.Fatal(i,v,ok)}}
+ }
 }
 
 func TestConfigStore(t *testing.T) {
@@ -1211,6 +1273,18 @@ func TestAtomicCounter(t *testing.T) {
  done:=make(chan struct{});go func(){wg.Wait();close(done)}()
  select{case <-done:case <-time.After(time.Second):t.Fatal("blocked")}
  if got:=c.Value();got!=2001{t.Fatal(got)}
+
+ {
+  var fresh AtomicCounter
+  var workers sync.WaitGroup
+  start:=make(chan struct{});values:=make(chan int64,200)
+  for i:=0;i<10;i++{workers.Add(1);go func(){defer workers.Done();<-start;for j:=0;j<20;j++{values<-fresh.Add(1)}}()}
+  close(start);finished:=make(chan struct{});go func(){workers.Wait();close(values);close(finished)}()
+  select{case <-finished:case <-time.After(time.Second):t.Fatal("Add blocked")}
+  seen:=make(map[int64]bool)
+  for v:=range values{if v<1||v>200||seen[v]{t.Fatal("invalid Add result",v)};seen[v]=true}
+  if len(seen)!=200||fresh.Value()!=200{t.Fatal("missing increments")}
+ }
 }
 
 func TestLazyConfig(t *testing.T) {
@@ -1228,6 +1302,18 @@ func TestLazyConfig(t *testing.T) {
  close(out)
  for v:=range out{if v!="ready"{t.Fatal(v)}}
  if loads.Load()!=1{t.Fatal(loads.Load())}
+
+ {
+  var fresh LazyConfig
+  started,release:=make(chan struct{}),make(chan struct{})
+  first,second:=make(chan string,1),make(chan string,1)
+  go func(){first<-fresh.Get(func()string{close(started);<-release;return "loaded"})}()
+  select{case <-started:case <-time.After(time.Second):close(release);t.Fatal("loader not started")}
+  go func(){second<-fresh.Get(func()string{return "wrong"})}()
+  select{case v:=<-second:close(release);t.Fatal("returned before loader",v);case <-time.After(20*time.Millisecond):}
+  close(release)
+  for _,ch:=range []chan string{first,second}{select{case v:=<-ch:if v!="loaded"{t.Fatal(v)};case <-time.After(time.Second):t.Fatal("Get blocked")}}
+ }
 }
 
 func TestQuotaStore(t *testing.T) {
@@ -1271,6 +1357,21 @@ func TestStartCancelableWorker(t *testing.T) {
  if c3==nil||d3==nil{t.Fatal("missing handles")};defer c3()
  select{case <-d3:case <-time.After(time.Second):t.Fatal("normal completion blocked")}
  if ctx:=<-seen3;ctx.Err()!=context.Canceled{t.Fatal("child not released")}
+
+ {
+  started,cleanup,release:=make(chan struct{}),make(chan struct{}),make(chan struct{})
+  defer close(release)
+  type handles struct{cancel context.CancelFunc;done <-chan struct{}}
+  result:=make(chan handles,1)
+  go func(){c,d:=StartCancelableWorker(context.Background(),func(ctx context.Context){close(started);<-ctx.Done();close(cleanup);<-release});result<-handles{c,d}}()
+  select{case <-started:case <-time.After(time.Second):t.Fatal("not started")}
+  var h handles
+  select{case h=<-result:case <-time.After(time.Second):t.Fatal("worker start blocked")}
+  h.cancel()
+  select{case <-cleanup:case <-time.After(time.Second):t.Fatal("cancel not observed")}
+  select{case <-h.done:t.Fatal("done closed before cleanup");case <-time.After(20*time.Millisecond):}
+
+ }
 }
 
 func TestCallWithTimeout(t *testing.T) {
@@ -1287,6 +1388,21 @@ func TestCallWithTimeout(t *testing.T) {
  out:=make(chan error,1)
  go func(){out<-CallWithTimeout(context.Background(),5*time.Millisecond,func(ctx context.Context)error{<-ctx.Done();return ctx.Err()})}()
  select{case err:=<-out:if !errors.Is(err,context.DeadlineExceeded){t.Fatal(err)};case <-time.After(time.Second):t.Fatal("timeout not propagated")}
+
+ {
+  canceled,stop:=context.WithCancel(context.Background());stop()
+  n:=0;cb:=func(context.Context)error{n++;return nil}
+  if e:=CallWithTimeout(canceled,time.Second,cb);!errors.Is(e,context.Canceled)||n!=0{t.Fatal(e,n)}
+  if e:=CallWithTimeout(context.Background(),-time.Second,cb);!errors.Is(e,context.DeadlineExceeded)||n!=0{t.Fatal(e,n)}
+  var child context.Context
+  if e:=CallWithTimeout(context.Background(),time.Second,func(ctx context.Context)error{n++;child=ctx;return nil});e!=nil||n!=1||child==nil||child.Err()!=context.Canceled{t.Fatal(e,n)}
+  parent,stopParent:=context.WithCancel(context.Background());defer stopParent()
+  started:=make(chan struct{});result:=make(chan error,1)
+  go func(){result<-CallWithTimeout(parent,time.Second,func(ctx context.Context)error{close(started);<-ctx.Done();return ctx.Err()})}()
+  select{case <-started:case <-time.After(time.Second):t.Fatal("call not started")}
+  stopParent()
+  select{case e:=<-result:if !errors.Is(e,context.Canceled){t.Fatal(e)};case <-time.After(time.Second):t.Fatal("parent cancellation ignored")}
+ }
 }
 
 func TestRequestIDFromContext(t *testing.T) {
@@ -1319,6 +1435,12 @@ func TestRunWithCancelCause(t *testing.T) {
  if got:=RunWithCancelCause(p2,func(ctx context.Context)error{cancel2(parentErr);<-ctx.Done();return marker});got!=parentErr{t.Fatal("first cause overwritten",got)}
  var success context.Context
  if got:=RunWithCancelCause(context.Background(),func(ctx context.Context)error{success=ctx;return nil});got!=nil||success==nil||success.Err()!=context.Canceled{t.Fatal("success cleanup",got)}
+
+ {
+  p,stop:=context.WithCancelCause(context.Background());defer stop(nil)
+  e:=RunWithCancelCause(p,func(ctx context.Context)error{stop(marker);<-ctx.Done();return nil})
+  if e!=marker{t.Fatal("parent cause lost",e)}
+ }
 }
 
 func TestSendWithContext(t *testing.T) {
@@ -1337,6 +1459,15 @@ func TestSendWithContext(t *testing.T) {
  go func(){result<-SendWithContext(context.Background(),ch,42)}()
  select{case v:=<-ch:if v!=42{t.Fatal(v)};case err:=<-result:t.Fatal("returned without sending",err);case <-time.After(time.Second):t.Fatal("missing send")}
  select{case err:=<-result:if err!=nil{t.Fatal(err)};case <-time.After(time.Second):t.Fatal("did not return")}
+
+ {
+  ctx,stop:=context.WithCancel(context.Background());defer stop()
+  ch:=make(chan int);result:=make(chan error,1)
+  go func(){result<-SendWithContext(ctx,ch,91)}()
+  select{case e:=<-result:t.Fatal("returned without ready receiver",e);case <-time.After(20*time.Millisecond):}
+  stop()
+  select{case e:=<-result:if !errors.Is(e,context.Canceled){t.Fatal(e)};case <-time.After(time.Second):t.Fatal("blocked send ignored cancel")}
+ }
 }
 
 func TestBoundedQueue(t *testing.T){
@@ -1352,6 +1483,17 @@ func TestBoundedQueue(t *testing.T){
  if err:=q.Enqueue(p,7);!errors.Is(err,context.Canceled)||len(q.jobs)!=0{t.Fatal(err)}
  if err:=q.Enqueue(context.Background(),5);err!=nil{t.Fatal(err)}
  if v,ok:=q.TryDequeue();!ok||v!=5{t.Fatal(v,ok)}
+
+ {
+  if cap(NewBoundedQueue(-2).jobs)!=1{t.Fatal("negative capacity")}
+  queue:=NewBoundedQueue(1);ctx,stop:=context.WithTimeout(context.Background(),time.Second);defer stop()
+  if e:=queue.Enqueue(ctx,1);e!=nil{t.Fatal(e)}
+  result:=make(chan error,1);go func(){result<-queue.Enqueue(ctx,2)}()
+  select{case e:=<-result:t.Fatal("returned while full",e);case <-time.After(20*time.Millisecond):}
+  if v,ok:=queue.TryDequeue();!ok||v!=1{t.Fatal(v,ok)}
+  select{case e:=<-result:if e!=nil{t.Fatal(e)};case <-time.After(time.Second):t.Fatal("enqueue did not resume")}
+  if v,ok:=queue.TryDequeue();!ok||v!=2{t.Fatal(v,ok)}
+ }
 }
 
 func TestOrderedFanOut(t *testing.T){
@@ -1368,6 +1510,17 @@ func TestOrderedFanOut(t *testing.T){
  select{case got:=<-result:if !reflect.DeepEqual(got,[]int{8,4,18,2})||peak.Load()!=2||calls.Load()!=4{t.Fatal(got,peak.Load(),calls.Load())};case <-time.After(time.Second):t.Fatal("blocked")}
  if got:=OrderedFanOut(nil,0,func(int)int{t.Fatal("unexpected work");return 0});got==nil||len(got)!=0{t.Fatal(got)}
  if got:=OrderedFanOut([]int{3},0,func(v int)int{return v});!reflect.DeepEqual(got,[]int{3}){t.Fatal(got)}
+
+ {
+  input:=[]int{3,1,2};original:=append([]int(nil),input...)
+  var mu sync.Mutex;seen:=map[int]int{}
+  got:=OrderedFanOut(input,10,func(v int)int{mu.Lock();seen[v]++;mu.Unlock();return v*3})
+  if !reflect.DeepEqual(got,[]int{9,3,6})||!reflect.DeepEqual(input,original)||!reflect.DeepEqual(seen,map[int]int{1:1,2:1,3:1}){t.Fatal(got,input,seen)}
+  firstStarted,secondDone:=make(chan struct{}),make(chan struct{})
+  result:=make(chan []int,1)
+  go func(){result<-OrderedFanOut([]int{1,2},2,func(v int)int{if v==1{close(firstStarted);<-secondDone}else{<-firstStarted;close(secondDone)};return v*10})}()
+  select{case got:=<-result:if !reflect.DeepEqual(got,[]int{10,20}){t.Fatal(got)};case <-time.After(time.Second):t.Fatal("ordered workers blocked")}
+ }
 }
 
 func TestProcessConcurrentBatch(t *testing.T){
@@ -1388,6 +1541,13 @@ func TestProcessConcurrentBatch(t *testing.T){
  if v==nil||len(v)!=0||!errors.Is(e,a){t.Fatal(v,e)}
  v,e=ProcessConcurrentBatch(nil,1,func(int)(int,error){return 0,nil});if v==nil||len(v)!=0||e!=nil{t.Fatal(v,e)}
  v,e=ProcessConcurrentBatch([]int{0},1,func(v int)(int,error){return v,nil});if !reflect.DeepEqual(v,[]int{0})||e!=nil{t.Fatal(v,e)}
+
+ {
+  input:=[]int{1,2,3};original:=append([]int(nil),input...)
+  v,e:=ProcessConcurrentBatch(input,2,func(v int)(int,error){if v==1{return 0,a};if v==3{return 0,b};return v,nil})
+  joined,ok:=e.(interface{Unwrap() []error})
+  if !ok||!reflect.DeepEqual(joined.Unwrap(),[]error{a,b})||!reflect.DeepEqual(v,[]int{2})||!reflect.DeepEqual(input,original){t.Fatal("error order or result",v,e)}
+ }
 }
 
 func TestShutdownWorkers(t *testing.T){
@@ -1405,6 +1565,12 @@ func TestShutdownWorkers(t *testing.T){
  select{case err:=<-wait:if !errors.Is(err,context.DeadlineExceeded)||calls.Load()!=2{t.Fatal(err)};case <-time.After(time.Second):t.Fatal("shutdown deadline ignored")}
  expired,end:=context.WithCancel(context.Background());end()
  if err:=ShutdownWorkers(expired,func(){calls.Add(1)},done);err!=nil||calls.Load()!=3{t.Fatal(err)}
+
+ {
+  ctx,stop:=context.WithCancel(context.Background());stop()
+  n:=0;open:=make(chan struct{})
+  if e:=ShutdownWorkers(ctx,func(){n++},open);!errors.Is(e,context.Canceled)||n!=1{t.Fatal(e,n)}
+ }
 }
 
 func TestRunFailFastGroup(t *testing.T){
@@ -1426,4 +1592,15 @@ func TestRunFailFastGroup(t *testing.T){
  parent,stop:=context.WithCancelCause(context.Background());stop(marker)
  if err:=RunFailFastGroup(parent,okJobs);err!=marker||calls.Load()!=2{t.Fatal(err,calls.Load())}
  if err:=RunFailFastGroup(context.Background(),nil);err!=nil{t.Fatal(err)}
+
+ {
+  parent,stop:=context.WithCancelCause(context.Background());defer stop(nil)
+  started:=make(chan struct{});out:=make(chan error,1)
+  go func(){out<-RunFailFastGroup(parent,[]func(context.Context)error{func(ctx context.Context)error{close(started);<-ctx.Done();return errors.New("secondary")}})}()
+  select{case <-started:case <-time.After(time.Second):t.Fatal("job not started")}
+  stop(marker)
+  select{case e:=<-out:if e!=marker{t.Fatal(e)};case <-time.After(time.Second):t.Fatal("parent cancel ignored")}
+  var child context.Context
+  if e:=RunFailFastGroup(context.Background(),[]func(context.Context)error{func(ctx context.Context)error{child=ctx;return nil}});e!=nil||child==nil||child.Err()!=context.Canceled{t.Fatal("cleanup",e)}
+ }
 }

@@ -103,8 +103,8 @@ go test -run '^$' -bench BenchmarkBuildLogLine -benchmem
 | Этап | Содержание | Состояние |
 |---|---|---|
 | 1. Go Core | Типы, zero values, условия, циклы, функции, массивы, slices, map, строки, Unicode, указатели, рекурсия, базовые алгоритмы | Первый количественный рубеж достигнут; аудит покрытия и последовательности предстоит |
-| 2. Advanced Go | Struct, embedding, methods, method sets, interfaces, typed nil, errors.Is/As/Join, defer, panic/recover, generics | Следующий блок: ориентир 30 практик с Guided Coding и 300 новых вопросов |
-| 3. Concurrency | Goroutines, channels, select, context, sync, race detector, worker pools, cancellation, backpressure | Есть стартовые задачи; расширение запланировано |
+| 2. Advanced Go | Struct, embedding, methods, method sets, interfaces, typed nil, errors.Is/As/Join, defer, panic/recover, generics | Реализованы 30 практик с Guided Coding и 300 вопросов |
+| 3. Concurrency | Goroutines, channels, select, context, sync, race detector, worker pools, cancellation, backpressure | Добавлены 30 задач и 300 вопросов; Quality Pass и проверка перед релизом |
 | 4. Runtime | GMP, GC, stack/heap, escape analysis, аллокации, benchmark, pprof | Есть стартовые задачи; расширение запланировано |
 | 5. Backend API | HTTP, REST, gRPC, protobuf, middleware, auth, timeout, retry, idempotency, WebSocket | Частичное покрытие |
 | 6. PostgreSQL | SQL, JOIN, индексы, EXPLAIN, транзакции, MVCC, блокировки, репликация и шардирование | Учебные примеры; реальные интеграционные занятия впереди |
@@ -128,7 +128,7 @@ go test -run '^$' -bench BenchmarkBuildLogLine -benchmem
 
 ## Источники и безопасность
 
-Основные источники: [спецификация Go](https://go.dev/ref/spec), [документация Go](https://go.dev/doc/), [стандартная библиотека](https://pkg.go.dev/std).
+Основные источники: [спецификация Go](https://go.dev/ref/spec), [документация Go](https://go.dev/doc/), [стандартная библиотека](https://pkg.go.dev/std), [Go Memory Model](https://go.dev/ref/mem), [race detector](https://go.dev/doc/articles/race_detector), [pipelines](https://go.dev/blog/pipelines), [context](https://pkg.go.dev/context), [sync](https://pkg.go.dev/sync), [таймеры Go 1.23](https://go.dev/wiki/Go123Timer), [errgroup](https://pkg.go.dev/golang.org/x/sync/errgroup).
 
 Дополнительные подборки и ориентиры для практики: [golings](https://golings.madhan.app/catalog/), [Exercism Go](https://github.com/exercism/go), [Go Kata](https://github.com/MedUnes/go-kata), [Go Questions](https://github.com/golang-design/go-questions), [Go Interview](https://github.com/goavengers/go-interview), [golang-questions](https://github.com/yakomisar/golang-questions), [sobesrazborgoogle](https://github.com/justxor/sobesrazborgoogle), [Devinterview Go](https://github.com/Devinterview-io/golang-interview-questions). Задачи GoForge оригинальные; ссылки golings тематические, контракты и тесты независимы. Наличие вопроса в подборке не подтверждает, что его задавали на конкретном интервью.
 
