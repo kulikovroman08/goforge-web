@@ -15326,5 +15326,691 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "Резервирование квоты требует атомарной проверки и изменения. Для нескольких инстансов нужен механизм согласованности общего хранилища, например транзакция или условный UPDATE.",
     "interview": "Может ли race condition существовать без data race?"
+  },
+  "concurrency-cancel-worker": {
+    "frames": [
+      [
+        "Запуск",
+        [
+          "parent: active",
+          "child: active"
+        ],
+        "done: open",
+        "Создали дочерний контекст и работника."
+      ],
+      [
+        "Запрос остановки",
+        [
+          "caller: cancel()",
+          "child.Done: closed"
+        ],
+        "child.Err=context.Canceled",
+        "Родитель остаётся активным."
+      ],
+      [
+        "Кооперативный выход",
+        [
+          "work: observes Done",
+          "work: returns"
+        ],
+        "done ещё открытый",
+        "Горутина самостоятельно возвращается."
+      ],
+      [
+        "Завершение",
+        [
+          "defer cancel",
+          "close(done)"
+        ],
+        "done: closed",
+        "Ожидание завершения разблокируется."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать дочерний контекст",
+        "ctx, cancel := context.WithCancel(parent)",
+        "WithCancel создаёт дочерний контекст и функцию отмены. Отмена родителя распространяется вниз; отмена ребёнка не отменяет родителя."
+      ],
+      [
+        "Создать сигнал завершения",
+        "done := make(chan struct{})",
+        "ctx.Done сообщает о запросе отмены; отдельный done сообщает о фактическом возврате work. Эти события не обязательно совпадают."
+      ],
+      [
+        "Запустить работника",
+        "go func() {",
+        "Анонимная функция запускается конкурентно; вызывающий код не ждёт долгую работу."
+      ],
+      [
+        "Запланировать освобождение ресурсов",
+        "    defer close(done)\n    defer cancel()",
+        "defer выполняются в обратном порядке: сначала cancel освобождает связь с родителем, затем закрытие done сообщает о завершении."
+      ],
+      [
+        "Передать контекст",
+        "    work(ctx)\n}()",
+        "Именно дочерний контекст реагирует на возвращённый cancel. work должен самостоятельно проверять Done или передавать ctx операциям, поддерживающим отмену."
+      ],
+      [
+        "Вернуть управление",
+        "return cancel, done",
+        "Вызывающий может отменить операцию, а затем ждать <-done, если ему необходимо дождаться фактического завершения."
+      ]
+    ],
+    "blocks": [
+      "Вернуть управление",
+      "Передать контекст",
+      "Запланировать освобождение ресурсов",
+      "Запустить работника",
+      "Создать сигнал завершения",
+      "Создать дочерний контекст"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "ctx, cancel := context.",
+        "after": "(parent)",
+        "options": [
+          "WithCancel",
+          "Background",
+          "WithValue"
+        ],
+        "correct": 0,
+        "explain": "Создаём отменяемый дочерний контекст."
+      },
+      {
+        "before": "work(",
+        "after": ")",
+        "options": [
+          "ctx",
+          "parent",
+          "context.Background()"
+        ],
+        "correct": 0,
+        "explain": "Иначе возвращённый cancel не остановит work."
+      },
+      {
+        "before": "defer ",
+        "after": "(done)",
+        "options": [
+          "close",
+          "clear",
+          "delete"
+        ],
+        "correct": 0,
+        "explain": "Сигнал фактического завершения."
+      }
+    ],
+    "partial": "package practice\n\nfunc StartCancelableWorker(parent context.Context, work func(context.Context)) (context.CancelFunc, <-chan struct{}) {\n\tctx, cancel := context.WithCancel(parent)\n\tdone := make(chan struct{})\n\tgo func() {\n\t    defer close(done)\n\t    defer cancel()\n\t    // TODO: передай дочерний контекст в work\n\t    work(parent)\n\t}()\n\treturn cancel, done\n}\n",
+    "bug": "package practice\n\nfunc StartCancelableWorker(parent context.Context, work func(context.Context)) (context.CancelFunc, <-chan struct{}) {\n\tctx, cancel := context.WithCancel(parent)\n\tdone := make(chan struct{})\n\tgo func() {\n\t    defer cancel()\n\t    work(ctx)\n\t    // забыли закрыть done\n\t}()\n\treturn cancel, done\n}\n",
+    "hints": [
+      "Нужны два сигнала: отмена и фактическое завершение.",
+      "Создай ctx,cancel через context.WithCancel(parent).",
+      "Создай done и запусти анонимную горутину.",
+      "Внутри defer close(done), defer cancel(), work(ctx).",
+      "ctx,cancel:=context.WithCancel(parent)\ndone:=make(chan struct{})\ngo func(){defer close(done);defer cancel();work(ctx)}()\nreturn cancel,done"
+    ],
+    "related": [
+      [
+        "concurrency-timer-wait",
+        "Повторить ограниченное ожидание"
+      ],
+      [
+        "channel-pipeline",
+        "Связь с pipeline и отменой"
+      ]
+    ],
+    "production": "Владельцу фоновой задачи полезно хранить cancel и сигнал завершения отдельно. Не считай отмену подтверждением остановки. Для shutdown нужен ограниченный бюджет ожидания и кооперативный worker.",
+    "interview": "Останавливает ли cancel горутину принудительно?"
+  },
+  "concurrency-context-timeout": {
+    "frames": [
+      [
+        "Запрос",
+        [
+          "parent: budget 100ms",
+          "local: 500ms"
+        ],
+        "effective deadline ≤ 100ms",
+        "Дочерний контекст не продлевает родителя."
+      ],
+      [
+        "Вызов",
+        [
+          "service",
+          "repository(ctx)"
+        ],
+        "call(ctx)",
+        "Зависимость получает общий бюджет."
+      ],
+      [
+        "Ранний успех",
+        [
+          "call returns nil",
+          "defer cancel"
+        ],
+        "return nil",
+        "Ненужные ресурсы освобождены."
+      ],
+      [
+        "Истечение",
+        [
+          "ctx.Done: closed",
+          "call returns ctx.Err()"
+        ],
+        "DeadlineExceeded",
+        "Кооперативная зависимость завершает ожидание."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить родителя",
+        "if err := parent.Err(); err != nil {\n    return err\n}",
+        "Уже завершившийся запрос не требует обращения к зависимости. Err возвращает Canceled или DeadlineExceeded."
+      ],
+      [
+        "Проверить бюджет",
+        "if timeout <= 0 {\n    return context.DeadlineExceeded\n}",
+        "Не начинаем работу с исчерпанным бюджетом. При одновременной исходной отмене приоритет в контракте у parent.Err."
+      ],
+      [
+        "Создать дедлайн",
+        "ctx, cancel := context.WithTimeout(parent, timeout)",
+        "Эффективный deadline — более ранний из дедлайна родителя и нового таймаута. Локальный timeout не продлевает родительский бюджет."
+      ],
+      [
+        "Запланировать очистку",
+        "defer cancel()",
+        "Освобождаем таймер и связь с родителем при раннем завершении вызова."
+      ],
+      [
+        "Проверить состояние ребёнка",
+        "if err := ctx.Err(); err != nil {\n    return err\n}",
+        "Контекст мог завершиться при создании. Между проверкой и вызовом всё равно возможна отмена, поэтому callback обязан учитывать ctx."
+      ],
+      [
+        "Вызвать зависимость",
+        "return call(ctx)",
+        "Передаём дочерний контекст и сохраняем ошибку callback. Контекст не превращает некооперативный вызов в ограниченный по времени."
+      ]
+    ],
+    "blocks": [
+      "Вызвать зависимость",
+      "Проверить состояние ребёнка",
+      "Запланировать очистку",
+      "Создать дедлайн",
+      "Проверить бюджет",
+      "Проверить родителя"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "ctx, cancel := context.",
+        "after": "(parent, timeout)",
+        "options": [
+          "WithTimeout",
+          "WithValue",
+          "Background"
+        ],
+        "correct": 0,
+        "explain": "Создаём ограниченный дочерний бюджет."
+      },
+      {
+        "before": "defer ",
+        "after": "()",
+        "options": [
+          "cancel",
+          "call",
+          "parent.Err"
+        ],
+        "correct": 0,
+        "explain": "Освобождаем контекст при возврате."
+      },
+      {
+        "before": "return call(",
+        "after": ")",
+        "options": [
+          "ctx",
+          "parent",
+          "context.Background()"
+        ],
+        "correct": 0,
+        "explain": "Не теряем локальное ограничение."
+      }
+    ],
+    "partial": "package practice\n\nfunc CallWithTimeout(parent context.Context, timeout time.Duration, call func(context.Context) error) error {\n\tif err := parent.Err(); err != nil {return err}\n\tif timeout<=0 {return context.DeadlineExceeded}\n\tctx, cancel := context.WithTimeout(parent, timeout)\n\tdefer cancel()\n\tif err := ctx.Err(); err != nil {return err}\n\t// TODO: передай дочерний ctx вместо parent\n\t_ = ctx\n\treturn call(parent)\n}\n",
+    "bug": "package practice\n\nfunc CallWithTimeout(parent context.Context, timeout time.Duration, call func(context.Context) error) error {\n\tif err := parent.Err(); err != nil {return err}\n\tif timeout<=0 {return context.DeadlineExceeded}\n\tctx, cancel := context.WithTimeout(parent, timeout)\n\tdefer cancel()\n\tif err := ctx.Err(); err != nil {return err}\n\t_ = call(ctx)\n\treturn nil\n}\n",
+    "hints": [
+      "Сначала проверь parent.Err и timeout.",
+      "Создай дочерний WithTimeout.",
+      "Сразу запланируй defer cancel().",
+      "Проверь ctx.Err и верни call(ctx) без подмены ошибки.",
+      "if err:=parent.Err();err!=nil{return err}\nif timeout<=0{return context.DeadlineExceeded}\nctx,cancel:=context.WithTimeout(parent,timeout);defer cancel()\nif err:=ctx.Err();err!=nil{return err}\nreturn call(ctx)"
+    ],
+    "related": [
+      [
+        "concurrency-timer-wait",
+        "Повторить ограниченное ожидание"
+      ],
+      [
+        "channel-pipeline",
+        "Связь с pipeline и отменой"
+      ]
+    ],
+    "production": "В цепочке handler → service → repository передавай входной ctx, а локальный timeout используй как дополнительное ограничение. Если callback игнорирует ctx, WithTimeout сам его не остановит.",
+    "interview": "Что произойдёт, если у родителя осталось 100ms, а WithTimeout ребёнка задаёт 500ms?"
+  },
+  "concurrency-request-id": {
+    "frames": [
+      [
+        "Родитель",
+        [
+          "ctx: request_id='foreign'"
+        ],
+        "private key: absent",
+        "Чужой строковый ключ не совпадает с нашим типом."
+      ],
+      [
+        "Добавление",
+        [
+          "WithRequestID(ctx,'req-42')"
+        ],
+        "child[requestIDKey{}]='req-42'",
+        "Создаётся ребёнок, родитель не меняется."
+      ],
+      [
+        "Чтение",
+        [
+          "RequestIDFromContext(child)"
+        ],
+        "req-42,true",
+        "Совпадает тип ключа и тип значения."
+      ],
+      [
+        "Наследование",
+        [
+          "parent: cancel()",
+          "child.Done: closed"
+        ],
+        "request metadata retained",
+        "WithValue не отключает отмену."
+      ]
+    ],
+    "steps": [
+      [
+        "Определить приватный ключ",
+        "type requestIDKey struct{}",
+        "Ключ context.Value должен быть сравнимым. Отдельный именованный неэкспортируемый тип отделяет пространство имён от чужих строковых ключей."
+      ],
+      [
+        "Добавить значение",
+        "func WithRequestID(ctx context.Context,id string)context.Context{\n    return context.WithValue(ctx, requestIDKey{}, id)\n}",
+        "WithValue создаёт дочерний контекст, не изменяя родителя. Сохраняются его отмена, deadline и поиск других ключей."
+      ],
+      [
+        "Безопасно прочитать",
+        "func RequestIDFromContext(ctx context.Context)(string,bool){\n    id,ok := ctx.Value(requestIDKey{}).(string)",
+        "Value возвращает any. Безопасное утверждение типа с comma-ok возвращает zero value и false, если значение отсутствует или тип другой."
+      ],
+      [
+        "Вернуть результат",
+        "    return id,ok\n}",
+        "Пустая строка с ok=true — установленное значение, а не отсутствие. Не храни в context обязательные параметры бизнес-логики."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Безопасно прочитать",
+      "Добавить значение",
+      "Определить приватный ключ"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "type requestIDKey ",
+        "after": "",
+        "options": [
+          "struct{}",
+          "[]byte",
+          "map[string]int"
+        ],
+        "correct": 0,
+        "explain": "Пустая структура сравнима."
+      },
+      {
+        "before": "context.WithValue(ctx, ",
+        "after": ", id)",
+        "options": [
+          "requestIDKey{}",
+          "\"request_id\"",
+          "nil"
+        ],
+        "correct": 0,
+        "explain": "Собственный тип ключа избегает коллизий."
+      },
+      {
+        "before": "ctx.Value(requestIDKey{}).(",
+        "after": " )",
+        "options": [
+          "string",
+          "int",
+          "bool"
+        ],
+        "correct": 0,
+        "explain": "Читаем строку с comma-ok."
+      }
+    ],
+    "partial": "package practice\n\ntype requestIDKey struct{}\nfunc WithRequestID(ctx context.Context,id string)context.Context{\n    return context.WithValue(ctx, requestIDKey{}, id)\n}\nfunc RequestIDFromContext(ctx context.Context)(string,bool){\n    // TODO: прочитай id через безопасное type assertion\n    return \"\",false\n}\n",
+    "bug": "package practice\n\ntype requestIDKey struct{}\nfunc WithRequestID(ctx context.Context,id string)context.Context{\n    return context.WithValue(ctx, \"request_id\", id)\n}\nfunc RequestIDFromContext(ctx context.Context)(string,bool){\n    id,ok := ctx.Value(\"request_id\").(string)\n    return id,ok\n}\n",
+    "hints": [
+      "Создай отдельный неэкспортируемый тип ключа.",
+      "Используй requestIDKey{} как ключ в WithValue и Value.",
+      "Не создавай Background: сохраняй родителя.",
+      "Читай через id,ok := ctx.Value(requestIDKey{}).(string).",
+      "type requestIDKey struct{}\n// WithRequestID: return context.WithValue(ctx,requestIDKey{},id)\n// RequestIDFromContext: id,ok:=ctx.Value(requestIDKey{}).(string);return id,ok"
+    ],
+    "related": [
+      [
+        "concurrency-timer-wait",
+        "Повторить ограниченное ожидание"
+      ],
+      [
+        "channel-pipeline",
+        "Связь с pipeline и отменой"
+      ]
+    ],
+    "production": "Request ID, trace metadata и другие request-scoped данные подходят для context. Не используй context как контейнер зависимостей или замену явных аргументов. Значения не становятся потокобезопасными только из-за хранения в context.",
+    "interview": "Почему строковые ключи context.WithValue нежелательны?"
+  },
+  "concurrency-cancel-cause": {
+    "frames": [
+      [
+        "Начало",
+        [
+          "ctx.Err=nil",
+          "Cause=nil"
+        ],
+        "active",
+        "Создали контекст с причиной."
+      ],
+      [
+        "Сбой",
+        [
+          "work returns storage error"
+        ],
+        "cancel(storage error)",
+        "Фиксируем причину."
+      ],
+      [
+        "Отмена",
+        [
+          "Done: closed",
+          "Err: Canceled"
+        ],
+        "Cause=storage error",
+        "Стандартный Err и детальная причина различны."
+      ],
+      [
+        "Повторная отмена",
+        [
+          "defer cancel(nil)"
+        ],
+        "Cause=storage error",
+        "Первая причина сохраняется."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать контекст с причиной",
+        "ctx, cancel := context.WithCancelCause(parent)",
+        "CancelCauseFunc принимает error. Done и Err по-прежнему работают, а Cause позволяет получить причину первой отмены."
+      ],
+      [
+        "Освободить ресурсы",
+        "defer cancel(nil)",
+        "Даже на успешном пути дочерний контекст освобождается. cancel(nil) устанавливает Canceled, если причины ещё не было; отложенный вызов не меняет уже вычисленный возвращаемый результат."
+      ],
+      [
+        "Проверить отмену",
+        "if ctx.Err() != nil {\n    return context.Cause(ctx)\n}",
+        "Если родитель уже отменён, не вызываем work и сохраняем исходную причину."
+      ],
+      [
+        "Выполнить операцию",
+        "err := work(ctx)",
+        "Callback получает дочерний контекст и может реагировать на родительскую отмену."
+      ],
+      [
+        "Зафиксировать ошибку",
+        "if err != nil {\n    cancel(err)\n    return context.Cause(ctx)\n}",
+        "Первая отмена побеждает. Если родитель отменил контекст раньше, новая ошибка не перезапишет причину."
+      ],
+      [
+        "Вернуть исход",
+        "return context.Cause(ctx)",
+        "У активного контекста Cause равно nil. Если родитель уже отменил ребёнка, Cause возвращает его причину. defer освобождает ребёнка после вычисления результата."
+      ]
+    ],
+    "blocks": [
+      "Вернуть исход",
+      "Зафиксировать ошибку",
+      "Выполнить операцию",
+      "Проверить отмену",
+      "Освободить ресурсы",
+      "Создать контекст с причиной"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "ctx,cancel := context.",
+        "after": "(parent)",
+        "options": [
+          "WithCancelCause",
+          "WithCancel",
+          "WithValue"
+        ],
+        "correct": 0,
+        "explain": "Нужна CancelCauseFunc."
+      },
+      {
+        "before": "cancel(",
+        "after": ") // ошибка work",
+        "options": [
+          "err",
+          "nil",
+          "context.Background()"
+        ],
+        "correct": 0,
+        "explain": "Передаём фактическую ошибку."
+      },
+      {
+        "before": "return context.",
+        "after": "(ctx)",
+        "options": [
+          "Cause",
+          "Background",
+          "TODO"
+        ],
+        "correct": 0,
+        "explain": "Возвращаем детальную причину."
+      }
+    ],
+    "partial": "package practice\n\nfunc RunWithCancelCause(parent context.Context, work func(context.Context) error) error {\n\tctx, cancel := context.WithCancelCause(parent)\n\tdefer cancel(nil)\n\tif ctx.Err()!=nil {return context.Cause(ctx)}\n\terr:=work(ctx)\n\tif err!=nil {\n\t    // TODO: передай ошибку в cancel\n\t    cancel(nil)\n\t    return context.Cause(ctx)\n\t}\n\treturn context.Cause(ctx)\n}\n",
+    "bug": "package practice\n\nfunc RunWithCancelCause(parent context.Context, work func(context.Context) error) error {\n\tctx, cancel := context.WithCancelCause(parent)\n\tdefer cancel(nil)\n\tif ctx.Err()!=nil {return ctx.Err()}\n\terr:=work(ctx)\n\tif err!=nil {cancel(err)}\n\treturn ctx.Err()\n}\n",
+    "hints": [
+      "Создай WithCancelCause и defer cancel(nil).",
+      "Для уже отменённого ребёнка верни Cause.",
+      "Выполни work(ctx) один раз.",
+      "При ошибке вызови cancel(err), затем верни Cause.",
+      "ctx,cancel:=context.WithCancelCause(parent);defer cancel(nil)\nif ctx.Err()!=nil{return context.Cause(ctx)}\nif err:=work(ctx);err!=nil{cancel(err);return context.Cause(ctx)}\nreturn context.Cause(ctx)"
+    ],
+    "related": [
+      [
+        "concurrency-timer-wait",
+        "Повторить ограниченное ожидание"
+      ],
+      [
+        "channel-pipeline",
+        "Связь с pipeline и отменой"
+      ]
+    ],
+    "production": "Причина отмены полезна для логов и диагностики координируемых операций. Не подменяй Err детальной причиной в коде, который ожидает стандартные категории; проверяй Err и Cause по нужному контракту.",
+    "interview": "Чем context.Err отличается от context.Cause?"
+  },
+  "concurrency-send-context": {
+    "frames": [
+      [
+        "Буфер заполнен",
+        [
+          "producer: value=9",
+          "out:[7]"
+        ],
+        "send blocked",
+        "Select ждёт свободного места или отмены."
+      ],
+      [
+        "Потребитель ушёл",
+        [
+          "ctx: cancel()",
+          "out: full"
+        ],
+        "Done: ready",
+        "Отмена становится готовой альтернативой."
+      ],
+      [
+        "Выход",
+        [
+          "producer: returns"
+        ],
+        "context.Canceled; out=[7]",
+        "Ничего нового не отправлено."
+      ],
+      [
+        "Другой исход",
+        [
+          "consumer reads",
+          "out: available"
+        ],
+        "send succeeds → nil",
+        "Если обе ветки готовы одновременно, приоритет не гарантирован."
+      ]
+    ],
+    "steps": [
+      [
+        "Проверить исходную отмену",
+        "if err := ctx.Err(); err != nil {\n    return err\n}",
+        "Уже отменённый контекст не должен расходовать место буфера даже при готовой отправке."
+      ],
+      [
+        "Ожидать коммуникацию",
+        "select {",
+        "Отправка может блокироваться, но select позволяет ожидать альтернативный сигнал отмены."
+      ],
+      [
+        "Отправить значение",
+        "case out <- value:\n    return nil",
+        "Успех означает фактически выполненную отправку. Не добавляем повторную проверку Err, которая могла бы объявить уже доставленное значение недоставленным."
+      ],
+      [
+        "Обработать отмену",
+        "case <-ctx.Done():\n    return ctx.Err()\n}",
+        "Done закрывается при отмене или истечении дедлайна. Если канал nil, отправка не готова, но отмена всё ещё может разблокировать select."
+      ]
+    ],
+    "blocks": [
+      "Обработать отмену",
+      "Отправить значение",
+      "Ожидать коммуникацию",
+      "Проверить исходную отмену"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if err := ctx.",
+        "after": "(); err != nil {",
+        "options": [
+          "Err",
+          "Done",
+          "Value"
+        ],
+        "correct": 0,
+        "explain": "Err сообщает уже произошедшую отмену."
+      },
+      {
+        "before": "case out ",
+        "after": " value:",
+        "options": [
+          "<-",
+          "=",
+          "->"
+        ],
+        "correct": 0,
+        "explain": "Ожидаем отправку."
+      },
+      {
+        "before": "case <-ctx.",
+        "after": "():",
+        "options": [
+          "Done",
+          "Err",
+          "Deadline"
+        ],
+        "correct": 0,
+        "explain": "Done — канал сигнала отмены."
+      }
+    ],
+    "partial": "package practice\n\nfunc SendWithContext(ctx context.Context, out chan<- int, value int) error {\n\tif err := ctx.Err(); err != nil {return err}\n\tselect {\n\tcase out <- value:\n\t    return nil\n\tcase <-ctx.Done():\n\t    // TODO: верни причину отмены\n\t    return nil\n\t}\n}\n",
+    "bug": "package practice\n\nfunc SendWithContext(ctx context.Context, out chan<- int, value int) error {\n\tselect {\n\tcase out <- value:\n\t    return nil\n\tcase <-ctx.Done():\n\t    return ctx.Err()\n\tdefault:\n\t    return errors.New(\"channel busy\")\n\t}\n}\n",
+    "hints": [
+      "Сначала обработай уже отменённый контекст.",
+      "Нужен блокирующий select без default.",
+      "Одна ветка отправляет out <- value.",
+      "Вторая ветка ждёт <-ctx.Done() и возвращает ctx.Err().",
+      "if err:=ctx.Err();err!=nil{return err}\nselect{case out<-value:return nil;case <-ctx.Done():return ctx.Err()}"
+    ],
+    "related": [
+      [
+        "concurrency-timer-wait",
+        "Повторить ограниченное ожидание"
+      ],
+      [
+        "channel-pipeline",
+        "Связь с pipeline и отменой"
+      ]
+    ],
+    "production": "Каждая потенциально блокирующая отправка в отменяемом pipeline должна учитывать уход downstream. Context не делает безопасной отправку в закрытый канал: закрытие координируется отдельно владельцем.",
+    "interview": "Почему проверка ctx.Err перед обычным out<-value недостаточна?"
   }
 };
