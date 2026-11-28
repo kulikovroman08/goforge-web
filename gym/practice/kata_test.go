@@ -1098,3 +1098,78 @@ func TestProduceEvents(t *testing.T) {
   select{case _,ok:=<-out:if ok{t.Fatal("extra event")};case <-time.After(time.Second):t.Fatal("producer did not close")}
  }
 }
+
+func TestReceiveEither(t *testing.T) {
+ type result struct{v int;source string;ok bool}
+ run:=func(a,b <-chan int) result {
+  ch:=make(chan result,1);go func(){v,s,ok:=ReceiveEither(a,b);ch<-result{v,s,ok}}()
+  select{case r:=<-ch:return r;case <-time.After(time.Second):t.Fatal("select blocked");return result{}}
+ }
+ a,b:=make(chan int,1),make(chan int,1)
+ b<-42
+ if got:=run(a,b);got!=(result{42,"b",true}){t.Fatal(got)}
+ a<-0
+ if got:=run(a,nil);got!=(result{0,"a",true}){t.Fatal(got)}
+ close(b)
+ if got:=run(nil,b);got!=(result{0,"b",false}){t.Fatal(got)}
+ a<-7;c:=make(chan int,1);c<-9
+ got:=run(a,c)
+ if got!=(result{7,"a",true})&&got!=(result{9,"b",true}){t.Fatal(got)}
+ if len(a)+len(c)!=1{t.Fatal("expected exactly one receive")}
+}
+
+func TestTrySendEvent(t *testing.T) {
+ out:=make(chan int,2);out<-7
+ if !TrySendEvent(out,8){t.Fatal("ready send rejected")}
+ if TrySendEvent(out,9){t.Fatal("full buffer accepted")}
+ if len(out)!=2||<-out!=7||<-out!=8{t.Fatal("wrong buffer contents")}
+ if TrySendEvent(nil,1){t.Fatal("nil accepted")}
+ blocked:=make(chan int)
+ result:=make(chan bool,1);go func(){result<-TrySendEvent(blocked,5)}()
+ select{case ok:=<-result:if ok{t.Fatal("no receiver")};case <-time.After(time.Second):t.Fatal("blocked")}
+}
+
+func TestTryReceiveEvent(t *testing.T) {
+ type result struct{v int;received,closed bool}
+ check:=func(in <-chan int,want result){
+  out:=make(chan result,1);go func(){v,r,c:=TryReceiveEvent(in);out<-result{v,r,c}}()
+  select{case got:=<-out:if got!=want{t.Fatal(got,want)};case <-time.After(time.Second):t.Fatal("blocked")}
+ }
+ in:=make(chan int,2);in<-0;in<-9
+ check(in,result{0,true,false});check(in,result{9,true,false})
+ check(in,result{});check(nil,result{})
+ in<-4;close(in)
+ check(in,result{4,true,false});check(in,result{0,false,true});check(in,result{0,false,true})
+}
+
+func TestDrainTwoSources(t *testing.T) {
+ makeInput:=func(vs ...int)<-chan int{ch:=make(chan int,len(vs));for _,v:=range vs{ch<-v};close(ch);return ch}
+ type result struct{a,b []int}
+ check:=func(a,b <-chan int,wa,wb []int){
+  out:=make(chan result,1);go func(){x,y:=DrainTwoSources(a,b);out<-result{x,y}}()
+  select{case got:=<-out:if !reflect.DeepEqual(got.a,wa)||!reflect.DeepEqual(got.b,wb){t.Fatal(got,wa,wb)};case <-time.After(time.Second):t.Fatal("did not drain")}
+ }
+ check(makeInput(1,0,1),makeInput(9,8),[]int{1,0,1},[]int{9,8})
+ check(nil,makeInput(0,2),[]int{},[]int{0,2})
+ check(makeInput(7),nil,[]int{7},[]int{})
+ check(nil,nil,[]int{},[]int{})
+ a:=makeInput();b:=make(chan int,1);b<-5;close(b)
+ check(a,b,[]int{},[]int{5})
+}
+
+func TestReceiveBeforeTimeout(t *testing.T) {
+ type result struct{v int;err error}
+ run:=func(in <-chan int,d time.Duration)result{
+  out:=make(chan result,1);go func(){v,e:=ReceiveBeforeTimeout(in,d);out<-result{v,e}}()
+  select{case r:=<-out:return r;case <-time.After(2*time.Second):t.Fatal("wait did not terminate");return result{}}
+ }
+ ch:=make(chan int,1);ch<-0
+ if got:=run(ch,time.Second);got.v!=0||got.err!=nil{t.Fatal(got)}
+ ch<-12
+ if got:=run(ch,0);got.v!=0||!errors.Is(got.err,context.DeadlineExceeded)||len(ch)!=1{t.Fatal(got)}
+ if got:=run(ch,-time.Second);!errors.Is(got.err,context.DeadlineExceeded)||len(ch)!=1{t.Fatal(got)}
+ if got:=run(ch,time.Second);got.v!=12||got.err!=nil{t.Fatal(got)}
+ close(ch)
+ if got:=run(ch,time.Second);got.err==nil||got.err.Error()!="event channel closed"||got.v!=0{t.Fatal(got)}
+ if got:=run(nil,5*time.Millisecond);!errors.Is(got.err,context.DeadlineExceeded)||got.v!=0{t.Fatal(got)}
+}
