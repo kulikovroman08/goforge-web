@@ -15449,7 +15449,7 @@ window.GOFORGE_GUIDES ={
         "explain": "Сигнал фактического завершения."
       }
     ],
-    "partial": "package practice\n\nfunc StartCancelableWorker(parent context.Context, work func(context.Context)) (context.CancelFunc, <-chan struct{}) {\n\tctx, cancel := context.WithCancel(parent)\n\tdone := make(chan struct{})\n\tgo func() {\n\t    defer close(done)\n\t    defer cancel()\n\t    // TODO: передай дочерний контекст в work\n\t    work(parent)\n\t}()\n\treturn cancel, done\n}\n",
+    "partial": "package practice\n\nfunc StartCancelableWorker(parent context.Context, work func(context.Context)) (context.CancelFunc, <-chan struct{}) {\n\tctx, cancel := context.WithCancel(parent)\n\tdone := make(chan struct{})\n\tgo func() {\n\t    defer close(done)\n\t    defer cancel()\n\t    // TODO: передай дочерний контекст в work\n\t    _ = ctx\n\t    work(parent)\n\t}()\n\treturn cancel, done\n}\n",
     "bug": "package practice\n\nfunc StartCancelableWorker(parent context.Context, work func(context.Context)) (context.CancelFunc, <-chan struct{}) {\n\tctx, cancel := context.WithCancel(parent)\n\tdone := make(chan struct{})\n\tgo func() {\n\t    defer cancel()\n\t    work(ctx)\n\t    // забыли закрыть done\n\t}()\n\treturn cancel, done\n}\n",
     "hints": [
       "Нужны два сигнала: отмена и фактическое завершение.",
