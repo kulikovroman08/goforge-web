@@ -1338,3 +1338,92 @@ func TestSendWithContext(t *testing.T) {
  select{case v:=<-ch:if v!=42{t.Fatal(v)};case err:=<-result:t.Fatal("returned without sending",err);case <-time.After(time.Second):t.Fatal("missing send")}
  select{case err:=<-result:if err!=nil{t.Fatal(err)};case <-time.After(time.Second):t.Fatal("did not return")}
 }
+
+func TestBoundedQueue(t *testing.T){
+ q:=NewBoundedQueue(2)
+ if cap(q.jobs)!=2||cap(NewBoundedQueue(0).jobs)!=1{t.Fatal("wrong capacity")}
+ if v,ok:=q.TryDequeue();v!=0||ok{t.Fatal(v,ok)}
+ for _,v:=range []int{0,8}{if err:=q.Enqueue(context.Background(),v);err!=nil{t.Fatal(err)}}
+ ctx,cancel:=context.WithTimeout(context.Background(),10*time.Millisecond);defer cancel()
+ done:=make(chan error,1);go func(){done<-q.Enqueue(ctx,9)}()
+ select{case err:=<-done:if !errors.Is(err,context.DeadlineExceeded){t.Fatal(err)};case <-time.After(time.Second):t.Fatal("blocked queue")}
+ for _,want:=range []int{0,8}{if v,ok:=q.TryDequeue();!ok||v!=want{t.Fatal(v,ok,want)}}
+ p,stop:=context.WithCancel(context.Background());stop()
+ if err:=q.Enqueue(p,7);!errors.Is(err,context.Canceled)||len(q.jobs)!=0{t.Fatal(err)}
+ if err:=q.Enqueue(context.Background(),5);err!=nil{t.Fatal(err)}
+ if v,ok:=q.TryDequeue();!ok||v!=5{t.Fatal(v,ok)}
+}
+
+func TestOrderedFanOut(t *testing.T){
+ var active,peak,calls atomic.Int32
+ started:=make(chan int,4);release:=make(chan struct{})
+ result:=make(chan []int,1)
+ go func(){result<-OrderedFanOut([]int{4,2,9,1},2,func(v int)int{
+  n:=active.Add(1);defer active.Add(-1);calls.Add(1)
+  for {old:=peak.Load();if n<=old||peak.CompareAndSwap(old,n){break}}
+  started<-v;<-release;return v*2
+ })}()
+ for i:=0;i<2;i++{select{case <-started:case <-time.After(time.Second):close(release);t.Fatal("workers not concurrent")}}
+ close(release)
+ select{case got:=<-result:if !reflect.DeepEqual(got,[]int{8,4,18,2})||peak.Load()!=2||calls.Load()!=4{t.Fatal(got,peak.Load(),calls.Load())};case <-time.After(time.Second):t.Fatal("blocked")}
+ if got:=OrderedFanOut(nil,0,func(int)int{t.Fatal("unexpected work");return 0});got==nil||len(got)!=0{t.Fatal(got)}
+ if got:=OrderedFanOut([]int{3},0,func(v int)int{return v});!reflect.DeepEqual(got,[]int{3}){t.Fatal(got)}
+}
+
+func TestProcessConcurrentBatch(t *testing.T){
+ a,b:=errors.New("a"),errors.New("b")
+ var calls,active,peak atomic.Int32
+ started:=make(chan int,4);release:=make(chan struct{})
+ type result struct{v []int;err error};done:=make(chan result,1)
+ go func(){v,e:=ProcessConcurrentBatch([]int{4,-1,0,-2},2,func(v int)(int,error){
+  n:=active.Add(1);defer active.Add(-1);calls.Add(1)
+  for{old:=peak.Load();if n<=old||peak.CompareAndSwap(old,n){break}}
+  started<-v;<-release
+  if v==-1{return 99,a};if v==-2{return 98,b};return v*2,nil
+ });done<-result{v,e}}()
+ for i:=0;i<2;i++{select{case <-started:case <-time.After(time.Second):close(release);t.Fatal("not concurrent")}}
+ close(release)
+ select{case got:=<-done:if !reflect.DeepEqual(got.v,[]int{8,0})||!errors.Is(got.err,a)||!errors.Is(got.err,b)||calls.Load()!=4||peak.Load()!=2{t.Fatal(got,calls.Load(),peak.Load())};case <-time.After(time.Second):t.Fatal("blocked")}
+ v,e:=ProcessConcurrentBatch([]int{1,2},0,func(int)(int,error){return 7,a})
+ if v==nil||len(v)!=0||!errors.Is(e,a){t.Fatal(v,e)}
+ v,e=ProcessConcurrentBatch(nil,1,func(int)(int,error){return 0,nil});if v==nil||len(v)!=0||e!=nil{t.Fatal(v,e)}
+ v,e=ProcessConcurrentBatch([]int{0},1,func(v int)(int,error){return v,nil});if !reflect.DeepEqual(v,[]int{0})||e!=nil{t.Fatal(v,e)}
+}
+
+func TestShutdownWorkers(t *testing.T){
+ var calls atomic.Int32
+ stopped:=make(chan struct{});done:=make(chan struct{})
+ cancel:=func(){calls.Add(1);close(stopped)}
+ result:=make(chan error,1)
+ go func(){result<-ShutdownWorkers(context.Background(),cancel,done)}()
+ select{case <-stopped:case <-time.After(time.Second):t.Fatal("cancel not called")}
+ select{case err:=<-result:t.Fatal("returned before completion",err);case <-time.After(20*time.Millisecond):}
+ close(done)
+ select{case err:=<-result:if err!=nil||calls.Load()!=1{t.Fatal(err,calls.Load())};case <-time.After(time.Second):t.Fatal("not finished")}
+ ctx,stop:=context.WithTimeout(context.Background(),5*time.Millisecond);defer stop()
+ wait:=make(chan error,1);go func(){wait<-ShutdownWorkers(ctx,func(){calls.Add(1)},nil)}()
+ select{case err:=<-wait:if !errors.Is(err,context.DeadlineExceeded)||calls.Load()!=2{t.Fatal(err)};case <-time.After(time.Second):t.Fatal("shutdown deadline ignored")}
+ expired,end:=context.WithCancel(context.Background());end()
+ if err:=ShutdownWorkers(expired,func(){calls.Add(1)},done);err!=nil||calls.Load()!=3{t.Fatal(err)}
+}
+
+func TestRunFailFastGroup(t *testing.T){
+ marker:=errors.New("primary failure")
+ started:=make(chan struct{});exited:=make(chan struct{})
+ release:=make(chan struct{});result:=make(chan error,1)
+ jobs:=[]func(context.Context)error{
+  func(ctx context.Context)error{<-started;return marker},
+  func(ctx context.Context)error{close(started);<-ctx.Done();close(exited);<-release;return ctx.Err()},
+ }
+ go func(){result<-RunFailFastGroup(context.Background(),jobs)}()
+ select{case <-exited:case <-time.After(time.Second):close(release);t.Fatal("sibling not canceled")}
+ select{case err:=<-result:close(release);t.Fatal("returned before sibling exited",err);case <-time.After(20*time.Millisecond):}
+ close(release)
+ select{case err:=<-result:if err!=marker{t.Fatal(err)};case <-time.After(time.Second):t.Fatal("blocked")}
+ var calls atomic.Int32
+ okJobs:=[]func(context.Context)error{func(context.Context)error{calls.Add(1);return nil},func(context.Context)error{calls.Add(1);return nil}}
+ if err:=RunFailFastGroup(context.Background(),okJobs);err!=nil||calls.Load()!=2{t.Fatal(err,calls.Load())}
+ parent,stop:=context.WithCancelCause(context.Background());stop(marker)
+ if err:=RunFailFastGroup(parent,okJobs);err!=marker||calls.Load()!=2{t.Fatal(err,calls.Load())}
+ if err:=RunFailFastGroup(context.Background(),nil);err!=nil{t.Fatal(err)}
+}
