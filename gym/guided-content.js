@@ -13380,5 +13380,643 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "Для небольших независимых преобразований индекс помогает сохранить порядок. Для большой партии используй ограниченную конкурентность; callback обязан самостоятельно защищать общие зависимости.",
     "interview": "Почему отдельные индексы можно записывать без mutex, а общий append — нет?"
+  },
+  "concurrency-unbuffered": {
+    "frames": [
+      [
+        "Подготовка",
+        [
+          "G1: ready",
+          "ch: cap=0",
+          "done: open"
+        ],
+        "value=42",
+        "Создаём канал и отдельный сигнал."
+      ],
+      [
+        "Ожидание",
+        [
+          "G1: send 42",
+          "G2: receive"
+        ],
+        "ch: rendezvous",
+        "Отправка и получение синхронизируются. До готовности другой стороны операция ждёт."
+      ],
+      [
+        "Передача",
+        [
+          "G2: 42",
+          "G1: close(ch)"
+        ],
+        "ch: closed",
+        "Получатель видит значение, затем конец потока."
+      ],
+      [
+        "Завершение",
+        [
+          "G2: return",
+          "done: closed"
+        ],
+        "G1: return",
+        "Вызывающая функция ждёт завершения callback."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать канал",
+        "ch := make(chan int)",
+        "make создаёт канал ёмкостью 0. Отправка требует готового получателя; значение не хранится в очереди."
+      ],
+      [
+        "Создать сигнал завершения",
+        "done := make(chan struct{})",
+        "Этот канал сообщает, что callback вернулся. Закрытие сигнала не переносит полезные данные."
+      ],
+      [
+        "Запустить получателя",
+        "go func() {\n    defer close(done)\n    receive(ch)\n}()",
+        "Если вызвать receive синхронно, он будет ждать отправку, до которой вызывающая функция не дошла. go позволяет обеим сторонам встретиться."
+      ],
+      [
+        "Передать значение",
+        "ch <- value",
+        "Оператор <- слева от значения означает отправку. При cap=0 отправитель ждёт получателя."
+      ],
+      [
+        "Закрыть поток",
+        "close(ch)",
+        "Больше отправок не будет. Получатель, читающий range, сможет выйти."
+      ],
+      [
+        "Дождаться callback",
+        "<-done",
+        "Закрытие done выполняется после возврата receive. Теперь функция гарантирует завершение callback."
+      ]
+    ],
+    "blocks": [
+      "Дождаться callback",
+      "Закрыть поток",
+      "Передать значение",
+      "Запустить получателя",
+      "Создать сигнал завершения",
+      "Создать канал"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "ch := make(",
+        "after": " )",
+        "options": [
+          "chan int",
+          "[]int",
+          "chan int, 1"
+        ],
+        "correct": 0,
+        "explain": "Нужен канал без буфера."
+      },
+      {
+        "before": "ch ",
+        "after": " value",
+        "options": [
+          "<-",
+          "=",
+          "->"
+        ],
+        "correct": 0,
+        "explain": "Отправка выполняется оператором <-."
+      },
+      {
+        "before": "",
+        "after": "done",
+        "options": [
+          "<-",
+          "close(",
+          "go "
+        ],
+        "correct": 0,
+        "explain": "Чтение сигнала ждёт завершения."
+      }
+    ],
+    "partial": "package practice\n\nfunc ExchangeValue(value int, receive func(<-chan int)) {\n\tch := make(chan int)\n\tdone := make(chan struct{})\n\tgo func() {\n\t    defer close(done)\n\t    receive(ch)\n\t}()\n\t// TODO: передай value\n\tclose(ch)\n\t<-done\n}\n",
+    "bug": "package practice\n\nfunc ExchangeValue(value int, receive func(<-chan int)) {\n\tch := make(chan int, 1)\n\tdone := make(chan struct{})\n\tgo func(){defer close(done);receive(ch)}()\n\tch <- value\n\tclose(ch)\n\t<-done\n}\n",
+    "hints": [
+      "Создай канал int без буфера и сигнал done.",
+      "Запусти receive(ch) в отдельной горутине.",
+      "В горутине используй defer close(done).",
+      "Отправь value, закрой ch, затем дождись <-done.",
+      "ch:=make(chan int)\ndone:=make(chan struct{})\ngo func(){defer close(done);receive(ch)}()\nch<-value\nclose(ch)\n<-done"
+    ],
+    "related": [
+      [
+        "concurrency-done-signal",
+        "Повторить передачу и завершение"
+      ],
+      [
+        "channel-merge",
+        "Связь с production"
+      ]
+    ],
+    "production": "Небуферизованный канал создаёт естественное обратное давление: производитель не опережает готовность потребителя. Для реального бесконечного потока добавляют отмену и владелец закрытия должен быть определён заранее.",
+    "interview": "Чем небуферизованный канал отличается от канала ёмкостью один?"
+  },
+  "concurrency-buffer-events": {
+    "frames": [
+      [
+        "Начало",
+        [
+          "[ ]",
+          "[ ]",
+          "[ ]"
+        ],
+        "len=0; cap=3",
+        "Вход: 4, 0, 9."
+      ],
+      [
+        "Первая отправка",
+        [
+          "4",
+          "[ ]",
+          "[ ]"
+        ],
+        "len=1; cap=3",
+        "Осталось два места."
+      ],
+      [
+        "Заполнение",
+        [
+          "4",
+          "0",
+          "9"
+        ],
+        "len=3; cap=3",
+        "Четвёртая отправка без чтения блокировалась бы."
+      ],
+      [
+        "Закрытие",
+        [
+          "4",
+          "0",
+          "9"
+        ],
+        "closed; len=3",
+        "Все значения ещё доступны."
+      ],
+      [
+        "Дочитали",
+        [
+          "[ ]",
+          "[ ]",
+          "[ ]"
+        ],
+        "len=0; cap=3; ok=false",
+        "Ёмкость не меняется после чтения и закрытия."
+      ]
+    ],
+    "steps": [
+      [
+        "Определить ёмкость",
+        "out := make(chan int, len(events))",
+        "len(events) задаёт количество мест. Отправка каждого из N элементов завершится без читателя, пока в буфере есть место."
+      ],
+      [
+        "Перебрать вход",
+        "for _, event := range events {",
+        "range идёт по срезу в порядке индексов. Индекс здесь не нужен."
+      ],
+      [
+        "Заполнить очередь",
+        "    out <- event\n}",
+        "Каждая отправка увеличивает число ожидающих значений. Буфер не расширяется автоматически."
+      ],
+      [
+        "Закрыть канал",
+        "close(out)",
+        "Закрытие запрещает дальнейшую отправку, но не стирает очередь."
+      ],
+      [
+        "Вернуть поток",
+        "return out",
+        "Получатель читает сохранённые значения; после опустошения канала чтение возвращает zero value и ok=false."
+      ]
+    ],
+    "blocks": [
+      "Вернуть поток",
+      "Закрыть канал",
+      "Заполнить очередь",
+      "Перебрать вход",
+      "Определить ёмкость"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "out := make(chan int, ",
+        "after": ")",
+        "options": [
+          "len(events)",
+          "0",
+          "1"
+        ],
+        "correct": 0,
+        "explain": "Нужно место для каждого события."
+      },
+      {
+        "before": "",
+        "after": "(out)",
+        "options": [
+          "close",
+          "delete",
+          "clear"
+        ],
+        "correct": 0,
+        "explain": "Закрываем поток перед возвратом."
+      }
+    ],
+    "partial": "package practice\n\nfunc BufferEvents(events []int) <-chan int {\n\tout := make(chan int, len(events))\n\tfor _, event := range events {\n\t    _ = event\n\t    // TODO: отправь событие\n\t}\n\tclose(out)\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc BufferEvents(events []int) <-chan int {\n\tout := make(chan int, len(events)+1)\n\tfor _, event := range events { out <- event }\n\tclose(out)\n\treturn out\n}\n",
+    "hints": [
+      "Сначала выдели буфер на все элементы.",
+      "Используй make(chan int, len(events)).",
+      "Перебери events через range, отправляя каждый элемент.",
+      "После цикла закрой out и верни его.",
+      "out:=make(chan int,len(events))\nfor _,v:=range events{out<-v}\nclose(out)\nreturn out"
+    ],
+    "related": [
+      [
+        "concurrency-unbuffered",
+        "Повторить передачу и завершение"
+      ],
+      [
+        "select-first",
+        "Связь с production"
+      ]
+    ],
+    "production": "Полное буферизование подходит для небольшого известного пакета. Для большого потока буфер ограничивают по ресурсам и определяют поведение при заполнении; len не является надёжным условием для конкурентной отправки.",
+    "interview": "Что происходит с накопленными значениями при close buffered channel?"
+  },
+  "concurrency-collect-events": {
+    "frames": [
+      [
+        "Поток",
+        [
+          "in: 7",
+          "in: 0",
+          "in: 7"
+        ],
+        "out=[]",
+        "Производитель отправляет события и закрывает вход."
+      ],
+      [
+        "Чтение 7",
+        [
+          "in: 0",
+          "in: 7"
+        ],
+        "out=[7]",
+        "Добавляем первое значение."
+      ],
+      [
+        "Чтение 0",
+        [
+          "in: 7"
+        ],
+        "out=[7,0]",
+        "Ноль не означает закрытие."
+      ],
+      [
+        "Конец",
+        [
+          "in: closed & empty"
+        ],
+        "out=[7,0,7]",
+        "range заканчивается после последнего значения."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать результат",
+        "out := make([]int, 0)",
+        "Пустой, но не nil срез удовлетворяет контракту даже для пустого потока."
+      ],
+      [
+        "Читать поток",
+        "for event := range in {",
+        "range над каналом получает по одному значению и завершает цикл только после закрытия и исчерпания. Пустой открытый канал заставляет ждать."
+      ],
+      [
+        "Сохранить значение",
+        "    out = append(out, event)\n}",
+        "append возвращает обновлённый срез. Любое полученное значение, включая 0 и дубликаты, является частью потока."
+      ],
+      [
+        "Вернуть результат",
+        "return out",
+        "Выход из range означает, что поток закрыт и полностью дочитан. Получатель не закрывает чужой канал."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Сохранить значение",
+      "Читать поток",
+      "Создать результат"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "for event := ",
+        "after": " in {",
+        "options": [
+          "range",
+          "select",
+          "close"
+        ],
+        "correct": 0,
+        "explain": "range дочитывает канал."
+      },
+      {
+        "before": "out = append(out, ",
+        "after": ")",
+        "options": [
+          "event",
+          "0",
+          "in"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем фактическое значение."
+      }
+    ],
+    "partial": "package practice\n\nfunc CollectEvents(in <-chan int) []int {\n\tout := make([]int, 0)\n\tfor event := range in {\n\t    _ = event\n\t    // TODO: добавь событие в out\n\t}\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc CollectEvents(in <-chan int) []int {\n\tout := make([]int, 0)\n\tfor event := range in {\n\t    if event != 0 {out=append(out,event)}\n\t}\n\treturn out\n}\n",
+    "hints": [
+      "Создай пустой срез int.",
+      "Используй for event := range in.",
+      "В теле добавляй каждый event через append.",
+      "Не проверяй event==0 и не закрывай вход.",
+      "out:=make([]int,0)\nfor event:=range in{out=append(out,event)}\nreturn out"
+    ],
+    "related": [
+      [
+        "concurrency-unbuffered",
+        "Повторить передачу и завершение"
+      ],
+      [
+        "channel-pipeline",
+        "Связь с production"
+      ]
+    ],
+    "production": "Сбор конечного потока удобен для ограниченных партий. Для бесконечной подписки range без context может зависнуть навсегда, а накопление всех событий может исчерпать память.",
+    "interview": "Когда завершается for v := range ch?"
+  },
+  "concurrency-receive-value": {
+    "frames": [
+      [
+        "Открытый буфер",
+        [
+          "in: [0,8]"
+        ],
+        "value=?, ok=?",
+        "Ноль является обычным отправленным значением."
+      ],
+      [
+        "Первое чтение",
+        [
+          "in: [8]"
+        ],
+        "value=0; ok=true",
+        "Данные получены."
+      ],
+      [
+        "После close",
+        [
+          "in: [8]"
+        ],
+        "value=8; ok=true",
+        "Закрытый канал всё ещё отдаёт накопленное."
+      ],
+      [
+        "Исчерпание",
+        [
+          "in: closed, empty"
+        ],
+        "value=0; ok=false",
+        "Теперь ноль синтетический: отправленного значения нет."
+      ]
+    ],
+    "steps": [
+      [
+        "Выполнить чтение",
+        "value, ok := <-in",
+        "Comma-ok даёт два результата. value — полученное значение; ok=true значит, что значение реально отправлено, даже если оно равно нулю."
+      ],
+      [
+        "Вернуть оба результата",
+        "return value, ok",
+        "При закрытом исчерпанном канале Go возвращает 0,false. Не нужно самостоятельно угадывать статус по значению или длине буфера."
+      ]
+    ],
+    "blocks": [
+      "Вернуть оба результата",
+      "Выполнить чтение"
+    ],
+    "order": [
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "value, ok := ",
+        "after": "in",
+        "options": [
+          "<-",
+          "->",
+          "close("
+        ],
+        "correct": 0,
+        "explain": "Оператор чтения расположен перед каналом."
+      },
+      {
+        "before": "return value, ",
+        "after": "",
+        "options": [
+          "ok",
+          "value != 0",
+          "len(in)>0"
+        ],
+        "correct": 0,
+        "explain": "Используем фактический признак от операции чтения."
+      }
+    ],
+    "partial": "package practice\n\nfunc ReceiveValue(in <-chan int) (int, bool) {\n\tvalue, ok := <-in\n\t// TODO: верни фактический признак получения\n\t_ = ok\n\treturn value, false\n}\n",
+    "bug": "package practice\n\nfunc ReceiveValue(in <-chan int) (int, bool) {\n\tvalue := <-in\n\treturn value, value != 0\n}\n",
+    "hints": [
+      "Операция чтения умеет вернуть два значения.",
+      "Напиши value, ok := <-in.",
+      "ok не зависит от численного значения.",
+      "Верни оба результата без дополнительных условий.",
+      "value,ok:=<-in\nreturn value,ok"
+    ],
+    "related": [
+      [
+        "concurrency-unbuffered",
+        "Повторить передачу и завершение"
+      ],
+      [
+        "select-first",
+        "Связь с production"
+      ]
+    ],
+    "production": "Comma-ok позволяет корректно отличить отключение источника событий от валидного сообщения с zero value. В select закрытый канал остаётся готовым к чтению; его нужно обработать отдельно.",
+    "interview": "Чем value=0,ok=true отличается от value=0,ok=false?"
+  },
+  "concurrency-produce-events": {
+    "frames": [
+      [
+        "Подготовка",
+        [
+          "G1: consumer",
+          "G2: producer",
+          "out: cap=0"
+        ],
+        "events=[3,0,5]",
+        "Разделяем доступ по направлениям."
+      ],
+      [
+        "Отправка",
+        [
+          "G2: dst <- 3",
+          "G1: <-out"
+        ],
+        "received=[3]",
+        "Обе стороны синхронизируются."
+      ],
+      [
+        "Последующие значения",
+        [
+          "G2: 0,5",
+          "G1: range"
+        ],
+        "received=[3,0,5]",
+        "Порядок одного отправителя сохраняется."
+      ],
+      [
+        "Конец",
+        [
+          "G2: close(dst)",
+          "G1: range ends"
+        ],
+        "out: closed",
+        "Получатель не закрывает выход."
+      ]
+    ],
+    "steps": [
+      [
+        "Создать канал",
+        "out := make(chan int)",
+        "Канал без буфера синхронизирует каждую отправку с получением."
+      ],
+      [
+        "Запустить производителя",
+        "go func(dst chan<- int) {",
+        "Параметр chan<- int разрешает отправку и закрытие, но запрещает чтение. Передача out этому параметру сужает доступ."
+      ],
+      [
+        "Закрыть при завершении",
+        "    defer close(dst)",
+        "Единственный производитель знает, когда отправок больше не будет."
+      ],
+      [
+        "Перебрать события",
+        "    for _, event := range events {",
+        "Читаем входной срез в порядке индексов; вызывающий код не должен менять его конкурентно."
+      ],
+      [
+        "Отправить данные",
+        "        dst <- event\n    }\n}(out)",
+        "Передаём все значения, включая нули. Если читатель не читает, отправка блокируется."
+      ],
+      [
+        "Вернуть доступ получателю",
+        "return out",
+        "Возвращаемый <-chan int запрещает отправку и close со стороны вызывающего. Закрытие — обязанность производителя."
+      ]
+    ],
+    "blocks": [
+      "Вернуть доступ получателю",
+      "Отправить данные",
+      "Перебрать события",
+      "Закрыть при завершении",
+      "Запустить производителя",
+      "Создать канал"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "go func(dst ",
+        "after": " ) {",
+        "options": [
+          "chan<- int",
+          "<-chan int",
+          "[]int"
+        ],
+        "correct": 0,
+        "explain": "Производителю нужен send-only канал."
+      },
+      {
+        "before": "defer ",
+        "after": "(dst)",
+        "options": [
+          "close",
+          "clear",
+          "delete"
+        ],
+        "correct": 0,
+        "explain": "Закрывает владелец отправки."
+      }
+    ],
+    "partial": "package practice\n\nfunc ProduceEvents(events []int) <-chan int {\n\tout := make(chan int)\n\tgo func(dst chan<- int) {\n\t    defer close(dst)\n\t    for _, event := range events {\n\t        _ = event\n\t        // TODO: отправь event в dst\n\t    }\n\t}(out)\n\treturn out\n}\n",
+    "bug": "package practice\n\nfunc ProduceEvents(events []int) <-chan int {\n\tout := make(chan int)\n\tgo func(dst chan<- int) {\n\t    for _, event := range events {dst<-event}\n\t    // забыли close(dst)\n\t}(out)\n\treturn out\n}\n",
+    "hints": [
+      "Создай out := make(chan int).",
+      "Запусти go func(dst chan<- int){...}(out).",
+      "Внутри зарегистрируй defer close(dst).",
+      "Перебери events и отправляй каждый через dst <- event.",
+      "out:=make(chan int)\ngo func(dst chan<- int){defer close(dst);for _,v:=range events{dst<-v}}(out)\nreturn out"
+    ],
+    "related": [
+      [
+        "concurrency-unbuffered",
+        "Повторить передачу и завершение"
+      ],
+      [
+        "channel-pipeline",
+        "Связь с production"
+      ]
+    ],
+    "production": "Направленные каналы документируют ownership на уровне типов. Для production-потока требуется отмена, если потребитель может прекратить чтение раньше конца; это отдельная следующая тема.",
+    "interview": "Можно ли закрыть send-only канал и почему нельзя закрыть receive-only?"
   }
 };
