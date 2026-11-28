@@ -14665,5 +14665,666 @@ window.GOFORGE_GUIDES ={
     ],
     "production": "Локальный таймер подходит для ограниченного ожидания одного события. Для цепочки вызовов обычно передают context с общим deadline, чтобы не начинать новый полный бюджет на каждой зависимости. Таймер не прекращает чужую работу автоматически.",
     "interview": "Чем time.NewTimer отличается от time.Sleep в задаче ожидания канала?"
+  },
+  "concurrency-safe-store": {
+    "frames": [
+      [
+        "Начало",
+        [
+          "G1:Set(a,0)",
+          "G2:Get(a)"
+        ],
+        "values=nil; mutex свободен",
+        "Обе горутины используют один объект."
+      ],
+      [
+        "Запись",
+        [
+          "G1: lock",
+          "G2: waiting"
+        ],
+        "values=map[a:0]",
+        "Создание и запись под одним mutex."
+      ],
+      [
+        "Освобождение",
+        [
+          "G1: unlock",
+          "G2: lock"
+        ],
+        "values=map[a:0]",
+        "Читатель получает доступ."
+      ],
+      [
+        "Чтение",
+        [
+          "G2: Get(a)"
+        ],
+        "0,true",
+        "Ноль — значение, а не отсутствие."
+      ]
+    ],
+    "steps": [
+      [
+        "Объявить состояние",
+        "type SafeStore struct {mu sync.Mutex; values map[string]int}",
+        "Mutex и map принадлежат одному объекту. Нулевой mutex готов, а нулевая map равна nil. Pointer receiver не копирует блокировку."
+      ],
+      [
+        "Захватить блокировку записи",
+        "func (s *SafeStore) Set(key string,value int){\n s.mu.Lock()\n defer s.mu.Unlock()",
+        "Lock ждёт освобождения mutex. defer гарантирует Unlock при выходе из метода."
+      ],
+      [
+        "Инициализировать map",
+        " if s.values==nil {s.values=make(map[string]int)}",
+        "Проверка и создание защищены той же блокировкой, иначе два писателя могут заменить map."
+      ],
+      [
+        "Записать значение",
+        " s.values[key]=value\n}",
+        "Мутация внутри критической секции."
+      ],
+      [
+        "Защитить чтение",
+        "func (s *SafeStore) Get(key string)(int,bool){\n s.mu.Lock()\n defer s.mu.Unlock()",
+        "Даже чтение конфликтует с конкурентной записью. Используем тот же mutex."
+      ],
+      [
+        "Вернуть данные и статус",
+        " v,ok:=s.values[key]\n return v,ok\n}",
+        "Чтение nil map безопасно. Comma-ok различает отсутствующий ключ и сохранённый ноль."
+      ]
+    ],
+    "blocks": [
+      "Вернуть данные и статус",
+      "Защитить чтение",
+      "Записать значение",
+      "Инициализировать map",
+      "Захватить блокировку записи",
+      "Объявить состояние"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "s.mu.",
+        "after": "()",
+        "options": [
+          "Lock",
+          "Done",
+          "Add"
+        ],
+        "correct": 0,
+        "explain": "Lock входит в критическую секцию."
+      },
+      {
+        "before": "defer s.mu.",
+        "after": "()",
+        "options": [
+          "Unlock",
+          "Wait",
+          "Lock"
+        ],
+        "correct": 0,
+        "explain": "Освобождаем тот же mutex."
+      },
+      {
+        "before": "v,ok := s.values[",
+        "after": "]",
+        "options": [
+          "key",
+          "value",
+          "0"
+        ],
+        "correct": 0,
+        "explain": "Comma-ok сообщает наличие ключа."
+      }
+    ],
+    "partial": "package practice\n\ntype SafeStore struct {mu sync.Mutex; values map[string]int}\nfunc (s *SafeStore) Set(key string,value int){\n s.mu.Lock()\n defer s.mu.Unlock()\n if s.values==nil {s.values=make(map[string]int)}\n // TODO: запиши значение\n}\nfunc (s *SafeStore) Get(key string)(int,bool){\n s.mu.Lock()\n defer s.mu.Unlock()\n v,ok:=s.values[key]\n return v,ok\n}\n",
+    "bug": "package practice\n\ntype SafeStore struct {mu sync.Mutex; values map[string]int}\nfunc (s *SafeStore) Set(key string,value int){\n s.mu.Lock()\n defer s.mu.Unlock()\n if s.values==nil {s.values=make(map[string]int)}\n s.values[key]=value\n}\nfunc (s *SafeStore) Get(key string)(int,bool){\n s.mu.Lock()\n defer s.mu.Unlock()\n v:=s.values[key]\n return v,v!=0\n}\n",
+    "hints": [
+      "Нужны map и mutex внутри одного объекта.",
+      "Оба метода — pointer receiver; Lock и defer Unlock в каждом.",
+      "В Set создай map при nil под блокировкой.",
+      "В Get используй comma-ok.",
+      "Set: Lock → defer Unlock → make при nil → запись. Get: Lock → defer Unlock → v,ok := s.values[key] → return v,ok."
+    ],
+    "related": [
+      [
+        "race",
+        "Повторить data race"
+      ],
+      [
+        "concurrency-wait-group",
+        "Ожидание группы операций"
+      ]
+    ],
+    "production": "Подходит для небольшого in-memory реестра. Mutex не защищает другие процессы и не заменяет транзакции БД. Избегай долгих RPC под блокировкой.",
+    "interview": "Почему чтение map тоже нужно защищать?"
+  },
+  "concurrency-rwmutex": {
+    "frames": [
+      [
+        "Исходное состояние",
+        [
+          "host=A",
+          "port=1"
+        ],
+        "R1 и R2 читают",
+        "Оба держат RLock."
+      ],
+      [
+        "Писатель ждёт",
+        [
+          "R1: reading",
+          "R2: reading",
+          "W: waiting"
+        ],
+        "Update(B,2)",
+        "Lock ждёт окончания чтений."
+      ],
+      [
+        "Запись",
+        [
+          "W: Lock",
+          "R3: waiting"
+        ],
+        "host=B; port=2",
+        "Оба поля обновлены под Lock."
+      ],
+      [
+        "Снимок",
+        [
+          "R3: RLock"
+        ],
+        "B,2",
+        "Смешанная пара A,2 не наблюдается."
+      ]
+    ],
+    "steps": [
+      [
+        "Хранить пару и RWMutex",
+        "type ConfigStore struct {mu sync.RWMutex; host string; port int}",
+        "Поля образуют единый снимок. RWMutex разрешает совместные чтения, писатель требует эксклюзивного доступа."
+      ],
+      [
+        "Захватить эксклюзивный доступ",
+        "func (s *ConfigStore) Update(host string,port int){\n s.mu.Lock()\n defer s.mu.Unlock()",
+        "Пока писатель держит Lock, ни читатель, ни другой писатель не входит в защищённую область."
+      ],
+      [
+        "Обновить пару",
+        " s.host=host\n s.port=port\n}",
+        "Обе записи под одной блокировкой. Читатель не видит промежуточную комбинацию."
+      ],
+      [
+        "Захватить доступ на чтение",
+        "func (s *ConfigStore) Snapshot()(string,int){\n s.mu.RLock()\n defer s.mu.RUnlock()",
+        "Читатели могут держать RLock одновременно, если нет препятствующего писателя."
+      ],
+      [
+        "Вернуть снимок",
+        " return s.host,s.port\n}",
+        "Копируем скалярные значения до освобождения блокировки."
+      ]
+    ],
+    "blocks": [
+      "Вернуть снимок",
+      "Захватить доступ на чтение",
+      "Обновить пару",
+      "Захватить эксклюзивный доступ",
+      "Хранить пару и RWMutex"
+    ],
+    "order": [
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "s.mu.",
+        "after": "() // чтение",
+        "options": [
+          "RLock",
+          "Lock",
+          "RUnlock"
+        ],
+        "correct": 0,
+        "explain": "RLock допускает совместные чтения."
+      },
+      {
+        "before": "defer s.mu.",
+        "after": "()",
+        "options": [
+          "RUnlock",
+          "Unlock",
+          "Done"
+        ],
+        "correct": 0,
+        "explain": "Освобождение соответствует RLock."
+      },
+      {
+        "before": "s.mu.",
+        "after": "() // запись",
+        "options": [
+          "Lock",
+          "RLock",
+          "RUnlock"
+        ],
+        "correct": 0,
+        "explain": "Запись требует эксклюзивного Lock."
+      }
+    ],
+    "partial": "package practice\n\ntype ConfigStore struct {mu sync.RWMutex; host string; port int}\nfunc (s *ConfigStore) Update(host string,port int){\n s.mu.Lock()\n defer s.mu.Unlock()\n s.host=host\n // TODO: обнови второе поле\n}\nfunc (s *ConfigStore) Snapshot()(string,int){\n s.mu.RLock()\n defer s.mu.RUnlock()\n return s.host,s.port\n}\n",
+    "bug": "package practice\n\ntype ConfigStore struct {mu sync.RWMutex; host string; port int}\nfunc (s *ConfigStore) Update(host string,port int){\n s.mu.Lock()\n defer s.mu.Unlock()\n s.host=host\n s.port=port\n}\nfunc (s *ConfigStore) Snapshot()(string,int){\n s.mu.Lock()\n defer s.mu.Unlock()\n return s.host,s.port\n}\n",
+    "hints": [
+      "Используй sync.RWMutex для обоих полей.",
+      "Update: Lock, defer Unlock.",
+      "Измени host и port под одной блокировкой.",
+      "Snapshot: RLock, defer RUnlock, возврат обоих полей.",
+      "Update: Lock → два присваивания → Unlock. Snapshot: RLock → return s.host,s.port → RUnlock."
+    ],
+    "related": [
+      [
+        "race",
+        "Повторить data race"
+      ],
+      [
+        "concurrency-wait-group",
+        "Ожидание группы операций"
+      ]
+    ],
+    "production": "Read-heavy конфигурация может выиграть от RWMutex, но он не автоматически быстрее Mutex. Измеряй contention. Не пытайся повысить RLock до Lock без освобождения.",
+    "interview": "Почему RWMutex не всегда быстрее Mutex?"
+  },
+  "concurrency-atomic-counter": {
+    "frames": [
+      [
+        "Начало",
+        [
+          "G1:+2",
+          "G2:+3"
+        ],
+        "value=0",
+        "Два независимых прибавления."
+      ],
+      [
+        "Один возможный порядок",
+        [
+          "G1:Add(2)"
+        ],
+        "value=2; return 2",
+        "Одна атомарная операция."
+      ],
+      [
+        "Вторая операция",
+        [
+          "G2:Add(3)"
+        ],
+        "value=5; return 5",
+        "Обновления не теряются."
+      ],
+      [
+        "Чтение",
+        [
+          "Load()"
+        ],
+        "5",
+        "После завершения обеих операций итог равен 5."
+      ]
+    ],
+    "steps": [
+      [
+        "Объявить атомарное поле",
+        "type AtomicCounter struct {value atomic.Int64}",
+        "Тип из sync/atomic предоставляет атомарные операции. Zero value равен нулю. Не копируй после использования."
+      ],
+      [
+        "Выполнить сложение",
+        "func (c *AtomicCounter) Add(delta int64)int64{\n return c.value.Add(delta)\n}",
+        "Add делает read-modify-write одной атомарной операцией и возвращает новое значение, в отличие от раздельных Load и Store."
+      ],
+      [
+        "Прочитать значение",
+        "func (c *AtomicCounter) Value()int64{\n return c.value.Load()\n}",
+        "Все чтения также атомарные. Снимок может измениться сразу после возврата."
+      ]
+    ],
+    "blocks": [
+      "Прочитать значение",
+      "Выполнить сложение",
+      "Объявить атомарное поле"
+    ],
+    "order": [
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "value atomic.",
+        "after": "",
+        "options": [
+          "Int64",
+          "Mutex",
+          "WaitGroup"
+        ],
+        "correct": 0,
+        "explain": "Типизированный атомарный int64."
+      },
+      {
+        "before": "return c.value.",
+        "after": "(delta)",
+        "options": [
+          "Add",
+          "Store",
+          "Load"
+        ],
+        "correct": 0,
+        "explain": "Add возвращает новое значение."
+      },
+      {
+        "before": "return c.value.",
+        "after": "()",
+        "options": [
+          "Load",
+          "Add",
+          "Swap"
+        ],
+        "correct": 0,
+        "explain": "Load атомарно читает поле."
+      }
+    ],
+    "partial": "package practice\n\ntype AtomicCounter struct {value atomic.Int64}\nfunc (c *AtomicCounter) Add(delta int64)int64{\n return c.value.Add(delta)\n}\nfunc (c *AtomicCounter) Value()int64{\n // TODO: атомарно прочитай значение\n return 0\n}\n",
+    "bug": "package practice\n\ntype AtomicCounter struct {value atomic.Int64}\nfunc (c *AtomicCounter) Add(delta int64)int64{\n return c.value.Add(delta)-delta\n}\nfunc (c *AtomicCounter) Value()int64{return c.value.Load()}\n",
+    "hints": [
+      "Импорт sync/atomic есть в общей заготовке.",
+      "Поле value имеет тип atomic.Int64.",
+      "Add делегирует c.value.Add(delta).",
+      "Value использует c.value.Load().",
+      "return c.value.Add(delta) // Add\nreturn c.value.Load() // Value"
+    ],
+    "related": [
+      [
+        "race",
+        "Повторить data race"
+      ],
+      [
+        "concurrency-wait-group",
+        "Ожидание группы операций"
+      ]
+    ],
+    "production": "Подходит для независимых метрик. Для инварианта нескольких полей или check-then-act одного атомарного чтения недостаточно.",
+    "interview": "Почему Load()+Store() не эквивалентны Add()?"
+  },
+  "concurrency-once": {
+    "frames": [
+      [
+        "Первый Get",
+        [
+          "G1: Do(load A)",
+          "G2: Do(load B)"
+        ],
+        "once: not done",
+        "Одна горутина начинает loader."
+      ],
+      [
+        "Инициализация",
+        [
+          "G1: load A",
+          "G2: waiting"
+        ],
+        "value ещё не опубликовано",
+        "Другой вызов ждёт."
+      ],
+      [
+        "Завершение",
+        [
+          "G1: value=A",
+          "G2: unblocked"
+        ],
+        "once: done",
+        "Оба возвращают A."
+      ],
+      [
+        "Повтор",
+        [
+          "G3: Get(load C)"
+        ],
+        "return A",
+        "Loader C не вызывается."
+      ]
+    ],
+    "steps": [
+      [
+        "Хранить Once и результат",
+        "type LazyConfig struct {once sync.Once; value string}",
+        "Once хранит факт выполнения независимо от строки. Пустая строка — валидный результат."
+      ],
+      [
+        "Объявить метод",
+        "func (c *LazyConfig) Get(load func()string)string{",
+        "Loader передаётся как функция; pointer receiver сохраняет один экземпляр Once."
+      ],
+      [
+        "Выполнить инициализацию",
+        " c.once.Do(func(){\n  c.value=load()\n })",
+        "Do выполняет функцию один раз на экземпляр. Конкурентные вызовы ждут окончания инициализации."
+      ],
+      [
+        "Вернуть результат",
+        " return c.value\n}",
+        "Возврат из Do синхронизирован с завершением инициализации."
+      ]
+    ],
+    "blocks": [
+      "Вернуть результат",
+      "Выполнить инициализацию",
+      "Объявить метод",
+      "Хранить Once и результат"
+    ],
+    "order": [
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "c.once.",
+        "after": "(func(){",
+        "options": [
+          "Do",
+          "Add",
+          "Lock"
+        ],
+        "correct": 0,
+        "explain": "Once.Do выполняет инициализацию один раз."
+      },
+      {
+        "before": "c.value = ",
+        "after": "()",
+        "options": [
+          "load",
+          "Get",
+          "close"
+        ],
+        "correct": 0,
+        "explain": "Сохраняем результат loader."
+      }
+    ],
+    "partial": "package practice\n\ntype LazyConfig struct {once sync.Once; value string}\nfunc (c *LazyConfig) Get(load func()string)string{\n c.once.Do(func(){\n  // TODO: вызови load и сохрани результат\n })\n return c.value\n}\n",
+    "bug": "package practice\n\ntype LazyConfig struct {once sync.Once; value string}\nfunc (c *LazyConfig) Get(load func()string)string{\n if c.value==\"\" {c.value=load()}\n return c.value\n}\n",
+    "hints": [
+      "Нужен sync.Once, не проверка пустой строки.",
+      "Храни once и value в одном объекте.",
+      "Вызови c.once.Do с анонимной функцией.",
+      "Внутри сохрани c.value = load(), затем верни c.value.",
+      "c.once.Do(func(){c.value=load()})\nreturn c.value"
+    ],
+    "related": [
+      [
+        "race",
+        "Повторить data race"
+      ],
+      [
+        "concurrency-wait-group",
+        "Ожидание группы операций"
+      ]
+    ],
+    "production": "Once подходит для неизменяемой инициализации. Для повторной попытки после ошибки или обновления нужен другой механизм. После panic в Do Once считает вызов выполненным.",
+    "interview": "Почему проверка value==\"\" не заменяет sync.Once?"
+  },
+  "concurrency-quota": {
+    "frames": [
+      [
+        "Начало",
+        [
+          "G1: reserve 4",
+          "G2: reserve 4"
+        ],
+        "remaining=5",
+        "Оба хотят одну квоту."
+      ],
+      [
+        "G1 под Lock",
+        [
+          "check 4<=5",
+          "remaining -=4"
+        ],
+        "remaining=1; true",
+        "Проверка и запись неразделимы."
+      ],
+      [
+        "G2 под Lock",
+        [
+          "check 4>1"
+        ],
+        "remaining=1; false",
+        "Второй видит новый остаток."
+      ],
+      [
+        "Ошибка подхода",
+        [
+          "check отдельно",
+          "act отдельно"
+        ],
+        "оба могли увидеть 5",
+        "Даже отдельно защищённые обращения допускают логическую гонку."
+      ]
+    ],
+    "steps": [
+      [
+        "Хранить общий остаток",
+        "type QuotaStore struct {mu sync.Mutex; remaining int}",
+        "Инвариант: остаток неотрицателен. Один mutex защищает все обращения."
+      ],
+      [
+        "Создать начальное состояние",
+        "func NewQuotaStore(limit int)*QuotaStore{\n if limit<0 {limit=0}\n return &QuotaStore{remaining:limit}\n}",
+        "Отрицательный лимит нормализуем. Объект пока не опубликован, Lock не нужен."
+      ],
+      [
+        "Проверить аргумент",
+        "func (q *QuotaStore) ReserveQuota(amount int)bool{\n if amount<=0{return false}",
+        "Проверка параметра не обращается к общей памяти."
+      ],
+      [
+        "Войти в критическую секцию",
+        " q.mu.Lock()\n defer q.mu.Unlock()",
+        "Нельзя освобождать mutex между проверкой остатка и уменьшением."
+      ],
+      [
+        "Проверить и уменьшить",
+        " if amount>q.remaining{return false}\n q.remaining-=amount\n return true\n}",
+        "Равенство допустимо. Проверка предотвращает отрицательный остаток, действие выполняется до Unlock."
+      ],
+      [
+        "Прочитать остаток",
+        "func (q *QuotaStore) Remaining()int{\n q.mu.Lock()\n defer q.mu.Unlock()\n return q.remaining\n}",
+        "Чтение тоже защищаем. Это снимок, не разрешение на будущее резервирование."
+      ]
+    ],
+    "blocks": [
+      "Прочитать остаток",
+      "Проверить и уменьшить",
+      "Войти в критическую секцию",
+      "Проверить аргумент",
+      "Создать начальное состояние",
+      "Хранить общий остаток"
+    ],
+    "order": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "blanks": [
+      {
+        "before": "if amount ",
+        "after": " q.remaining {return false}",
+        "options": [
+          ">",
+          ">=",
+          "<"
+        ],
+        "correct": 0,
+        "explain": "Равенство допустимо."
+      },
+      {
+        "before": "q.remaining ",
+        "after": " amount",
+        "options": [
+          "-=",
+          "+=",
+          "=="
+        ],
+        "correct": 0,
+        "explain": "Успех уменьшает остаток."
+      },
+      {
+        "before": "defer q.mu.",
+        "after": "()",
+        "options": [
+          "Unlock",
+          "Lock",
+          "Done"
+        ],
+        "correct": 0,
+        "explain": "Освобождаем после всей операции."
+      }
+    ],
+    "partial": "package practice\n\ntype QuotaStore struct {mu sync.Mutex; remaining int}\nfunc NewQuotaStore(limit int)*QuotaStore{\n if limit<0{limit=0}\n return &QuotaStore{remaining:limit}\n}\nfunc (q *QuotaStore) ReserveQuota(amount int)bool{\n if amount<=0{return false}\n q.mu.Lock()\n defer q.mu.Unlock()\n if amount>q.remaining{return false}\n // TODO: уменьши остаток\n return true\n}\nfunc (q *QuotaStore) Remaining()int{q.mu.Lock();defer q.mu.Unlock();return q.remaining}\n",
+    "bug": "package practice\n\ntype QuotaStore struct {mu sync.Mutex; remaining int}\nfunc NewQuotaStore(limit int)*QuotaStore{\n if limit<0{limit=0}\n return &QuotaStore{remaining:limit}\n}\nfunc (q *QuotaStore) ReserveQuota(amount int)bool{\n if amount<=0{return false}\n q.mu.Lock()\n defer q.mu.Unlock()\n if amount>=q.remaining{return false}\n q.remaining-=amount\n return true\n}\nfunc (q *QuotaStore) Remaining()int{q.mu.Lock();defer q.mu.Unlock();return q.remaining}\n",
+    "hints": [
+      "Остаток и mutex принадлежат одному объекту.",
+      "Нормализуй limit и отклоняй неположительный amount.",
+      "Lock перед чтением остатка.",
+      "Под той же блокировкой проверь amount>remaining и вычти amount.",
+      "if amount<=0{return false}\nq.mu.Lock();defer q.mu.Unlock()\nif amount>q.remaining{return false}\nq.remaining-=amount\nreturn true"
+    ],
+    "related": [
+      [
+        "race",
+        "Повторить data race"
+      ],
+      [
+        "concurrency-wait-group",
+        "Ожидание группы операций"
+      ]
+    ],
+    "production": "Резервирование квоты требует атомарной проверки и изменения. Для нескольких инстансов нужен механизм согласованности общего хранилища, например транзакция или условный UPDATE.",
+    "interview": "Может ли race condition существовать без data race?"
   }
 };
