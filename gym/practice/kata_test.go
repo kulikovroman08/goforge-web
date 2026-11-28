@@ -1173,3 +1173,77 @@ func TestReceiveBeforeTimeout(t *testing.T) {
  if got:=run(ch,time.Second);got.err==nil||got.err.Error()!="event channel closed"||got.v!=0{t.Fatal(got)}
  if got:=run(nil,5*time.Millisecond);!errors.Is(got.err,context.DeadlineExceeded)||got.v!=0{t.Fatal(got)}
 }
+
+func TestSafeStore(t *testing.T) {
+ var s SafeStore
+ if v,ok:=s.Get("missing");v!=0||ok{t.Fatal(v,ok)}
+ s.Set("zero",0)
+ if v,ok:=s.Get("zero");v!=0||!ok{t.Fatal(v,ok)}
+ var wg sync.WaitGroup
+ for i:=0;i<24;i++{i:=i;wg.Add(1);go func(){defer wg.Done();key:=fmt.Sprint(i);s.Set(key,i);s.Get("zero")}()}
+ done:=make(chan struct{});go func(){wg.Wait();close(done)}()
+ select{case <-done:case <-time.After(time.Second):t.Fatal("workers blocked")}
+ for i:=0;i<24;i++{if v,ok:=s.Get(fmt.Sprint(i));!ok||v!=i{t.Fatal(i,v,ok)}}
+ s.Set("zero",9);if v,ok:=s.Get("zero");!ok||v!=9{t.Fatal(v,ok)}
+}
+
+func TestConfigStore(t *testing.T) {
+ var s ConfigStore
+ if h,p:=s.Snapshot();h!=""||p!=0{t.Fatal(h,p)}
+ s.Update("A",1)
+ if h,p:=s.Snapshot();h!="A"||p!=1{t.Fatal(h,p)}
+ s.mu.RLock()
+ read:=make(chan bool,1);go func(){h,p:=s.Snapshot();read<-h=="A"&&p==1}()
+ select{case ok:=<-read:s.mu.RUnlock();if !ok{t.Fatal("wrong snapshot")};case <-time.After(time.Second):s.mu.RUnlock();t.Fatal("readers serialized")}
+ var wg sync.WaitGroup
+ bad:=make(chan struct{},1)
+ for i:=0;i<12;i++{wg.Add(2);go func(){defer wg.Done();s.Update("B",2);s.Update("A",1)}();go func(){defer wg.Done();for j:=0;j<50;j++{h,p:=s.Snapshot();if !(h=="A"&&p==1||h=="B"&&p==2){select{case bad<-struct{}{}:default:}}}}()}
+ done:=make(chan struct{});go func(){wg.Wait();close(done)}()
+ select{case <-done:case <-time.After(time.Second):t.Fatal("blocked")}
+ select{case <-bad:t.Fatal("inconsistent snapshot");default:}
+}
+
+func TestAtomicCounter(t *testing.T) {
+ var c AtomicCounter
+ if c.Value()!=0||c.Add(3)!=3||c.Add(-2)!=1||c.Value()!=1{t.Fatal("wrong scalar semantics")}
+ var wg sync.WaitGroup
+ for i:=0;i<20;i++{wg.Add(1);go func(){defer wg.Done();for j:=0;j<100;j++{c.Add(1);c.Value()}}()}
+ done:=make(chan struct{});go func(){wg.Wait();close(done)}()
+ select{case <-done:case <-time.After(time.Second):t.Fatal("blocked")}
+ if got:=c.Value();got!=2001{t.Fatal(got)}
+}
+
+func TestLazyConfig(t *testing.T) {
+ var empty LazyConfig
+ var calls atomic.Int32
+ if got:=empty.Get(func()string{calls.Add(1);return ""});got!=""{t.Fatal(got)}
+ if got:=empty.Get(func()string{calls.Add(1);return "different"});got!=""||calls.Load()!=1{t.Fatal(got,calls.Load())}
+ var c LazyConfig
+ var wg sync.WaitGroup
+ var loads atomic.Int32
+ out:=make(chan string,20)
+ for i:=0;i<20;i++{wg.Add(1);go func(){defer wg.Done();out<-c.Get(func()string{loads.Add(1);return "ready"})}()}
+ done:=make(chan struct{});go func(){wg.Wait();close(done)}()
+ select{case <-done:case <-time.After(time.Second):t.Fatal("blocked")}
+ close(out)
+ for v:=range out{if v!="ready"{t.Fatal(v)}}
+ if loads.Load()!=1{t.Fatal(loads.Load())}
+}
+
+func TestQuotaStore(t *testing.T) {
+ q:=NewQuotaStore(5)
+ if q.Remaining()!=5||q.ReserveQuota(0)||q.ReserveQuota(-1)||q.ReserveQuota(6){t.Fatal("invalid reservation")}
+ if !q.ReserveQuota(5)||q.Remaining()!=0||q.ReserveQuota(1){t.Fatal("exact quota")}
+ if NewQuotaStore(-1).Remaining()!=0{t.Fatal("negative limit")}
+ var zero QuotaStore
+ if zero.ReserveQuota(1)||zero.Remaining()!=0{t.Fatal("zero value")}
+ q=NewQuotaStore(17)
+ var wg sync.WaitGroup
+ var accepted atomic.Int32
+ start:=make(chan struct{})
+ for i:=0;i<50;i++{wg.Add(1);go func(){defer wg.Done();<-start;if q.ReserveQuota(1){accepted.Add(1)};q.Remaining()}()}
+ close(start)
+ done:=make(chan struct{});go func(){wg.Wait();close(done)}()
+ select{case <-done:case <-time.After(time.Second):t.Fatal("blocked")}
+ if accepted.Load()!=17||q.Remaining()!=0{t.Fatal(accepted.Load(),q.Remaining())}
+}
